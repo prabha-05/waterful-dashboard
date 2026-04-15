@@ -24,3 +24,117 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Colorful react-day-picker theme */
+.rdp-root {
+  --rdp-accent-color: #8b5cf6;
+  --rdp-accent-background-color: #f5f3ff;
+  --rdp-today-color: #ec4899;
+  --rdp-range_middle-background-color: #fae8ff;
+  --rdp-range_middle-color: #6b21a8;
+  --rdp-range_start-color: #ffffff;
+  --rdp-range_end-color: #ffffff;
+  --rdp-range_start-background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  --rdp-range_end-background: linear-gradient(135deg, #ec4899, #f59e0b);
+  --rdp-selected-border: 2px solid transparent;
+  --rdp-day-height: 40px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  --rdp-day_button-border-radius: 10px;
+  font-size: 13px;
+}
+
+.rdp-caption_label,
+.rdp-dropdown_root {
+  font-weight: 600;
+  color: #6b21a8;
+}
+
+.rdp-dropdowns select {
+  background: linear-gradient(135deg, #f5f3ff, #fdf2f8);
+  border: 1px solid #e9d5ff;
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: #6b21a8;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.rdp-chevron {
+  fill: #8b5cf6;
+}
+
+.rdp-button_previous,
+.rdp-button_next {
+  background: linear-gradient(135deg, #f5f3ff, #fdf2f8);
+  border-radius: 10px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.rdp-button_previous:hover,
+.rdp-button_next:hover {
+  background: linear-gradient(135deg, #ede9fe, #fbcfe8);
+  transform: scale(1.08);
+}
+
+.rdp-weekday {
+  color: #a855f7;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.rdp-day_button {
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.rdp-day_button:hover:not([disabled]) {
+  background: linear-gradient(135deg, #ede9fe, #fbcfe8) !important;
+  color: #6b21a8 !important;
+  transform: scale(1.05);
+}
+
+.rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: #ec4899;
+  font-weight: 700;
+  background: #fdf2f8;
+  border: 1px solid #fbcfe8;
+}
+
+.rdp-selected .rdp-day_button {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+}
+
+.rdp-range_start .rdp-day_button {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.rdp-range_end .rdp-day_button {
+  background: linear-gradient(135deg, #ec4899, #f59e0b) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+}
+
+.rdp-range_middle .rdp-day_button {
+  background: linear-gradient(90deg, #fae8ff, #fce7f3) !important;
+  color: #9333ea !important;
+  font-weight: 600;
+  border-radius: 0 !important;
+}
+
+.rdp-disabled {
+  opacity: 0.3;
+}
+
+.rdp-outside .rdp-day_button {
+  color: #d4d4d8;
+}

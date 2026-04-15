@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model SalesOrder {
+  id           Int      @id @default(autoincrement())
+  month        String
+  duplicate    Int
+  orderId      Int
+  date         DateTime
+  flavour      String
+  qty          Int
+  customerName String
+  mobile       String
+  billingCity  String
+  pincode      String
+  billingState String
+  total        Float
+  status       String
+  paymentMethod String?
+}
+
+model ShopifyOrder {
+  id              Int      @id @default(autoincrement())
+  shopifyId       BigInt   @unique
+  orderNumber     Int
+  email           String?
+  customerName    String
+  phone           String?
+  totalPrice      Float
+  subtotalPrice   Float
+  totalTax        Float
+  currency        String   @default("INR")
+  financialStatus String
+  fulfillmentStatus String?
+  createdAt       DateTime
+  updatedAt       DateTime
+  processedAt     DateTime?
+  cancelledAt     DateTime?
+  closedAt        DateTime?
+  billingCity     String?
+  billingState    String?
+  billingCountry  String?
+  billingZip      String?
+  shippingCity    String?
+  shippingState   String?
+  shippingCountry String?
+  shippingZip     String?
+  itemCount       Int      @default(0)
+  note            String?
+  tags            String?
+  syncedAt        DateTime @default(now())
+
+  lineItems       ShopifyLineItem[]
+}
+
+model ShopifyLineItem {
+  id          Int      @id @default(autoincrement())
+  shopifyId   BigInt   @unique
+  orderId     Int
+  title       String
+  variantTitle String?
+  sku         String?
+  quantity    Int
+  price       Float
+  totalDiscount Float  @default(0)
+  vendor      String?
+  productId   BigInt?
+
+  order       ShopifyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model SyncLog {
+  id          Int      @id @default(autoincrement())
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  status      String   @default("running")
+  ordersAdded Int      @default(0)
+  ordersUpdated Int    @default(0)
+  error       String?
+}

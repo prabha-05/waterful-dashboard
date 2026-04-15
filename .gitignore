@@ -33,9 +33,24 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# database (local SQLite)
+/prisma/dev.db
+/prisma/dev.db-journal
+dev.db
+dev.db-journal
+
+# raw customer data (PII)
+Sales.csv
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/lib/generated/prisma
+
+# claude code local settings
+.claude/settings.local.json
+.next-dev.log
