@@ -32,8 +32,10 @@ const navItems: NavItem[] = [
     icon: null,
     children: [
       { label: "Customer", href: "/dashboard/retention/customer" },
+      { label: "First Timers", href: "/dashboard/retention/first-timers" },
+      { label: "Loyalty", href: "/dashboard/retention/loyalty" },
+      { label: "Customer Value", href: "/dashboard/retention/customer-value" },
       { label: "Customer Retention", href: "/dashboard/retention/a" },
-      { label: "Customer Lifetime", href: "/dashboard/retention/b" },
     ],
   },
   {
