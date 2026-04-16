@@ -97,13 +97,15 @@ export function CustomerRetention() {
       if (from && to) {
         setRange({ from, to });
         fetchPeriod(from, to);
+        return;
       }
     }
+    applyPreset(7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPreset = (days: number) => {
-    const to = new Date(2025, 8, 30);
+    const to = new Date();
     const from = new Date(to);
     from.setDate(from.getDate() - days + 1);
     setRange({ from, to });

@@ -85,7 +85,7 @@ const PRESETS: { label: string; days: number }[] = [
 const LINE_COLORS = {
   total: "#0f172a", // slate-900 — the headline
   new: "#8b5cf6", // violet-500 — new users
-  repeat: "#10b981", // emerald-500 — regulars
+  repeat: "#10b981", // emerald-500 — repeat
 };
 
 const TONE_MAP = {
@@ -164,7 +164,7 @@ function MetricCard({
               <span className="text-neutral-600">new users</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="text-neutral-600">regulars</span>
+              <span className="text-neutral-600">repeat</span>
               <span className="font-bold tabular-nums text-emerald-700">{cfg.fmt(split.repeat)}</span>
             </span>
           </div>
@@ -201,7 +201,7 @@ function TrendChart({
               formatter={(value, name) => {
                 const n = Number(value);
                 const label =
-                  name === "total" ? "Total" : name === "new" ? "New users" : "Regulars";
+                  name === "total" ? "Total" : name === "new" ? "New users" : "Repeat";
                 return [isCurrency ? `₹${n.toLocaleString()}` : n, label];
               }}
               contentStyle={{ fontSize: 12, borderRadius: 8 }}
@@ -236,7 +236,7 @@ function TrendChart({
       <div className="mt-2 flex items-center justify-center gap-5 text-xs">
         <LegendDot color={LINE_COLORS.total} label="Total" />
         <LegendDot color={LINE_COLORS.new} label="New users" />
-        <LegendDot color={LINE_COLORS.repeat} label="Regulars" />
+        <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
       </div>
     </div>
   );
@@ -287,13 +287,15 @@ export function SalesTrending() {
       if (from && to) {
         setRange({ from, to });
         fetchPeriod(from, to);
+        return;
       }
     }
+    applyPreset(7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPreset = (days: number) => {
-    const to = new Date(2025, 8, 30);
+    const to = new Date();
     const from = new Date(to);
     from.setDate(from.getDate() - days + 1);
     setRange({ from, to });
@@ -315,11 +317,11 @@ export function SalesTrending() {
 
   const rows: MetricRowConfig[] = [
     { key: "sales", label: "Sales", tagline: "the cash that came in", icon: <IndianRupee size={18} />, tone: "emerald", fmt: fmtMoney },
+    { key: "uniqueCustomers", label: "Unique Customers", tagline: "real humans, not bots", icon: <Users size={18} />, tone: "violet", fmt: fmtNum },
+    { key: "aov", label: "AOV", tagline: "avg order value per day", icon: <Gauge size={18} />, tone: "indigo", fmt: fmtMoney },
     { key: "confirmedOrders", label: "Confirmed Orders", tagline: "sealed and delivered", icon: <ShoppingBag size={18} />, tone: "sky", fmt: fmtNum },
     { key: "cancelled", label: "Cancelled Orders", tagline: "changed their minds", icon: <Ban size={18} />, tone: "rose", fmt: fmtNum },
     { key: "rto", label: "RTO", tagline: "sent it, got it back", icon: <PackageX size={18} />, tone: "amber", fmt: fmtNum },
-    { key: "aov", label: "AOV", tagline: "avg order value per day", icon: <Gauge size={18} />, tone: "indigo", fmt: fmtMoney },
-    { key: "uniqueCustomers", label: "Unique Customers", tagline: "real humans, not bots", icon: <Users size={18} />, tone: "violet", fmt: fmtNum },
   ];
 
   const splitFromSummary = (key: MetricKey, m: SalesMetrics): BuyerSplit => {
@@ -402,7 +404,7 @@ export function SalesTrending() {
           <span className="text-xs uppercase tracking-wider text-neutral-500">Line guide</span>
           <LegendDot color={LINE_COLORS.total} label="Total" />
           <LegendDot color={LINE_COLORS.new} label="New users" />
-          <LegendDot color={LINE_COLORS.repeat} label="Regulars" />
+          <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
           <span className="ml-auto text-xs italic text-neutral-400">
             Same color code used across every chart below.
           </span>
@@ -553,7 +555,7 @@ function StackedAreaChart({
           <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={40} />
           <Tooltip
             formatter={(value, name) => {
-              const label = name === "new" ? "New users" : "Regulars";
+              const label = name === "new" ? "New users" : "Repeat";
               return [Number(value), label];
             }}
             contentStyle={{ fontSize: 12, borderRadius: 8 }}
@@ -578,7 +580,7 @@ function StackedAreaChart({
       </ResponsiveContainer>
       <div className="mt-2 flex items-center justify-center gap-5 text-xs">
         <LegendDot color={LINE_COLORS.new} label="New users" />
-        <LegendDot color={LINE_COLORS.repeat} label="Regulars" />
+        <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
       </div>
     </div>
   );
@@ -609,7 +611,7 @@ function ProductTrend({ metrics }: { metrics: PeriodData }) {
       <div>
         <h2 className="text-lg font-bold text-neutral-900">Product Sale — Composition Over Time</h2>
         <p className="text-xs italic text-neutral-400">
-          Top 5 products. Each chart stacks new users + regulars = total orders per day.
+          Top 5 products. Each chart stacks new users + repeat = total orders per day.
         </p>
       </div>
       {top.map((p) => {

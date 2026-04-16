@@ -5,7 +5,9 @@ export default function SignupPage() {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-neutral-950">
       <BackgroundPaths />
-      <SignupForm />
+      <div className="relative z-10 w-full">
+        <SignupForm />
+      </div>
     </div>
   );
 }

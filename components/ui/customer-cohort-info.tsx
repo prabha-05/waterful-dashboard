@@ -110,13 +110,16 @@ export function CustomerCohortInfo() {
       if (from && to) {
         setRange({ from, to });
         fetchPeriod(from, to);
+        return;
       }
     }
+    // Default to last 7 days
+    applyPreset(7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPreset = (days: number) => {
-    const to = new Date(2025, 8, 30);
+    const to = new Date();
     const from = new Date(to);
     from.setDate(from.getDate() - days + 1);
     setRange({ from, to });
@@ -253,7 +256,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
             className="mt-1 text-lg font-semibold"
             style={{ fontFamily: "Georgia, serif", color: INK }}
           >
-            The regulars, ranked by spend
+            The repeat, ranked by spend
           </h3>
         </div>
         <p className="text-xs italic" style={{ color: "#9a8571" }}>
@@ -507,7 +510,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
         </table>
       </div>
       <p className="mt-3 text-xs italic" style={{ color: "#9a8571" }}>
-        One-and-done vs. the regulars. 5+ means 6 or more orders in this range.
+        One-and-done vs. the repeat. 4+ means 4 or more orders in this range.
       </p>
     </section>
   );

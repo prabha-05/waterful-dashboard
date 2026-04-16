@@ -55,19 +55,23 @@ export function PeriodView() {
   useEffect(() => {
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
-    if (!fromParam || !toParam) return;
-    const [fy, fm, fd] = fromParam.split("-").map(Number);
-    const [ty, tm, td] = toParam.split("-").map(Number);
-    if (!fy || !fm || !fd || !ty || !tm || !td) return;
-    const from = new Date(fy, fm - 1, fd);
-    const to = new Date(ty, tm - 1, td);
-    setRange({ from, to });
-    fetchPeriod(from, to);
+    if (fromParam && toParam) {
+      const [fy, fm, fd] = fromParam.split("-").map(Number);
+      const [ty, tm, td] = toParam.split("-").map(Number);
+      if (fy && fm && fd && ty && tm && td) {
+        const from = new Date(fy, fm - 1, fd);
+        const to = new Date(ty, tm - 1, td);
+        setRange({ from, to });
+        fetchPeriod(from, to);
+        return;
+      }
+    }
+    applyPreset(7);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPreset = (days: number) => {
-    const to = new Date(2025, 8, 30);
+    const to = new Date();
     const from = new Date(to);
     from.setDate(from.getDate() - days + 1);
     setRange({ from, to });

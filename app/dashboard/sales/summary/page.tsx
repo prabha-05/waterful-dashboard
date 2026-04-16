@@ -12,10 +12,10 @@ export default function SalesSummaryPage() {
       />
       <div className="space-y-2 p-8">
         <h1 className="bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 bg-clip-text text-3xl font-bold text-transparent">
-          Sales Summary
+          Single Day Sales Summary
         </h1>
         <p className="mb-6 text-neutral-500">
-          Pick a single day or a date range to view sales, customers, and orders.
+          Pick a date to view that day&apos;s sales, customers, and orders.
         </p>
         <SalesSummary />
       </div>

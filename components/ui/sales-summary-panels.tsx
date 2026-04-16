@@ -65,7 +65,7 @@ function SplitLegend({
         <span className="text-neutral-500">first-timers</span>
       </span>
       <span className="flex items-center gap-2 text-emerald-700">
-        <span className="text-neutral-500">regulars</span>
+        <span className="text-neutral-500">repeat</span>
         <span className="font-bold">{format(split.repeat)}</span>
         <span className="h-2 w-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
       </span>
@@ -123,7 +123,7 @@ function MetricCard({
               <span className="text-neutral-600">new users</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="text-neutral-600">regulars</span>
+              <span className="text-neutral-600">repeat</span>
               <span className="font-bold tabular-nums text-emerald-700">{format(split.repeat)}</span>
             </span>
           </div>
@@ -241,6 +241,22 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
             tone="emerald"
           />
           <MetricCard
+            label="Unique Customers"
+            tagline="real humans, not bots"
+            icon={<Users size={18} />}
+            split={s.overallSale.uniqueCustomers}
+            format={fmtNum}
+            tone="violet"
+          />
+          <MetricCard
+            label="AOV"
+            tagline="avg order value"
+            icon={<Gauge size={18} />}
+            split={s.overallSale.aov}
+            format={fmtMoney}
+            tone="indigo"
+          />
+          <MetricCard
             label="Confirmed Orders"
             tagline="sealed and delivered"
             icon={<ShoppingBag size={18} />}
@@ -263,22 +279,6 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
             split={s.overallSale.rto}
             format={fmtNum}
             tone="amber"
-          />
-          <MetricCard
-            label="AOV"
-            tagline="avg order value"
-            icon={<Gauge size={18} />}
-            split={s.overallSale.aov}
-            format={fmtMoney}
-            tone="indigo"
-          />
-          <MetricCard
-            label="Unique Customers"
-            tagline="real humans, not bots"
-            icon={<Users size={18} />}
-            split={s.overallSale.uniqueCustomers}
-            format={fmtNum}
-            tone="violet"
           />
         </div>
       </Section>

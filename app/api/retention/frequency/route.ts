@@ -42,13 +42,13 @@ export async function GET(req: NextRequest) {
     aov: number;
   };
 
-  const bucketKeys = ["1", "2", "3", "4", "5", "6+"] as const;
+  const bucketKeys = ["1", "2", "3", "4+"] as const;
   const buckets: Record<(typeof bucketKeys)[number], Bucket> = Object.fromEntries(
     bucketKeys.map((k) => [k, { label: k, customers: 0, orders: 0, revenue: 0, pct: 0, aov: 0 }]),
   ) as Record<(typeof bucketKeys)[number], Bucket>;
 
   for (const { orders: n, revenue } of perCustomer.values()) {
-    const key: (typeof bucketKeys)[number] = n >= 6 ? "6+" : (String(n) as (typeof bucketKeys)[number]);
+    const key: (typeof bucketKeys)[number] = n >= 4 ? "4+" : (String(n) as (typeof bucketKeys)[number]);
     const b = buckets[key];
     b.customers += 1;
     b.orders += n;

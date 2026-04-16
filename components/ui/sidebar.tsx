@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
     label: "Sales",
     icon: null,
     children: [
-      { label: "Summary", href: "/dashboard/sales/summary" },
+      { label: "Single Day Sales", href: "/dashboard/sales/summary" },
       { label: "Trending", href: "/dashboard/sales/trending" },
     ],
   },
@@ -31,9 +31,9 @@ const navItems: NavItem[] = [
     label: "Retention",
     icon: null,
     children: [
+      { label: "Customer", href: "/dashboard/retention/customer" },
       { label: "Customer Retention", href: "/dashboard/retention/a" },
       { label: "Customer Lifetime", href: "/dashboard/retention/b" },
-      { label: "Customer", href: "/dashboard/retention/customer" },
     ],
   },
   {

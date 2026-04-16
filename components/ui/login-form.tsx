@@ -42,8 +42,8 @@ export function LoginForm() {
       className="relative z-10 w-full max-w-md mx-auto px-4"
     >
       <div
-        className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 backdrop-blur-xl
-        shadow-[0_0_40px_rgba(0,0,0,0.4)]"
+        className="rounded-2xl border border-white/[0.12] bg-white/[0.04] p-8 backdrop-blur-xl
+        shadow-[0_0_60px_rgba(0,0,0,0.3)]"
       >
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -125,7 +125,7 @@ export function LoginForm() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-neutral-400">
+        <p className="mt-6 text-center text-sm text-neutral-500">
           Don&apos;t have an account?{" "}
           <a href="/signup" className="text-violet-400 transition-colors hover:text-violet-300">
             Sign up
