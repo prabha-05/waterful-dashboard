@@ -184,52 +184,53 @@ function TrendChart({
   data: { date: string; total: number; new: number; repeat: number }[];
   isCurrency: boolean;
 }) {
+  const chartData = data.map((d) => ({
+    ...d,
+    newPct: d.total > 0 ? Math.round((d.new / d.total) * 1000) / 10 : 0,
+    repeatPct: d.total > 0 ? Math.round((d.repeat / d.total) * 1000) / 10 : 0,
+  }));
+
   return (
     <div className="h-full min-h-[260px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
+          <LineChart data={chartData} margin={{ top: 8, right: 40, bottom: 4, left: -8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
             <YAxis
+              yAxisId="left"
               tick={{ fontSize: 11 }}
               tickFormatter={(v) => (isCurrency ? formatCurrency(v) : String(v))}
               allowDecimals={false}
               width={56}
             />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 10, fill: "#a1a1aa" }}
+              tickFormatter={(v) => `${v}%`}
+              domain={[0, 100]}
+              width={40}
+              axisLine={false}
+              tickLine={false}
+            />
             <Tooltip
               formatter={(value, name) => {
                 const n = Number(value);
-                const label =
-                  name === "total" ? "Total" : name === "new" ? "New users" : "Repeat";
+                if (name === "newPct") return [`${n}%`, "New %"];
+                if (name === "repeatPct") return [`${n}%`, "Repeat %"];
+                const label = name === "total" ? "Total" : name === "new" ? "New users" : "Repeat";
                 return [isCurrency ? `₹${n.toLocaleString()}` : n, label];
               }}
               contentStyle={{ fontSize: 12, borderRadius: 8 }}
             />
-            <Line
-              type="monotone"
-              dataKey="total"
-              stroke={LINE_COLORS.total}
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="new"
-              stroke={LINE_COLORS.new}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-            <Line
-              type="monotone"
-              dataKey="repeat"
-              stroke={LINE_COLORS.repeat}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
+            {/* Absolute value lines */}
+            <Line yAxisId="left" type="monotone" dataKey="total" stroke={LINE_COLORS.total} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="left" type="monotone" dataKey="new" stroke={LINE_COLORS.new} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            <Line yAxisId="left" type="monotone" dataKey="repeat" stroke={LINE_COLORS.repeat} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            {/* Percentage lines — dashed */}
+            <Line yAxisId="right" type="monotone" dataKey="newPct" stroke={LINE_COLORS.new} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} />
+            <Line yAxisId="right" type="monotone" dataKey="repeatPct" stroke={LINE_COLORS.repeat} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -237,6 +238,10 @@ function TrendChart({
         <LegendDot color={LINE_COLORS.total} label="Total" />
         <LegendDot color={LINE_COLORS.new} label="New users" />
         <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
+        <span className="flex items-center gap-1.5 text-neutral-400">
+          <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: "#9ca3af" }} />
+          <span className="font-medium">% lines</span>
+        </span>
       </div>
     </div>
   );
