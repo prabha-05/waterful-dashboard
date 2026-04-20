@@ -187,61 +187,78 @@ function TrendChart({
   const chartData = data.map((d) => ({
     ...d,
     newPct: d.total > 0 ? Math.round((d.new / d.total) * 1000) / 10 : 0,
-    repeatPct: d.total > 0 ? Math.round((d.repeat / d.total) * 1000) / 10 : 0,
   }));
+
+  const totals = data.reduce(
+    (a, d) => ({ total: a.total + d.total, new: a.new + d.new, repeat: a.repeat + d.repeat }),
+    { total: 0, new: 0, repeat: 0 },
+  );
+  const overallNewPct = totals.total > 0 ? Math.round((totals.new / totals.total) * 1000) / 10 : 0;
+  const overallRepeatPct = totals.total > 0 ? Math.round((totals.repeat / totals.total) * 1000) / 10 : 0;
 
   return (
     <div className="h-full min-h-[260px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chartData} margin={{ top: 8, right: 40, bottom: 4, left: -8 }}>
+          <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+              interval="preserveStartEnd"
+              minTickGap={24}
+            />
             <YAxis
-              yAxisId="left"
               tick={{ fontSize: 11 }}
               tickFormatter={(v) => (isCurrency ? formatCurrency(v) : String(v))}
               allowDecimals={false}
               width={56}
             />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fontSize: 10, fill: "#a1a1aa" }}
-              tickFormatter={(v) => `${v}%`}
-              domain={[0, 100]}
-              width={40}
-              axisLine={false}
-              tickLine={false}
-            />
             <Tooltip
               formatter={(value, name) => {
                 const n = Number(value);
                 if (name === "newPct") return [`${n}%`, "New %"];
-                if (name === "repeatPct") return [`${n}%`, "Repeat %"];
                 const label = name === "total" ? "Total" : name === "new" ? "New users" : "Repeat";
                 return [isCurrency ? `₹${n.toLocaleString()}` : n, label];
               }}
               contentStyle={{ fontSize: 12, borderRadius: 8 }}
             />
-            {/* Absolute value lines */}
-            <Line yAxisId="left" type="monotone" dataKey="total" stroke={LINE_COLORS.total} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
-            <Line yAxisId="left" type="monotone" dataKey="new" stroke={LINE_COLORS.new} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-            <Line yAxisId="left" type="monotone" dataKey="repeat" stroke={LINE_COLORS.repeat} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
-            {/* Percentage lines — dashed */}
-            <Line yAxisId="right" type="monotone" dataKey="newPct" stroke={LINE_COLORS.new} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} />
-            <Line yAxisId="right" type="monotone" dataKey="repeatPct" stroke={LINE_COLORS.repeat} strokeWidth={1.5} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} />
+            <Line type="monotone" dataKey="total" stroke={LINE_COLORS.total} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+            <Line type="monotone" dataKey="new" stroke={LINE_COLORS.new} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            <Line type="monotone" dataKey="repeat" stroke={LINE_COLORS.repeat} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 flex items-center justify-center gap-5 text-xs">
-        <LegendDot color={LINE_COLORS.total} label="Total" />
-        <LegendDot color={LINE_COLORS.new} label="New users" />
-        <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
-        <span className="flex items-center gap-1.5 text-neutral-400">
-          <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: "#9ca3af" }} />
-          <span className="font-medium">% lines</span>
-        </span>
+
+      {/* % distribution strip */}
+      <div className="mt-3 flex items-center gap-4 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Mix</span>
+          <div className="flex h-2 w-28 overflow-hidden rounded-full bg-neutral-200">
+            <div className="h-full" style={{ width: `${overallNewPct}%`, background: LINE_COLORS.new }} />
+            <div className="h-full" style={{ width: `${overallRepeatPct}%`, background: LINE_COLORS.repeat }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs tabular-nums">
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: LINE_COLORS.new }} />
+            <span className="font-semibold" style={{ color: LINE_COLORS.new }}>{overallNewPct}%</span>
+            <span className="text-neutral-500">new</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: LINE_COLORS.repeat }} />
+            <span className="font-semibold" style={{ color: LINE_COLORS.repeat }}>{overallRepeatPct}%</span>
+            <span className="text-neutral-500">repeat</span>
+          </span>
+        </div>
+        <div className="ml-auto h-8 w-24">
+          <ResponsiveContainer width="100%" height={32}>
+            <LineChart data={chartData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+              <Line type="monotone" dataKey="newPct" stroke={LINE_COLORS.new} strokeWidth={1.5} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">New % trend</span>
       </div>
     </div>
   );
@@ -484,9 +501,14 @@ function MultiSeriesChart({
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
+        <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+            interval="preserveStartEnd"
+            minTickGap={24}
+          />
           <YAxis
             tick={{ fontSize: 11 }}
             tickFormatter={(v) => (isCurrency ? formatCurrency(v) : String(v))}
@@ -554,9 +576,14 @@ function StackedAreaChart({
   return (
     <div className="h-[220px] w-full">
       <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
+        <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+            interval="preserveStartEnd"
+            minTickGap={24}
+          />
           <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={40} />
           <Tooltip
             formatter={(value, name) => {

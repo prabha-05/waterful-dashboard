@@ -20,10 +20,17 @@ type NavItem =
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   {
+    label: "Final",
+    icon: null,
+    children: [
+      { label: "Sales", href: "/dashboard/final/sales" },
+      { label: "Specific Customer", href: "/dashboard/final/specific-customer" },
+    ],
+  },
+  {
     label: "Sales",
     icon: null,
     children: [
-      { label: "Single Day Sales", href: "/dashboard/sales/summary" },
       { label: "Trending", href: "/dashboard/sales/trending" },
     ],
   },
@@ -31,7 +38,6 @@ const navItems: NavItem[] = [
     label: "Retention",
     icon: null,
     children: [
-      { label: "Customer", href: "/dashboard/retention/customer" },
       { label: "First Timers", href: "/dashboard/retention/first-timers" },
       { label: "Loyalty", href: "/dashboard/retention/loyalty" },
       { label: "Customer Value", href: "/dashboard/retention/customer-value" },

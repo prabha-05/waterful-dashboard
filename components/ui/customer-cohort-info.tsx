@@ -80,7 +80,7 @@ export function CustomerCohortInfo() {
 
   const pushUrl = (params: Record<string, string>) => {
     const qs = new URLSearchParams(params).toString();
-    router.replace(`/dashboard/retention/customer${qs ? `?${qs}` : ""}`, { scroll: false });
+    router.replace(`/dashboard/final/specific-customer${qs ? `?${qs}` : ""}`, { scroll: false });
   };
 
   const fetchPeriod = async (from: Date, to: Date) => {

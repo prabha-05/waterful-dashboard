@@ -1,7 +1,7 @@
 import { CustomerCohortInfo, PAPER } from "@/components/ui/customer-cohort-info";
 import { CustomerLookup } from "@/components/ui/customer-lookup";
 
-export default function CustomerPage() {
+export default function FinalSpecificCustomerPage() {
   return (
     <div className="relative min-h-full" style={{ background: PAPER }}>
       <div
@@ -23,7 +23,7 @@ export default function CustomerPage() {
             className="mt-1 text-4xl font-bold"
             style={{ fontFamily: "Georgia, serif", color: "#4a3a2e" }}
           >
-            Customer
+            Specific Customer
           </h1>
           <p className="mt-2 text-sm italic" style={{ color: "#8a7763" }}>
             A quiet record of who we met, when, and what they first brought home.

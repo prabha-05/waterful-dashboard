@@ -11,6 +11,10 @@ type PeriodBucket = {
   aov: number;
   ftCustomers: number;
   repeatCustomers: number;
+  ftOrders: number;
+  repeatOrders: number;
+  ftRevenue: number;
+  repeatRevenue: number;
   cancelledOrders: number;
   rtoOrders: number;
 };
@@ -73,9 +77,14 @@ export async function GET(req: NextRequest) {
   const globalFrom = buckets[0].from;
   const globalTo = buckets[buckets.length - 1].to;
 
-  // Fetch all orders in the full range
+  // Previous equivalent window: same length, ending right before globalFrom
+  const windowMs = globalTo.getTime() - globalFrom.getTime();
+  const prevTo = new Date(globalFrom.getTime());
+  const prevFrom = new Date(globalFrom.getTime() - windowMs);
+
+  // Fetch all orders in current + previous range in one query
   const orders = await prisma.salesOrder.findMany({
-    where: { duplicate: 1, mobile: { not: "" }, date: { gte: globalFrom, lt: globalTo } },
+    where: { duplicate: 1, mobile: { not: "" }, date: { gte: prevFrom, lt: globalTo } },
     select: { mobile: true, total: true, date: true, status: true },
   });
 
@@ -104,6 +113,10 @@ export async function GET(req: NextRequest) {
     const ftMobiles = new Set<string>();
     const repeatMobiles = new Set<string>();
     let revenue = 0;
+    let ftRevenue = 0;
+    let repeatRevenue = 0;
+    let ftOrders = 0;
+    let repeatOrders = 0;
     let cancelled = 0;
     let rto = 0;
 
@@ -116,10 +129,15 @@ export async function GET(req: NextRequest) {
       if (status.includes("rto") || status.includes("return")) rto++;
 
       const firstDate = firstOrderDate.get(o.mobile);
-      if (firstDate && firstDate >= bucket.from && firstDate < bucket.to) {
+      const isFt = firstDate && firstDate >= bucket.from && firstDate < bucket.to;
+      if (isFt) {
         ftMobiles.add(o.mobile);
+        ftOrders++;
+        ftRevenue += o.total;
       } else {
         repeatMobiles.add(o.mobile);
+        repeatOrders++;
+        repeatRevenue += o.total;
       }
     }
 
@@ -136,17 +154,37 @@ export async function GET(req: NextRequest) {
       aov: orderCount > 0 ? Math.round(revenue / orderCount) : 0,
       ftCustomers: ftMobiles.size,
       repeatCustomers: repeatMobiles.size,
+      ftOrders,
+      repeatOrders,
+      ftRevenue: Math.round(ftRevenue),
+      repeatRevenue: Math.round(repeatRevenue),
       cancelledOrders: cancelled,
       rtoOrders: rto,
     };
   });
 
-  // Totals
+  // Totals (current window)
   const totalOrders = periods.reduce((s, p) => s + p.orders, 0);
   const totalRevenue = periods.reduce((s, p) => s + p.revenue, 0);
   const totalCustomers = new Set(
     orders.filter((o) => o.date && o.date >= globalFrom && o.date < globalTo).map((o) => o.mobile)
   ).size;
+
+  // Previous-window totals for delta comparison
+  const prevOrdersRows = orders.filter(
+    (o) => o.date && o.date >= prevFrom && o.date < prevTo
+  );
+  const prevOrdersCount = prevOrdersRows.length;
+  const prevRevenue = Math.round(prevOrdersRows.reduce((s, o) => s + o.total, 0));
+  const prevCustomers = new Set(prevOrdersRows.map((o) => o.mobile)).size;
+  const prevAov = prevOrdersCount > 0 ? Math.round(prevRevenue / prevOrdersCount) : 0;
+  const prevCancelled = prevOrdersRows.filter((o) =>
+    (o.status || "").toLowerCase().includes("cancel")
+  ).length;
+  const prevRto = prevOrdersRows.filter((o) => {
+    const s = (o.status || "").toLowerCase();
+    return s.includes("rto") || s.includes("return");
+  }).length;
 
   return NextResponse.json({
     count,
@@ -157,6 +195,18 @@ export async function GET(req: NextRequest) {
       revenue: totalRevenue,
       customers: totalCustomers,
       aov: totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0,
+    },
+    previousTotals: {
+      orders: prevOrdersCount,
+      revenue: prevRevenue,
+      customers: prevCustomers,
+      aov: prevAov,
+      cancelledOrders: prevCancelled,
+      rtoOrders: prevRto,
+    },
+    previousWindow: {
+      from: formatDate(prevFrom),
+      to: formatDate(prevTo),
     },
   });
 }
