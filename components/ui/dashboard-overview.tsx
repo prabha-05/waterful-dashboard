@@ -313,6 +313,55 @@ export function DashboardOverview() {
             />
           </div>
 
+          {/* Period breakdown table */}
+          <div
+            className="rounded-2xl border shadow-sm overflow-hidden"
+            style={{ background: "white", borderColor: "#e8dfd0" }}
+          >
+            <div className="px-5 py-4 border-b" style={{ borderColor: "#e8dfd0" }}>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-wider"
+                style={{ color: "#9a8571" }}
+              >
+                Period Breakdown
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: "#faf6ef" }}>
+                    {["Period", "Revenue", "Orders", "Customers", "AOV", "FT", "Repeat"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
+                        style={{ color: "#9a8571" }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.periods.map((p, i) => (
+                    <tr
+                      key={i}
+                      className="border-t"
+                      style={{ borderColor: "#f1e7d3" }}
+                    >
+                      <td className="px-4 py-3 font-medium" style={{ color: INK }}>{p.label}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{formatCurrency(p.revenue)}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{p.orders.toLocaleString()}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{p.customers.toLocaleString()}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{formatCurrency(p.aov)}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: AMBER }}>{p.ftCustomers.toLocaleString()}</td>
+                      <td className="px-4 py-3 tabular-nums" style={{ color: SAGE }}>{p.repeatCustomers.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* Chart mode toggle */}
           <div className="flex flex-wrap items-center gap-3">
             <div
@@ -423,54 +472,6 @@ export function DashboardOverview() {
             </ResponsiveContainer>
           </div>
 
-          {/* Period breakdown table */}
-          <div
-            className="rounded-2xl border shadow-sm overflow-hidden"
-            style={{ background: "white", borderColor: "#e8dfd0" }}
-          >
-            <div className="px-5 py-4 border-b" style={{ borderColor: "#e8dfd0" }}>
-              <p
-                className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "#9a8571" }}
-              >
-                Period Breakdown
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ background: "#faf6ef" }}>
-                    {["Period", "Revenue", "Orders", "Customers", "AOV", "FT", "Repeat"].map((h) => (
-                      <th
-                        key={h}
-                        className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                        style={{ color: "#9a8571" }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.periods.map((p, i) => (
-                    <tr
-                      key={i}
-                      className="border-t"
-                      style={{ borderColor: "#f1e7d3" }}
-                    >
-                      <td className="px-4 py-3 font-medium" style={{ color: INK }}>{p.label}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{formatCurrency(p.revenue)}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{p.orders.toLocaleString()}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{p.customers.toLocaleString()}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{formatCurrency(p.aov)}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: AMBER }}>{p.ftCustomers.toLocaleString()}</td>
-                      <td className="px-4 py-3 tabular-nums" style={{ color: SAGE }}>{p.repeatCustomers.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
     </div>
