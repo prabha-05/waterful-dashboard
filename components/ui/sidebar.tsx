@@ -28,13 +28,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "Sales",
-    icon: null,
-    children: [
-      { label: "Trending", href: "/dashboard/sales/trending" },
-    ],
-  },
-  {
     label: "Retention",
     icon: null,
     children: [
@@ -42,14 +35,6 @@ const navItems: NavItem[] = [
       { label: "Loyalty", href: "/dashboard/retention/loyalty" },
       { label: "Customer Value", href: "/dashboard/retention/customer-value" },
       { label: "Customer Retention", href: "/dashboard/retention/a" },
-    ],
-  },
-  {
-    label: "Meta",
-    icon: null,
-    children: [
-      { label: "A", href: "/dashboard/meta/a" },
-      { label: "B", href: "/dashboard/meta/b" },
     ],
   },
   {

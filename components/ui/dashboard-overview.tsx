@@ -455,6 +455,52 @@ export function DashboardOverview() {
       })()
     : 0;
 
+  /* Which metric drives the Period Breakdown table. Revenue-based AOV/Products
+     get the default Revenue view since Orders/Customers splits aren't the right
+     lens for AOV (ratio) or Products (composition). */
+  type TableMode = "revenue" | "orders" | "customers";
+  const tableMode: TableMode =
+    chartMode === "orders" ? "orders"
+    : chartMode === "customers" ? "customers"
+    : "revenue";
+  const tableCfg = data && splits
+    ? ({
+        revenue: {
+          title: "Revenue",
+          format: formatCurrency,
+          getTotal: (p: Period) => p.revenue,
+          getFt: (p: Period) => p.ftRevenue,
+          getRep: (p: Period) => p.repeatRevenue,
+          grandTotal: data.totals.revenue,
+          grandFt: splits.ftRevenue,
+          grandRep: splits.repeatRevenue,
+          csvLabel: "Revenue",
+        },
+        orders: {
+          title: "Orders",
+          format: (n: number) => n.toLocaleString(),
+          getTotal: (p: Period) => p.orders,
+          getFt: (p: Period) => p.ftOrders,
+          getRep: (p: Period) => p.repeatOrders,
+          grandTotal: data.totals.orders,
+          grandFt: splits.ftOrders,
+          grandRep: splits.repeatOrders,
+          csvLabel: "Orders",
+        },
+        customers: {
+          title: "Customers",
+          format: (n: number) => n.toLocaleString(),
+          getTotal: (p: Period) => p.customers,
+          getFt: (p: Period) => p.ftCustomers,
+          getRep: (p: Period) => p.repeatCustomers,
+          grandTotal: data.totals.customers,
+          grandFt: splits.ftCustomers,
+          grandRep: splits.repeatCustomers,
+          csvLabel: "Customers",
+        },
+      } as const)[tableMode]
+    : null;
+
 
   return (
     <div className="space-y-6">
@@ -713,24 +759,23 @@ export function DashboardOverview() {
                 </div>
               </div>
               <div className="mt-4">
-                <ResponsiveContainer width="100%" height={160}>
-                  <LineChart data={repeatTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1e7d3" />
+                <ResponsiveContainer width="100%" height={360}>
+                  <LineChart data={repeatTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
                     <XAxis
                       dataKey="label"
-                      tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                      tick={{ fill: "#4a3a2e", fontSize: 12, fontWeight: 500 }}
                       axisLine={{ stroke: "#e8dfd0" }}
                       tickLine={false}
                       interval="preserveStartEnd"
                       minTickGap={24}
                     />
                     <YAxis
-                      tick={{ fill: "#9a8571", fontSize: 11 }}
+                      tick={{ fill: "#9a8571", fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
                       domain={[0, 100]}
                       tickFormatter={(v) => `${v}%`}
-                      width={40}
                     />
                     <Tooltip
                       formatter={(v: any) => [`${v}%`, "Repeat share"]}
@@ -747,7 +792,7 @@ export function DashboardOverview() {
                       stroke={REPEAT_COLOR}
                       strokeWidth={2.5}
                       dot={{ fill: REPEAT_COLOR, r: 3 }}
-                      activeDot={{ r: 5 }}
+                      activeDot={{ r: 6 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -772,15 +817,23 @@ export function DashboardOverview() {
               </p>
               <button
                 onClick={() => {
-                  const header = ["Period", "From", "To", "Revenue", "First Time Revenue", "Repeat Revenue", "Repeat %"];
+                  if (!tableCfg) return;
+                  const header = [
+                    "Period", "From", "To",
+                    tableCfg.csvLabel,
+                    `First Time ${tableCfg.csvLabel}`,
+                    `Repeat ${tableCfg.csvLabel}`,
+                    "Repeat %",
+                  ];
                   const rows = data.periods.map((p) => {
-                    const repPct = p.revenue > 0 ? (p.repeatRevenue / p.revenue) * 100 : 0;
-                    return [p.label, p.from, p.to, p.revenue, p.ftRevenue, p.repeatRevenue, `${repPct.toFixed(1)}%`];
+                    const tot = tableCfg.getTotal(p);
+                    const repPct = tot > 0 ? (tableCfg.getRep(p) / tot) * 100 : 0;
+                    return [p.label, p.from, p.to, tot, tableCfg.getFt(p), tableCfg.getRep(p), `${repPct.toFixed(1)}%`];
                   });
-                  const overallRep = data.totals.revenue > 0
-                    ? ((splits.repeatRevenue / data.totals.revenue) * 100).toFixed(1)
+                  const overallRep = tableCfg.grandTotal > 0
+                    ? ((tableCfg.grandRep / tableCfg.grandTotal) * 100).toFixed(1)
                     : "0.0";
-                  rows.push(["Total", "", "", data.totals.revenue, splits.ftRevenue, splits.repeatRevenue, `${overallRep}%`]);
+                  rows.push(["Total", "", "", tableCfg.grandTotal, tableCfg.grandFt, tableCfg.grandRep, `${overallRep}%`]);
                   const csv = [header, ...rows]
                     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
                     .join("\r\n");
@@ -791,7 +844,7 @@ export function DashboardOverview() {
                   const rangeTag = data.periods.length > 0
                     ? `${data.periods[0].from}_to_${data.periods[data.periods.length - 1].to}`
                     : "export";
-                  link.download = `period-breakdown-${unit}-${rangeTag}.csv`;
+                  link.download = `period-breakdown-${tableMode}-${unit}-${rangeTag}.csv`;
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
@@ -809,7 +862,7 @@ export function DashboardOverview() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: "#faf6ef" }}>
-                    {["Period", "Revenue", "First Time", "Repeat", "Repeat %"].map((h) => (
+                    {tableCfg && ["Period", tableCfg.title, "First Time", "Repeat", "Repeat %"].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
@@ -821,43 +874,46 @@ export function DashboardOverview() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.periods.map((p, i) => {
-                    const repPct = p.revenue > 0 ? (p.repeatRevenue / p.revenue) * 100 : 0;
+                  {tableCfg && data.periods.map((p, i) => {
+                    const tot = tableCfg.getTotal(p);
+                    const repPct = tot > 0 ? (tableCfg.getRep(p) / tot) * 100 : 0;
                     return (
                       <tr key={i} className="border-t" style={{ borderColor: "#f1e7d3" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: INK }}>{p.label}</td>
-                        <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{formatCurrency(p.revenue)}</td>
-                        <td className="px-4 py-3 tabular-nums" style={{ color: NEW_COLOR }}>{formatCurrency(p.ftRevenue)}</td>
-                        <td className="px-4 py-3 tabular-nums" style={{ color: REPEAT_COLOR }}>{formatCurrency(p.repeatRevenue)}</td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{tableCfg.format(tot)}</td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: NEW_COLOR }}>{tableCfg.format(tableCfg.getFt(p))}</td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: REPEAT_COLOR }}>{tableCfg.format(tableCfg.getRep(p))}</td>
                         <td className="px-4 py-3 tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>{repPct.toFixed(1)}%</td>
                       </tr>
                     );
                   })}
                 </tbody>
-                <tfoot>
-                  <tr
-                    className="border-t-2"
-                    style={{ borderColor: "#e8dfd0", background: "#faf6ef" }}
-                  >
-                    <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: INK }}>
-                      Total
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-bold" style={{ color: INK }}>
-                      {formatCurrency(data.totals.revenue)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-bold" style={{ color: NEW_COLOR }}>
-                      {formatCurrency(splits.ftRevenue)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>
-                      {formatCurrency(splits.repeatRevenue)}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>
-                      {data.totals.revenue > 0
-                        ? ((splits.repeatRevenue / data.totals.revenue) * 100).toFixed(1)
-                        : "0.0"}%
-                    </td>
-                  </tr>
-                </tfoot>
+                {tableCfg && (
+                  <tfoot>
+                    <tr
+                      className="border-t-2"
+                      style={{ borderColor: "#e8dfd0", background: "#faf6ef" }}
+                    >
+                      <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: INK }}>
+                        Total
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-bold" style={{ color: INK }}>
+                        {tableCfg.format(tableCfg.grandTotal)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-bold" style={{ color: NEW_COLOR }}>
+                        {tableCfg.format(tableCfg.grandFt)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>
+                        {tableCfg.format(tableCfg.grandRep)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>
+                        {tableCfg.grandTotal > 0
+                          ? ((tableCfg.grandRep / tableCfg.grandTotal) * 100).toFixed(1)
+                          : "0.0"}%
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
