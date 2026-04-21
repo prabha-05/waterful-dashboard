@@ -45,13 +45,15 @@ function buildBuckets(count: number, unit: string, endDay: Date): { label: strin
       to.setDate(to.getDate() + 1);
       label = from.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
     } else if (unit === "week") {
-      // Weeks ending today, going backwards
-      to = new Date(today);
-      to.setDate(to.getDate() - i * 7 + 1);
-      from = new Date(to);
-      from.setDate(from.getDate() - 7);
+      // Weeks aligned to Sunday (Sun–Sat). The most recent week is the one
+      // containing `today`; earlier weeks step back 7 days at a time.
+      const dayOfWeek = today.getDay(); // Sunday = 0
+      const sundayOfCurrentWeek = new Date(today);
+      sundayOfCurrentWeek.setDate(today.getDate() - dayOfWeek);
+      from = new Date(sundayOfCurrentWeek);
+      from.setDate(sundayOfCurrentWeek.getDate() - i * 7);
       to = new Date(from);
-      to.setDate(to.getDate() + 7);
+      to.setDate(from.getDate() + 7);
       label = `${from.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(to.getTime() - 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
     } else {
       // month

@@ -492,12 +492,11 @@ export function SalesTrendingDetails({ data }: { data: PeriodData }) {
   );
 }
 
-/* Subset of the detail view — only the sections the Dashboard doesn't already
-   render (product composition, payment methods, discount codes). */
+/* Subset of the detail view — only payment methods + discount codes.
+   Product composition is surfaced via the Dashboard's Products toggle. */
 export function SalesTrendingExtras({ data }: { data: PeriodData }) {
   return (
     <div className="space-y-6">
-      <ProductTrend metrics={data} />
       <PaymentTrend metrics={data} />
       <DiscountCodesPlaceholder />
     </div>
@@ -639,7 +638,7 @@ function StackedAreaChart({
 }
 
 /* ─────── Product Sale — one stacked-area chart per top product ─────── */
-function ProductTrend({ metrics }: { metrics: PeriodData }) {
+export function ProductTrend({ metrics }: { metrics: PeriodData }) {
   const top = metrics.summaryTable.productSale.slice(0, 5);
   if (top.length === 0 || metrics.productDaily.length === 0) return null;
 
