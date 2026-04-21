@@ -334,34 +334,6 @@ export function SalesTrending() {
     }
   };
 
-  const fmtNum = (n: number) => n.toLocaleString();
-  const fmtMoney = (n: number) => formatCurrency(n);
-
-  const rows: MetricRowConfig[] = [
-    { key: "sales", label: "Sales", tagline: "the cash that came in", icon: <IndianRupee size={18} />, tone: "emerald", fmt: fmtMoney },
-    { key: "uniqueCustomers", label: "Unique Customers", tagline: "real humans, not bots", icon: <Users size={18} />, tone: "violet", fmt: fmtNum },
-    { key: "aov", label: "AOV", tagline: "avg order value per day", icon: <Gauge size={18} />, tone: "indigo", fmt: fmtMoney },
-    { key: "confirmedOrders", label: "Confirmed Orders", tagline: "sealed and delivered", icon: <ShoppingBag size={18} />, tone: "sky", fmt: fmtNum },
-    { key: "cancelled", label: "Cancelled Orders", tagline: "changed their minds", icon: <Ban size={18} />, tone: "rose", fmt: fmtNum },
-    { key: "rto", label: "RTO", tagline: "sent it, got it back", icon: <PackageX size={18} />, tone: "amber", fmt: fmtNum },
-  ];
-
-  const splitFromSummary = (key: MetricKey, m: SalesMetrics): BuyerSplit => {
-    const s = m.summaryTable.overallSale;
-    if (key === "sales") return s.sales;
-    if (key === "confirmedOrders") return s.confirmedOrders;
-    if (key === "cancelled") return s.cancelledOrders;
-    if (key === "rto") return s.rto;
-    if (key === "aov") return s.aov;
-    return s.uniqueCustomers;
-  };
-
-  const seriesFromDaily = (key: MetricKey, daily: DailyBreakdownPoint[]) =>
-    daily.map((d) => {
-      const b = key === "cancelled" ? d.cancelled : d[key];
-      return { date: d.date, total: b.total, new: b.new, repeat: b.repeat };
-    });
-
   return (
     <div className="space-y-6">
       {/* Picker row */}
@@ -454,32 +426,80 @@ export function SalesTrending() {
         </div>
       )}
 
-      {/* Rows — one per metric */}
+      {/* Detailed breakdown — reused by Dashboard */}
       {!loading && data && data.totalOrders > 0 && data.dailyBreakdown?.length > 0 && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-bold text-neutral-900">Overall Sale Trends</h2>
-          {rows.map((cfg) => {
-            const split = splitFromSummary(cfg.key, data);
-            const series = seriesFromDaily(cfg.key, data.dailyBreakdown);
-            const isCurrency = cfg.key === "sales" || cfg.key === "aov";
-            return (
-              <div key={cfg.key} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
-                <MetricCard cfg={cfg} split={split} />
-                <TrendChart data={series} isCurrency={isCurrency} />
-              </div>
-            );
-          })}
-
-          {/* Product Sale — time-series per top product */}
-          <ProductTrend metrics={data} />
-
-          {/* Payment — revenue per method over time */}
-          <PaymentTrend metrics={data} />
-
-          {/* Discount codes — not in data yet */}
-          <DiscountCodesPlaceholder />
-        </div>
+        <SalesTrendingDetails data={data} />
       )}
+    </div>
+  );
+}
+
+/* Reusable detail block — metric rows + product + payment + discount.
+   Exported so the Dashboard can embed the same depth without duplicating. */
+export function SalesTrendingDetails({ data }: { data: PeriodData }) {
+  const fmtNum = (n: number) => n.toLocaleString();
+  const fmtMoney = (n: number) => formatCurrency(n);
+
+  const rows: MetricRowConfig[] = [
+    { key: "sales", label: "Sales", tagline: "the cash that came in", icon: <IndianRupee size={18} />, tone: "emerald", fmt: fmtMoney },
+    { key: "uniqueCustomers", label: "Unique Customers", tagline: "real humans, not bots", icon: <Users size={18} />, tone: "violet", fmt: fmtNum },
+    { key: "aov", label: "AOV", tagline: "avg order value per day", icon: <Gauge size={18} />, tone: "indigo", fmt: fmtMoney },
+    { key: "confirmedOrders", label: "Confirmed Orders", tagline: "sealed and delivered", icon: <ShoppingBag size={18} />, tone: "sky", fmt: fmtNum },
+    { key: "cancelled", label: "Cancelled Orders", tagline: "changed their minds", icon: <Ban size={18} />, tone: "rose", fmt: fmtNum },
+    { key: "rto", label: "RTO", tagline: "sent it, got it back", icon: <PackageX size={18} />, tone: "amber", fmt: fmtNum },
+  ];
+
+  const splitFromSummary = (key: MetricKey, m: SalesMetrics): BuyerSplit => {
+    const s = m.summaryTable.overallSale;
+    if (key === "sales") return s.sales;
+    if (key === "confirmedOrders") return s.confirmedOrders;
+    if (key === "cancelled") return s.cancelledOrders;
+    if (key === "rto") return s.rto;
+    if (key === "aov") return s.aov;
+    return s.uniqueCustomers;
+  };
+
+  const seriesFromDaily = (key: MetricKey, daily: DailyBreakdownPoint[]) =>
+    daily.map((d) => {
+      const b = key === "cancelled" ? d.cancelled : d[key];
+      return { date: d.date, total: b.total, new: b.new, repeat: b.repeat };
+    });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-neutral-900">Overall Sale Trends</h2>
+        <p className="text-xs italic text-neutral-400">
+          Daily new vs. repeat split for every headline metric.
+        </p>
+      </div>
+      {rows.map((cfg) => {
+        const split = splitFromSummary(cfg.key, data);
+        const series = seriesFromDaily(cfg.key, data.dailyBreakdown);
+        const isCurrency = cfg.key === "sales" || cfg.key === "aov";
+        return (
+          <div key={cfg.key} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
+            <MetricCard cfg={cfg} split={split} />
+            <TrendChart data={series} isCurrency={isCurrency} />
+          </div>
+        );
+      })}
+
+      <ProductTrend metrics={data} />
+      <PaymentTrend metrics={data} />
+      <DiscountCodesPlaceholder />
+    </div>
+  );
+}
+
+/* Subset of the detail view — only the sections the Dashboard doesn't already
+   render (product composition, payment methods, discount codes). */
+export function SalesTrendingExtras({ data }: { data: PeriodData }) {
+  return (
+    <div className="space-y-6">
+      <ProductTrend metrics={data} />
+      <PaymentTrend metrics={data} />
+      <DiscountCodesPlaceholder />
     </div>
   );
 }

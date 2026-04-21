@@ -25,6 +25,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
+import { SalesTrendingExtras } from "@/components/ui/sales-trending";
 
 const INK = "#4a3a2e";
 const ROSE = "#d97777";
@@ -50,6 +51,10 @@ type Period = {
   repeatRevenue: number;
   cancelledOrders: number;
   rtoOrders: number;
+  ftCancelledOrders: number;
+  repeatCancelledOrders: number;
+  ftRtoOrders: number;
+  repeatRtoOrders: number;
 };
 
 type OverviewData = {
@@ -62,8 +67,14 @@ type OverviewData = {
     revenue: number;
     customers: number;
     aov: number;
+    ftAov: number;
+    repeatAov: number;
     cancelledOrders: number;
     rtoOrders: number;
+    ftCancelledOrders: number;
+    repeatCancelledOrders: number;
+    ftRtoOrders: number;
+    repeatRtoOrders: number;
   };
   previousWindow: { from: string; to: string };
 };
@@ -236,31 +247,38 @@ function SplitKpi({
   );
 }
 
-/* ─── Plain KPI (no split) ─── */
-function PlainKpi({
-  label,
-  value,
-  current,
+/* ─── AOV card — same SplitKpi visual; bar reflects the order-share split
+   (AOV itself isn't additive, but the bar still communicates which cohort
+   drives most of the orders the AOV is averaged over). ─── */
+function AovSplitKpi({
+  total,
   previous,
+  ftAov,
+  repeatAov,
+  ftOrders,
+  repeatOrders,
   icon,
   accent,
   currentRange,
   previousRange,
-  fmt,
 }: {
-  label: string;
-  value: string;
-  current: number;
+  total: number;
   previous: number;
+  ftAov: number;
+  repeatAov: number;
+  ftOrders: number;
+  repeatOrders: number;
   icon: React.ReactNode;
   accent: string;
   currentRange?: string;
   previousRange?: string;
-  fmt?: (n: number) => string;
 }) {
+  const totalOrders = ftOrders + repeatOrders;
+  const ftPct = pct(ftOrders, totalOrders);
+  const repeatPct = 100 - ftPct;
   return (
     <div
-      className="rounded-2xl border p-5 shadow-sm"
+      className="relative overflow-hidden rounded-2xl border p-5 shadow-sm"
       style={{ background: "white", borderColor: "#e8dfd0" }}
       title={currentRange ? `Current window: ${currentRange}` : undefined}
     >
@@ -269,7 +287,7 @@ function PlainKpi({
           className="text-[11px] font-semibold uppercase tracking-wider"
           style={{ color: "#9a8571" }}
         >
-          {label}
+          Avg Order Value
         </p>
         <span
           className="flex h-9 w-9 items-center justify-center rounded-xl"
@@ -280,16 +298,36 @@ function PlainKpi({
       </div>
       <div className="mt-3 flex items-baseline gap-2">
         <p className="text-3xl font-bold tabular-nums" style={{ color: INK }}>
-          {value}
+          {formatCurrency(total)}
         </p>
         <DeltaPill
-          current={current}
+          current={total}
           previous={previous}
           currentRange={currentRange}
           previousRange={previousRange}
-          formatValue={fmt}
+          formatValue={formatCurrency}
         />
       </div>
+      {totalOrders > 0 && (
+        <>
+          <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+            <div className="h-full" style={{ width: `${ftPct}%`, background: NEW_COLOR }} />
+            <div className="h-full" style={{ width: `${repeatPct}%`, background: REPEAT_COLOR }} />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 tabular-nums">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: NEW_COLOR }} />
+              <span className="font-semibold" style={{ color: NEW_COLOR }}>{formatCurrency(ftAov)}</span>
+              <span style={{ color: "#9a8571" }}>new</span>
+            </span>
+            <span className="flex items-center gap-1 tabular-nums">
+              <span style={{ color: "#9a8571" }}>repeat</span>
+              <span className="font-semibold" style={{ color: REPEAT_COLOR }}>{formatCurrency(repeatAov)}</span>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: REPEAT_COLOR }} />
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -307,6 +345,8 @@ function HealthCard({
   sparkKey,
   currentRange,
   previousRange,
+  ftValue,
+  repeatValue,
 }: {
   label: string;
   tagline: string;
@@ -319,7 +359,11 @@ function HealthCard({
   sparkKey: string;
   currentRange?: string;
   previousRange?: string;
+  ftValue: number;
+  repeatValue: number;
 }) {
+  const ftPct = pct(ftValue, value);
+  const repeatPct = 100 - ftPct;
   const cardTip = [
     currentRange && `Now (${currentRange}): ${value.toLocaleString()}`,
     previousRange && `Prev (${previousRange}): ${previous.toLocaleString()}`,
@@ -373,6 +417,26 @@ function HealthCard({
           {icon}
         </span>
       </div>
+      {value > 0 && (
+        <>
+          <div className="relative mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+            <div className="h-full" style={{ width: `${ftPct}%`, background: NEW_COLOR }} />
+            <div className="h-full" style={{ width: `${repeatPct}%`, background: REPEAT_COLOR }} />
+          </div>
+          <div className="relative mt-2 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1 tabular-nums">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: NEW_COLOR }} />
+              <span className="font-semibold" style={{ color: NEW_COLOR }}>{ftValue.toLocaleString()}</span>
+              <span style={{ color: "#9a8571" }}>new</span>
+            </span>
+            <span className="flex items-center gap-1 tabular-nums">
+              <span style={{ color: "#9a8571" }}>repeat</span>
+              <span className="font-semibold" style={{ color: REPEAT_COLOR }}>{repeatValue.toLocaleString()}</span>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: REPEAT_COLOR }} />
+            </span>
+          </div>
+        </>
+      )}
       <div className="relative mt-3 h-12">
         <ResponsiveContainer width="100%" height={48}>
           <LineChart data={sparkData} margin={{ top: 4, right: 2, bottom: 2, left: 2 }}>
@@ -421,6 +485,8 @@ export function DashboardOverview() {
   const [endDate, setEndDate] = useState<Date>(yesterday);
   const [showPicker, setShowPicker] = useState(false);
   const [data, setData] = useState<OverviewData | null>(null);
+  const [salesData, setSalesData] = useState<any | null>(null);
+  const [salesLoading, setSalesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [chartMode, setChartMode] = useState<ChartMode>("revenue");
 
@@ -439,6 +505,32 @@ export function DashboardOverview() {
   useEffect(() => {
     fetchData(count, unit, endDate);
   }, [count, unit, endDate, fetchData]);
+
+  // Fetch deep-dive trending data for the same window shown in the overview.
+  useEffect(() => {
+    if (!data || data.periods.length === 0) return;
+    const fromStr = data.periods[0].from;
+    // API `to` is exclusive; /api/sales/period expects inclusive end.
+    const [ty, tm, td] = data.periods[data.periods.length - 1].to.split("-").map(Number);
+    const lastDay = new Date(ty, tm - 1, td - 1);
+    const toStr = formatDateParam(lastDay);
+    let cancelled = false;
+    setSalesLoading(true);
+    fetch(`/api/sales/period?from=${fromStr}&to=${toStr}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled) setSalesData(json);
+      })
+      .catch(() => {
+        if (!cancelled) setSalesData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSalesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data]);
 
   const pickEndDate = (date: Date | undefined) => {
     if (!date) return;
@@ -470,16 +562,70 @@ export function DashboardOverview() {
       repeatCustomers: a.repeatCustomers + p.repeatCustomers,
       cancelledOrders: a.cancelledOrders + p.cancelledOrders,
       rtoOrders: a.rtoOrders + p.rtoOrders,
+      ftCancelledOrders: a.ftCancelledOrders + p.ftCancelledOrders,
+      repeatCancelledOrders: a.repeatCancelledOrders + p.repeatCancelledOrders,
+      ftRtoOrders: a.ftRtoOrders + p.ftRtoOrders,
+      repeatRtoOrders: a.repeatRtoOrders + p.repeatRtoOrders,
     }),
-    { ftRevenue: 0, repeatRevenue: 0, ftOrders: 0, repeatOrders: 0, ftCustomers: 0, repeatCustomers: 0, cancelledOrders: 0, rtoOrders: 0 },
+    {
+      ftRevenue: 0,
+      repeatRevenue: 0,
+      ftOrders: 0,
+      repeatOrders: 0,
+      ftCustomers: 0,
+      repeatCustomers: 0,
+      cancelledOrders: 0,
+      rtoOrders: 0,
+      ftCancelledOrders: 0,
+      repeatCancelledOrders: 0,
+      ftRtoOrders: 0,
+      repeatRtoOrders: 0,
+    },
   ) : null;
 
-  const modeConfig: Record<ChartMode, { label: string; keys: { total: keyof Period; ft: keyof Period; repeat: keyof Period } | { total: keyof Period }; isCurrency: boolean }> = {
+  const ftAov = splits && splits.ftOrders > 0 ? Math.round(splits.ftRevenue / splits.ftOrders) : 0;
+  const repeatAov = splits && splits.repeatOrders > 0 ? Math.round(splits.repeatRevenue / splits.repeatOrders) : 0;
+
+  const modeConfig: Record<ChartMode, { label: string; keys: { total: string; ft: string; repeat: string }; isCurrency: boolean }> = {
     revenue: { label: "Revenue", keys: { total: "revenue", ft: "ftRevenue", repeat: "repeatRevenue" }, isCurrency: true },
     orders: { label: "Orders", keys: { total: "orders", ft: "ftOrders", repeat: "repeatOrders" }, isCurrency: false },
     customers: { label: "Customers", keys: { total: "customers", ft: "ftCustomers", repeat: "repeatCustomers" }, isCurrency: false },
-    aov: { label: "AOV", keys: { total: "aov" }, isCurrency: true },
+    aov: { label: "AOV", keys: { total: "aov", ft: "ftAov", repeat: "repeatAov" }, isCurrency: true },
   };
+
+  // Augment periods with ft/repeat AOV per bucket so the AOV chart can render
+  // the same three-line Total / New / Repeat pattern as the other modes.
+  const chartData = data
+    ? data.periods.map((p) => ({
+        ...p,
+        ftAov: p.ftOrders > 0 ? Math.round(p.ftRevenue / p.ftOrders) : 0,
+        repeatAov: p.repeatOrders > 0 ? Math.round(p.repeatRevenue / p.repeatOrders) : 0,
+      }))
+    : [];
+
+  // Repeat-share trend (per period) for the currently selected metric.
+  // Skipped for AOV since AOV is a ratio, not a pool that can be split.
+  const repeatTrend = data && splits && chartMode !== "aov"
+    ? data.periods.map((p) => {
+        let total = 0, rep = 0;
+        if (chartMode === "revenue") { total = p.revenue; rep = p.repeatRevenue; }
+        else if (chartMode === "orders") { total = p.orders; rep = p.repeatOrders; }
+        else { total = p.customers; rep = p.repeatCustomers; }
+        return {
+          label: p.label,
+          pct: total > 0 ? Math.round((rep / total) * 1000) / 10 : 0,
+        };
+      })
+    : [];
+  const overallRepeatPct = data && splits && chartMode !== "aov"
+    ? (() => {
+        let total = 0, rep = 0;
+        if (chartMode === "revenue") { total = data.totals.revenue; rep = splits.repeatRevenue; }
+        else if (chartMode === "orders") { total = data.totals.orders; rep = splits.repeatOrders; }
+        else { total = data.totals.customers; rep = splits.repeatCustomers; }
+        return total > 0 ? Math.round((rep / total) * 1000) / 10 : 0;
+      })()
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -654,16 +800,17 @@ export function DashboardOverview() {
               currentRange={currentRange}
               previousRange={previousRange}
             />
-            <PlainKpi
-              label="Avg Order Value"
-              value={formatCurrency(data.totals.aov)}
-              current={data.totals.aov}
+            <AovSplitKpi
+              total={data.totals.aov}
               previous={data.previousTotals?.aov ?? 0}
+              ftAov={ftAov}
+              repeatAov={repeatAov}
+              ftOrders={splits.ftOrders}
+              repeatOrders={splits.repeatOrders}
               icon={<Gauge size={18} />}
               accent={AMBER}
               currentRange={currentRange}
               previousRange={previousRange}
-              fmt={formatCurrency}
             />
           </div>
 
@@ -734,7 +881,7 @@ export function DashboardOverview() {
             style={{ background: "white", borderColor: "#e8dfd0" }}
           >
             <ResponsiveContainer width="100%" height={360}>
-              <LineChart data={data.periods} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
                 <XAxis
                   dataKey="label"
@@ -753,50 +900,104 @@ export function DashboardOverview() {
                   }
                 />
                 <Tooltip content={<ChartTooltip mode={chartMode} />} />
-                {chartMode === "aov" ? (
-                  <Line
-                    type="monotone"
-                    dataKey="aov"
-                    name="AOV"
-                    stroke={AMBER}
-                    strokeWidth={2.5}
-                    dot={{ fill: AMBER, r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                ) : (
-                  <>
-                    <Line
-                      type="monotone"
-                      dataKey={(modeConfig[chartMode].keys as any).total}
-                      name="Total"
-                      stroke={TOTAL_COLOR}
-                      strokeWidth={2.5}
-                      dot={{ fill: TOTAL_COLOR, r: 3 }}
-                      activeDot={{ r: 6 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey={(modeConfig[chartMode].keys as any).ft}
-                      name="New users"
-                      stroke={NEW_COLOR}
-                      strokeWidth={2}
-                      dot={{ fill: NEW_COLOR, r: 3 }}
-                      activeDot={{ r: 5 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey={(modeConfig[chartMode].keys as any).repeat}
-                      name="Repeat"
-                      stroke={REPEAT_COLOR}
-                      strokeWidth={2}
-                      dot={{ fill: REPEAT_COLOR, r: 3 }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </>
-                )}
+                <Line
+                  type="monotone"
+                  dataKey={modeConfig[chartMode].keys.total}
+                  name="Total"
+                  stroke={TOTAL_COLOR}
+                  strokeWidth={2.5}
+                  dot={{ fill: TOTAL_COLOR, r: 3 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey={modeConfig[chartMode].keys.ft}
+                  name="New users"
+                  stroke={NEW_COLOR}
+                  strokeWidth={2}
+                  dot={{ fill: NEW_COLOR, r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey={modeConfig[chartMode].keys.repeat}
+                  name="Repeat"
+                  stroke={REPEAT_COLOR}
+                  strokeWidth={2}
+                  dot={{ fill: REPEAT_COLOR, r: 3 }}
+                  activeDot={{ r: 5 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Repeat Share Trend — how much of this metric comes from repeat customers */}
+          {chartMode !== "aov" && repeatTrend.length > 0 && (
+            <div
+              className="rounded-2xl border p-5 shadow-sm"
+              style={{ background: "white", borderColor: "#e8dfd0" }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wider"
+                    style={{ color: "#9a8571" }}
+                  >
+                    Repeat Share Trend
+                  </p>
+                  <p className="mt-0.5 text-xs italic" style={{ color: "#b5a48e" }}>
+                    % of {modeConfig[chartMode].label.toLowerCase()} coming from repeat customers
+                  </p>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-bold tabular-nums" style={{ color: REPEAT_COLOR }}>
+                    {overallRepeatPct}%
+                  </p>
+                  <span className="text-xs" style={{ color: "#9a8571" }}>overall</span>
+                </div>
+              </div>
+              <div className="mt-4">
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart data={repeatTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1e7d3" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                      axisLine={{ stroke: "#e8dfd0" }}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={24}
+                    />
+                    <YAxis
+                      tick={{ fill: "#9a8571", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      domain={[0, 100]}
+                      tickFormatter={(v) => `${v}%`}
+                      width={40}
+                    />
+                    <Tooltip
+                      formatter={(v: any) => [`${v}%`, "Repeat share"]}
+                      contentStyle={{
+                        fontSize: 12,
+                        borderRadius: 8,
+                        border: "1px solid #e8dfd0",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="pct"
+                      name="Repeat %"
+                      stroke={REPEAT_COLOR}
+                      strokeWidth={2.5}
+                      dot={{ fill: REPEAT_COLOR, r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* Order Health — only when in Orders mode */}
           {chartMode === "orders" && (
@@ -834,6 +1035,8 @@ export function DashboardOverview() {
                   sparkKey="cancelledOrders"
                   currentRange={currentRange}
                   previousRange={previousRange}
+                  ftValue={splits.ftCancelledOrders}
+                  repeatValue={splits.repeatCancelledOrders}
                 />
                 <HealthCard
                   label="RTO Orders"
@@ -851,8 +1054,61 @@ export function DashboardOverview() {
                   sparkKey="rtoOrders"
                   currentRange={currentRange}
                   previousRange={previousRange}
+                  ftValue={splits.ftRtoOrders}
+                  repeatValue={splits.repeatRtoOrders}
                 />
               </div>
+            </div>
+          )}
+
+          {/* ─── Deep Dive — every trend the trending page showed, now here ─── */}
+          <div className="pt-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px" style={{ background: "#e8dfd0" }} />
+              <div className="flex flex-col items-center text-center">
+                <span
+                  className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                  style={{ color: AMBER }}
+                >
+                  Deep Dive
+                </span>
+                <span className="mt-0.5 text-sm font-semibold" style={{ color: INK }}>
+                  Products, payment methods & discount codes
+                </span>
+              </div>
+              <div className="flex-1 h-px" style={{ background: "#e8dfd0" }} />
+            </div>
+            {currentRange && (
+              <p
+                className="mt-2 text-center text-[11px] italic"
+                style={{ color: "#9a8571" }}
+              >
+                Zooming in on {currentRange}. Product composition, payment methods, and discount codes.
+              </p>
+            )}
+          </div>
+
+          {salesLoading && (
+            <div className="flex items-center justify-center py-12">
+              <div
+                className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                style={{ borderColor: `${AMBER} transparent ${AMBER} ${AMBER}` }}
+              />
+            </div>
+          )}
+          {!salesLoading &&
+            salesData &&
+            salesData.totalOrders > 0 &&
+            Array.isArray(salesData.dailyBreakdown) &&
+            salesData.dailyBreakdown.length > 0 && (
+              <SalesTrendingExtras data={salesData} />
+            )}
+          {!salesLoading && salesData && salesData.totalOrders === 0 && (
+            <div
+              className="rounded-2xl border p-8 text-center text-sm"
+              style={{ background: "white", borderColor: "#e8dfd0", color: "#9a8571" }}
+            >
+              No order-level detail for this window yet.
             </div>
           )}
         </>

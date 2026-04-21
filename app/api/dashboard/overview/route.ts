@@ -17,6 +17,10 @@ type PeriodBucket = {
   repeatRevenue: number;
   cancelledOrders: number;
   rtoOrders: number;
+  ftCancelledOrders: number;
+  repeatCancelledOrders: number;
+  ftRtoOrders: number;
+  repeatRtoOrders: number;
 };
 
 function formatDate(d: Date) {
@@ -119,14 +123,20 @@ export async function GET(req: NextRequest) {
     let repeatOrders = 0;
     let cancelled = 0;
     let rto = 0;
+    let ftCancelled = 0;
+    let repeatCancelled = 0;
+    let ftRto = 0;
+    let repeatRto = 0;
 
     for (const o of bucketOrders) {
       mobiles.add(o.mobile);
       revenue += o.total;
 
       const status = (o.status || "").toLowerCase();
-      if (status.includes("cancel")) cancelled++;
-      if (status.includes("rto") || status.includes("return")) rto++;
+      const isCancelled = status.includes("cancel");
+      const isRto = status.includes("rto") || status.includes("return");
+      if (isCancelled) cancelled++;
+      if (isRto) rto++;
 
       const firstDate = firstOrderDate.get(o.mobile);
       const isFt = firstDate && firstDate >= bucket.from && firstDate < bucket.to;
@@ -134,10 +144,14 @@ export async function GET(req: NextRequest) {
         ftMobiles.add(o.mobile);
         ftOrders++;
         ftRevenue += o.total;
+        if (isCancelled) ftCancelled++;
+        if (isRto) ftRto++;
       } else {
         repeatMobiles.add(o.mobile);
         repeatOrders++;
         repeatRevenue += o.total;
+        if (isCancelled) repeatCancelled++;
+        if (isRto) repeatRto++;
       }
     }
 
@@ -160,6 +174,10 @@ export async function GET(req: NextRequest) {
       repeatRevenue: Math.round(repeatRevenue),
       cancelledOrders: cancelled,
       rtoOrders: rto,
+      ftCancelledOrders: ftCancelled,
+      repeatCancelledOrders: repeatCancelled,
+      ftRtoOrders: ftRto,
+      repeatRtoOrders: repeatRto,
     };
   });
 
@@ -178,13 +196,39 @@ export async function GET(req: NextRequest) {
   const prevRevenue = Math.round(prevOrdersRows.reduce((s, o) => s + o.total, 0));
   const prevCustomers = new Set(prevOrdersRows.map((o) => o.mobile)).size;
   const prevAov = prevOrdersCount > 0 ? Math.round(prevRevenue / prevOrdersCount) : 0;
-  const prevCancelled = prevOrdersRows.filter((o) =>
-    (o.status || "").toLowerCase().includes("cancel")
-  ).length;
-  const prevRto = prevOrdersRows.filter((o) => {
+
+  let prevFtRevenue = 0;
+  let prevRepeatRevenue = 0;
+  let prevFtOrders = 0;
+  let prevRepeatOrders = 0;
+  let prevCancelled = 0;
+  let prevRto = 0;
+  let prevFtCancelled = 0;
+  let prevRepeatCancelled = 0;
+  let prevFtRto = 0;
+  let prevRepeatRto = 0;
+  for (const o of prevOrdersRows) {
     const s = (o.status || "").toLowerCase();
-    return s.includes("rto") || s.includes("return");
-  }).length;
+    const isCancelled = s.includes("cancel");
+    const isRto = s.includes("rto") || s.includes("return");
+    if (isCancelled) prevCancelled++;
+    if (isRto) prevRto++;
+    const firstDate = firstOrderDate.get(o.mobile);
+    const isFt = firstDate && firstDate >= prevFrom && firstDate < prevTo;
+    if (isFt) {
+      prevFtOrders++;
+      prevFtRevenue += o.total;
+      if (isCancelled) prevFtCancelled++;
+      if (isRto) prevFtRto++;
+    } else {
+      prevRepeatOrders++;
+      prevRepeatRevenue += o.total;
+      if (isCancelled) prevRepeatCancelled++;
+      if (isRto) prevRepeatRto++;
+    }
+  }
+  const prevFtAov = prevFtOrders > 0 ? Math.round(prevFtRevenue / prevFtOrders) : 0;
+  const prevRepeatAov = prevRepeatOrders > 0 ? Math.round(prevRepeatRevenue / prevRepeatOrders) : 0;
 
   return NextResponse.json({
     count,
@@ -201,8 +245,14 @@ export async function GET(req: NextRequest) {
       revenue: prevRevenue,
       customers: prevCustomers,
       aov: prevAov,
+      ftAov: prevFtAov,
+      repeatAov: prevRepeatAov,
       cancelledOrders: prevCancelled,
       rtoOrders: prevRto,
+      ftCancelledOrders: prevFtCancelled,
+      repeatCancelledOrders: prevRepeatCancelled,
+      ftRtoOrders: prevFtRto,
+      repeatRtoOrders: prevRepeatRto,
     },
     previousWindow: {
       from: formatDate(prevFrom),
