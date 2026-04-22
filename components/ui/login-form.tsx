@@ -28,7 +28,7 @@ export function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Invalid email/username or password");
+      setError("Invalid username or password");
     } else {
       router.push("/dashboard");
     }
@@ -75,13 +75,13 @@ export function LoginForm() {
       <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div className="flex flex-col gap-2">
           <label htmlFor="email" className="text-sm font-medium text-neutral-400">
-            Email address / Username
+            Username
           </label>
           <input
             id="email"
             name="email"
             type="text"
-            placeholder="you@example.com"
+            placeholder="username"
             required
             className="w-full rounded-lg border border-white/10 bg-white/[0.05] px-4 py-3 text-sm
             text-white placeholder-white/25 outline-none transition-all
@@ -90,14 +90,9 @@ export function LoginForm() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="text-sm font-medium text-neutral-400">
-              Password
-            </label>
-            <a href="#" className="text-xs text-violet-400 transition-colors hover:text-violet-300">
-              Forgot password?
-            </a>
-          </div>
+          <label htmlFor="password" className="text-sm font-medium text-neutral-400">
+            Password
+          </label>
           <input
             id="password"
             name="password"
@@ -120,13 +115,6 @@ export function LoginForm() {
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
-
-      <p className="mt-6 text-center text-sm text-neutral-500">
-        Don&apos;t have an account?{" "}
-        <a href="/signup" className="text-violet-400 transition-colors hover:text-violet-300">
-          Sign up
-        </a>
-      </p>
     </motion.div>
   );
 }

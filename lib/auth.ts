@@ -1,33 +1,26 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
+
+const SHARED_USERNAME = process.env.APP_USERNAME ?? "";
+const SHARED_PASSWORD = process.env.APP_PASSWORD ?? "";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { label: "Email or Username" },
+        email: { label: "Username" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        if (!SHARED_USERNAME || !SHARED_PASSWORD) return null;
         const { email, password } = credentials as {
           email: string;
           password: string;
         };
-
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [{ email }, { username: email }],
-          },
-        });
-
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) return null;
-
-        return { id: user.id, email: user.email, name: user.username };
+        if (email !== SHARED_USERNAME || password !== SHARED_PASSWORD) {
+          return null;
+        }
+        return { id: "shared", name: SHARED_USERNAME, email: SHARED_USERNAME };
       },
     }),
   ],
