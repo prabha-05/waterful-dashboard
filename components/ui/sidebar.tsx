@@ -18,12 +18,12 @@ type NavItem =
   | { label: string; href?: never; icon: typeof Home | null; children: { label: string; href: string }[] };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: Home },
   {
     label: "Final",
     icon: null,
     children: [
       { label: "Sales", href: "/dashboard/final/sales" },
+      { label: "Trends", href: "/dashboard/final/trends" },
       { label: "Specific Customer", href: "/dashboard/final/specific-customer" },
     ],
   },
@@ -31,10 +31,8 @@ const navItems: NavItem[] = [
     label: "Retention",
     icon: null,
     children: [
-      { label: "First Timers", href: "/dashboard/retention/first-timers" },
-      { label: "Loyalty", href: "/dashboard/retention/loyalty" },
-      { label: "Customer Value", href: "/dashboard/retention/customer-value" },
-      { label: "Customer Retention", href: "/dashboard/retention/a" },
+      { label: "Overview", href: "/dashboard/final/retention" },
+      { label: "Analytics", href: "/dashboard/final/retention-analytics" },
     ],
   },
   {

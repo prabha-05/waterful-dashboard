@@ -21,6 +21,10 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { SalesTrendingExtras } from "@/components/ui/sales-trending";
 
@@ -312,6 +316,81 @@ function ChartTooltip({ active, payload, label, mode }: any) {
   );
 }
 
+/* ─── Month-grid picker: pick any month, window snaps to 1st–last of it ─── */
+function MonthGridPicker({
+  selectedDate,
+  onPick,
+}: {
+  selectedDate: Date;
+  onPick: (year: number, monthIdx: number) => void;
+}) {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const [viewYear, setViewYear] = useState(selectedDate.getFullYear());
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const selectedYear = selectedDate.getFullYear();
+  const selectedMonth = selectedDate.getMonth();
+  return (
+    <div className="w-64 p-2">
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          onClick={() => setViewYear((y) => y - 1)}
+          className="rounded-lg p-1.5 transition-colors hover:bg-neutral-100"
+          style={{ color: INK }}
+          aria-label="Previous year"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <span className="text-sm font-bold tabular-nums" style={{ color: INK }}>
+          {viewYear}
+        </span>
+        <button
+          onClick={() => setViewYear((y) => Math.min(y + 1, currentYear))}
+          disabled={viewYear >= currentYear}
+          className="rounded-lg p-1.5 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          style={{ color: INK }}
+          aria-label="Next year"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {months.map((m, idx) => {
+          const isFuture =
+            viewYear > currentYear ||
+            (viewYear === currentYear && idx > currentMonth);
+          const isSelected = viewYear === selectedYear && idx === selectedMonth;
+          return (
+            <button
+              key={m}
+              disabled={isFuture}
+              onClick={() => onPick(viewYear, idx)}
+              className="rounded-lg px-2 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+              style={
+                isSelected
+                  ? { background: INK, color: "white" }
+                  : { color: INK, background: isFuture ? "transparent" : "#faf6ef" }
+              }
+              onMouseEnter={(e) => {
+                if (!isSelected && !isFuture) e.currentTarget.style.background = `${AMBER}22`;
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected && !isFuture) e.currentTarget.style.background = "#faf6ef";
+              }}
+            >
+              {m}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardOverview() {
   const [count, setCount] = useState(7);
   const [inputValue, setInputValue] = useState("7");
@@ -325,6 +404,7 @@ export function DashboardOverview() {
   const [salesLoading, setSalesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [chartMode, setChartMode] = useState<ChartMode>("revenue");
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
 
   const fetchData = useCallback(async (c: number, u: string, end: Date) => {
     setLoading(true);
@@ -371,6 +451,17 @@ export function DashboardOverview() {
   const pickEndDate = (date: Date | undefined) => {
     if (!date) return;
     setEndDate(date);
+    setShowPicker(false);
+  };
+
+  // Month mode: selecting April 2026 means "window ends on the last day of April".
+  // If the picked month is the current month, cap at today (API rejects future dates).
+  const pickMonth = (year: number, monthIdx: number) => {
+    const today = new Date();
+    const lastDay = new Date(year, monthIdx + 1, 0); // day 0 of next month = last day of this month
+    const capped =
+      year === today.getFullYear() && monthIdx === today.getMonth() ? today : lastDay;
+    setEndDate(capped);
     setShowPicker(false);
   };
 
@@ -622,29 +713,46 @@ export function DashboardOverview() {
             style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
-            {endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+            {unit === "month"
+              ? endDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+              : endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
           </button>
 
           {showPicker && (
             <div
-              className="absolute z-50 mt-2 rounded-xl border p-3 shadow-xl"
+              className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
               style={{ background: "white", borderColor: "#e8dfd0" }}
             >
-              <DayPicker
-                mode="single"
-                selected={endDate}
-                onSelect={pickEndDate}
-                endMonth={new Date()}
-                startMonth={new Date(2022, 0)}
-                captionLayout="dropdown"
-              />
-              <button
-                onClick={() => { setEndDate(new Date()); setShowPicker(false); }}
-                className="mt-2 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
-                style={{ background: SAGE }}
-              >
-                Reset to Today
-              </button>
+              {unit === "month" ? (
+                <>
+                  <MonthGridPicker selectedDate={endDate} onPick={pickMonth} />
+                  <button
+                    onClick={() => { setEndDate(new Date()); setShowPicker(false); }}
+                    className="mt-1 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
+                    style={{ background: SAGE }}
+                  >
+                    This month
+                  </button>
+                </>
+              ) : (
+                <>
+                  <DayPicker
+                    mode="single"
+                    selected={endDate}
+                    onSelect={pickEndDate}
+                    endMonth={new Date()}
+                    startMonth={new Date(2022, 0)}
+                    captionLayout="dropdown"
+                  />
+                  <button
+                    onClick={() => { setEndDate(new Date()); setShowPicker(false); }}
+                    className="mt-2 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
+                    style={{ background: SAGE }}
+                  >
+                    Reset to Today
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -653,7 +761,16 @@ export function DashboardOverview() {
           <span className="font-bold" style={{ color: INK }}>
             {count} {unitLabel(unit).toLowerCase()}
           </span>{" "}
-          ending {endDate.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+          starting from{" "}
+          {(() => {
+            const fromStr = data?.periods?.[0]?.from;
+            if (!fromStr) return "…";
+            const [y, m, d] = fromStr.split("-").map(Number);
+            const start = new Date(y, m - 1, d);
+            return unit === "month"
+              ? start.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+              : start.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+          })()}
         </p>
       </div>
 
@@ -937,15 +1054,28 @@ export function DashboardOverview() {
                       </div>
                     </div>
 
-                    {/* Period breakdown table for this product */}
+                    {/* Period breakdown table for this product — collapsible */}
                     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#f1e7d3" }}>
                       <div
-                        className="flex items-center justify-between gap-3 px-4 py-2.5 border-b"
+                        className={`flex items-center justify-between gap-3 px-4 py-2.5${expandedTables.has(pb.product) ? " border-b" : ""}`}
                         style={{ borderColor: "#f1e7d3", background: "#faf6ef" }}
                       >
-                        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                        <button
+                          onClick={() => {
+                            setExpandedTables((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(pb.product)) next.delete(pb.product);
+                              else next.add(pb.product);
+                              return next;
+                            });
+                          }}
+                          className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider transition-colors hover:opacity-80"
+                          style={{ color: "#9a8571" }}
+                          title={expandedTables.has(pb.product) ? "Hide period breakdown" : "Show period breakdown"}
+                        >
+                          {expandedTables.has(pb.product) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                           {pb.product} — Period breakdown
-                        </p>
+                        </button>
                         <button
                           onClick={() => {
                             const header = [
@@ -993,6 +1123,7 @@ export function DashboardOverview() {
                           Download CSV
                         </button>
                       </div>
+                      {expandedTables.has(pb.product) && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
@@ -1055,6 +1186,7 @@ export function DashboardOverview() {
                           </tfoot>
                         </table>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))}
