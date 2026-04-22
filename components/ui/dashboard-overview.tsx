@@ -22,7 +22,7 @@ import {
   ArrowDown,
   Download,
 } from "lucide-react";
-import { SalesTrendingExtras, ProductTrend } from "@/components/ui/sales-trending";
+import { SalesTrendingExtras } from "@/components/ui/sales-trending";
 
 const INK = "#4a3a2e";
 const ROSE = "#d97777";
@@ -287,6 +287,8 @@ function HealthCard({
 function ChartTooltip({ active, payload, label, mode }: any) {
   if (!active || !payload?.length) return null;
   const isCurrency = mode === "revenue" || mode === "aov";
+  const isPctKey = (k: string) =>
+    k === "repeatPct" || k === "volRepeatPct" || k === "pct";
   return (
     <div
       className="rounded-xl border p-3 shadow-lg text-xs"
@@ -298,7 +300,11 @@ function ChartTooltip({ active, payload, label, mode }: any) {
           <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
           <span style={{ color: "#9a8571" }}>{p.name}:</span>
           <span className="font-bold" style={{ color: INK }}>
-            {isCurrency ? formatCurrency(p.value) : p.value.toLocaleString()}
+            {isPctKey(String(p.dataKey))
+              ? `${Number(p.value).toFixed(1)}%`
+              : isCurrency
+              ? formatCurrency(p.value)
+              : p.value.toLocaleString()}
           </span>
         </div>
       ))}
@@ -501,6 +507,59 @@ export function DashboardOverview() {
       } as const)[tableMode]
     : null;
 
+  /* Products mode: build a full detail block for each of the top-5 products.
+     Each block has its own Sales chart (total/new/repeat) + Quantity chart,
+     bucketed to the same periods as the main chart. */
+  const topProductsList: { product: string; total: number; firstTime: number; repeat: number }[] =
+    salesData?.summaryTable?.productSale?.slice(0, 5) ?? [];
+
+  const productBlocks = data && salesData?.productDaily
+    ? topProductsList.map((tp) => {
+        const series = data.periods.map((period) => {
+          let total = 0, ftOrders = 0, repeat = 0, qty = 0, qtyNew = 0, qtyRepeat = 0;
+          for (const row of salesData.productDaily as Array<{
+            date: string; product: string;
+            total: number; new: number; repeat: number;
+            qty: number; qtyNew: number; qtyRepeat: number;
+          }>) {
+            if (row.product !== tp.product) continue;
+            // ISO YYYY-MM-DD strings sort chronologically — safe to compare directly.
+            if (row.date >= period.from && row.date < period.to) {
+              total += row.total;
+              ftOrders += row.new;
+              repeat += row.repeat;
+              qty += row.qty;
+              qtyNew += row.qtyNew ?? 0;
+              qtyRepeat += row.qtyRepeat ?? 0;
+            }
+          }
+          return {
+            label: period.label, total, ftOrders, repeat, qty, qtyNew, qtyRepeat,
+            repeatPct: total > 0 ? Math.round((repeat / total) * 1000) / 10 : 0,
+            volRepeatPct: qty > 0 ? Math.round((qtyRepeat / qty) * 1000) / 10 : 0,
+          };
+        });
+        const totals = series.reduce(
+          (a, p) => ({
+            total: a.total + p.total,
+            ftOrders: a.ftOrders + p.ftOrders,
+            repeat: a.repeat + p.repeat,
+            qty: a.qty + p.qty,
+            qtyNew: a.qtyNew + p.qtyNew,
+            qtyRepeat: a.qtyRepeat + p.qtyRepeat,
+          }),
+          { total: 0, ftOrders: 0, repeat: 0, qty: 0, qtyNew: 0, qtyRepeat: 0 },
+        );
+        const repeatPct = totals.total > 0
+          ? Math.round((totals.repeat / totals.total) * 1000) / 10
+          : 0;
+        const qtyRepeatPct = totals.qty > 0
+          ? Math.round((totals.qtyRepeat / totals.qty) * 1000) / 10
+          : 0;
+        return { product: tp.product, series, totals, repeatPct, qtyRepeatPct };
+      })
+    : [];
+
 
   return (
     <div className="space-y-6">
@@ -664,14 +723,341 @@ export function DashboardOverview() {
                   style={{ borderColor: `${AMBER} transparent ${AMBER} ${AMBER}` }}
                 />
               </div>
-            ) : salesData && salesData.productDaily?.length > 0 ? (
-              <ProductTrend metrics={salesData} />
-            ) : (
+            ) : productBlocks.length === 0 ? (
               <div
                 className="rounded-2xl border p-8 text-center text-sm"
                 style={{ background: "white", borderColor: "#e8dfd0", color: "#9a8571" }}
               >
                 No product data for this window.
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {productBlocks.map((pb, idx) => (
+                  <div
+                    key={pb.product}
+                    className="space-y-4 rounded-2xl border p-5 shadow-sm"
+                    style={{ background: "white", borderColor: "#e8dfd0" }}
+                  >
+                    {/* Product header */}
+                    <div className="flex flex-wrap items-baseline justify-between gap-3 border-b pb-3" style={{ borderColor: "#f1e7d3" }}>
+                      <div className="flex items-baseline gap-3">
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
+                          style={{ background: `${AMBER}22`, color: AMBER }}
+                        >
+                          #{idx + 1}
+                        </span>
+                        <h3 className="text-lg font-bold" style={{ color: INK }}>{pb.product}</h3>
+                      </div>
+                      <div className="flex flex-wrap items-baseline gap-5">
+                        <div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>Total qty</span>
+                          <span className="ml-2 text-xl font-bold tabular-nums" style={{ color: AMBER }}>{pb.totals.qty.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>Repeat %</span>
+                          <span className="ml-2 text-xl font-bold tabular-nums" style={{ color: REPEAT_COLOR }}>{pb.repeatPct}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4 charts in one row: Sales · Sales repeat % · Volume · Volume repeat % */}
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {/* 1. Sales (total / new / repeat orders) */}
+                      <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                            Sales
+                          </p>
+                          <p className="text-xs tabular-nums font-semibold" style={{ color: INK }}>
+                            {pb.totals.total.toLocaleString()}
+                          </p>
+                        </div>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                              axisLine={{ stroke: "#e8dfd0" }}
+                              tickLine={false}
+                              interval="preserveStartEnd"
+                              minTickGap={20}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9a8571", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={34}
+                            />
+                            <Tooltip content={<ChartTooltip mode="orders" />} />
+                            <Line type="monotone" dataKey="total" name="Total" stroke={TOTAL_COLOR} strokeWidth={2.5} dot={{ fill: TOTAL_COLOR, r: 2.5 }} activeDot={{ r: 5 }} />
+                            <Line type="monotone" dataKey="ftOrders" name="New users" stroke={NEW_COLOR} strokeWidth={2} dot={{ fill: NEW_COLOR, r: 2.5 }} activeDot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="repeat" name="Repeat" stroke={REPEAT_COLOR} strokeWidth={2} dot={{ fill: REPEAT_COLOR, r: 2.5 }} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* 2. Sales repeat % trend */}
+                      <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                            Repeat % — sales
+                          </p>
+                          <p className="text-xs tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>
+                            {pb.repeatPct}%
+                          </p>
+                        </div>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                              axisLine={{ stroke: "#e8dfd0" }}
+                              tickLine={false}
+                              interval="preserveStartEnd"
+                              minTickGap={20}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9a8571", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              domain={[0, 100]}
+                              tickFormatter={(v) => `${v}%`}
+                              width={38}
+                            />
+                            <Tooltip
+                              formatter={(v: any) => [`${Number(v).toFixed(1)}%`, "Repeat share"]}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e8dfd0" }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="repeatPct"
+                              name="Repeat %"
+                              stroke={REPEAT_COLOR}
+                              strokeWidth={2.5}
+                              dot={{ fill: REPEAT_COLOR, r: 2.5 }}
+                              activeDot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* 3. Volume (total / new / repeat qty) */}
+                      <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                            Volume
+                          </p>
+                          <p className="text-xs tabular-nums font-semibold" style={{ color: AMBER }}>
+                            {pb.totals.qty.toLocaleString()} units
+                          </p>
+                        </div>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                              axisLine={{ stroke: "#e8dfd0" }}
+                              tickLine={false}
+                              interval="preserveStartEnd"
+                              minTickGap={20}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9a8571", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              allowDecimals={false}
+                              width={34}
+                            />
+                            <Tooltip
+                              formatter={(v: any, n: any) => {
+                                const label =
+                                  n === "qty" ? "Total volume"
+                                  : n === "qtyNew" ? "Volume · new"
+                                  : n === "qtyRepeat" ? "Volume · repeat"
+                                  : String(n);
+                                return [Number(v).toLocaleString(), label];
+                              }}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e8dfd0" }}
+                            />
+                            <Line type="monotone" dataKey="qty" name="Total volume" stroke={AMBER} strokeWidth={2.5} dot={{ fill: AMBER, r: 2.5 }} activeDot={{ r: 5 }} />
+                            <Line type="monotone" dataKey="qtyNew" name="Volume · new" stroke={NEW_COLOR} strokeWidth={2} dot={{ fill: NEW_COLOR, r: 2.5 }} activeDot={{ r: 4 }} />
+                            <Line type="monotone" dataKey="qtyRepeat" name="Volume · repeat" stroke={REPEAT_COLOR} strokeWidth={2} dot={{ fill: REPEAT_COLOR, r: 2.5 }} activeDot={{ r: 4 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* 4. Volume repeat % trend */}
+                      <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
+                        <div className="mb-2 flex items-baseline justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                            Repeat % — volume
+                          </p>
+                          <p className="text-xs tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>
+                            {pb.qtyRepeatPct}%
+                          </p>
+                        </div>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e8dfd0" />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: "#4a3a2e", fontSize: 11, fontWeight: 500 }}
+                              axisLine={{ stroke: "#e8dfd0" }}
+                              tickLine={false}
+                              interval="preserveStartEnd"
+                              minTickGap={20}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9a8571", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                              domain={[0, 100]}
+                              tickFormatter={(v) => `${v}%`}
+                              width={38}
+                            />
+                            <Tooltip
+                              formatter={(v: any) => [`${Number(v).toFixed(1)}%`, "Vol repeat share"]}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e8dfd0" }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="volRepeatPct"
+                              name="Vol repeat %"
+                              stroke={REPEAT_COLOR}
+                              strokeWidth={2.5}
+                              dot={{ fill: REPEAT_COLOR, r: 2.5 }}
+                              activeDot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Period breakdown table for this product */}
+                    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#f1e7d3" }}>
+                      <div
+                        className="flex items-center justify-between gap-3 px-4 py-2.5 border-b"
+                        style={{ borderColor: "#f1e7d3", background: "#faf6ef" }}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+                          {pb.product} — Period breakdown
+                        </p>
+                        <button
+                          onClick={() => {
+                            const header = [
+                              "Period", "From", "To",
+                              "Total sales", "Sales new", "Sales repeat", "% repeat",
+                              "Total volume", "Volume new", "Volume repeat", "% volume repeat",
+                            ];
+                            const rows = pb.series.map((r, i) => {
+                              const period = data.periods[i];
+                              const repPct = r.total > 0 ? (r.repeat / r.total) * 100 : 0;
+                              const volRepPct = r.qty > 0 ? (r.qtyRepeat / r.qty) * 100 : 0;
+                              return [
+                                r.label, period.from, period.to,
+                                r.total, r.ftOrders, r.repeat, `${repPct.toFixed(1)}%`,
+                                r.qty, r.qtyNew, r.qtyRepeat, `${volRepPct.toFixed(1)}%`,
+                              ];
+                            });
+                            rows.push([
+                              "Total", "", "",
+                              pb.totals.total, pb.totals.ftOrders, pb.totals.repeat, `${pb.repeatPct.toFixed(1)}%`,
+                              pb.totals.qty, pb.totals.qtyNew, pb.totals.qtyRepeat, `${pb.qtyRepeatPct.toFixed(1)}%`,
+                            ]);
+                            const csv = [header, ...rows]
+                              .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+                              .join("\r\n");
+                            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            const safeProduct = pb.product.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+                            const rangeTag = data.periods.length > 0
+                              ? `${data.periods[0].from}_to_${data.periods[data.periods.length - 1].to}`
+                              : "export";
+                            link.download = `${safeProduct}-${unit}-${rangeTag}.csv`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white"
+                          style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
+                          title={`Download ${pb.product} breakdown as CSV`}
+                        >
+                          <Download size={13} />
+                          Download CSV
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ background: "#faf6ef" }}>
+                              {[
+                                "Period",
+                                "Total sales",
+                                "Sales · new",
+                                "Sales · repeat",
+                                "% repeat",
+                                "Total volume",
+                                "Vol · new",
+                                "Vol · repeat",
+                                "% vol repeat",
+                              ].map((h, hi) => (
+                                <th
+                                  key={h}
+                                  className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+                                  style={{
+                                    color: "#9a8571",
+                                    textAlign: hi === 0 ? "left" : "right",
+                                  }}
+                                >
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pb.series.map((row, i) => {
+                              const repPct = row.total > 0 ? (row.repeat / row.total) * 100 : 0;
+                              const volRepPct = row.qty > 0 ? (row.qtyRepeat / row.qty) * 100 : 0;
+                              return (
+                                <tr key={i} className="border-t" style={{ borderColor: "#f1e7d3" }}>
+                                  <td className="px-3 py-2.5 font-medium" style={{ color: INK }}>{row.label}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{row.total.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: NEW_COLOR }}>{row.ftOrders.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: REPEAT_COLOR }}>{row.repeat.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>{repPct.toFixed(1)}%</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{row.qty.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: NEW_COLOR }}>{row.qtyNew.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: REPEAT_COLOR }}>{row.qtyRepeat.toLocaleString()}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>{volRepPct.toFixed(1)}%</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2" style={{ borderColor: "#e8dfd0", background: "#faf6ef" }}>
+                              <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>{pb.totals.total.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: NEW_COLOR }}>{pb.totals.ftOrders.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>{pb.totals.repeat.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>{pb.repeatPct.toFixed(1)}%</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>{pb.totals.qty.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: NEW_COLOR }}>{pb.totals.qtyNew.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>{pb.totals.qtyRepeat.toLocaleString()}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>{pb.qtyRepeatPct.toFixed(1)}%</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )
           ) : (
@@ -803,7 +1189,8 @@ export function DashboardOverview() {
           </>
           )}
 
-          {/* Period Breakdown table */}
+          {/* Period Breakdown table — hidden in Products mode (drill-down has its own stats) */}
+          {chartMode !== "products" && (
           <div
             className="rounded-2xl border shadow-sm overflow-hidden"
             style={{ background: "white", borderColor: "#e8dfd0" }}
@@ -917,6 +1304,7 @@ export function DashboardOverview() {
               </table>
             </div>
           </div>
+          )}
 
           {/* Order Health — only when in Orders mode */}
           {chartMode === "orders" && (

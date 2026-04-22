@@ -89,6 +89,8 @@ export type ProductDailyPoint = {
   new: number;
   repeat: number;
   qty: number;
+  qtyNew: number;
+  qtyRepeat: number;
 };
 export type PaymentDailyPoint = {
   date: string;
@@ -128,7 +130,10 @@ export async function computeItemDaily(
   const dateKey = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-  type ProdBucket = { total: number; new: number; repeat: number; qty: number };
+  type ProdBucket = {
+    total: number; new: number; repeat: number;
+    qty: number; qtyNew: number; qtyRepeat: number;
+  };
   type PayBucket = { total: number; new: number; repeat: number; orders: number };
   const prodMap = new Map<string, ProdBucket>();
   const payMap = new Map<string, PayBucket>();
@@ -138,11 +143,11 @@ export async function computeItemDaily(
     const ft = isFT(o.mobile);
     const product = o.flavour || "Unknown";
     const pk = `${dk}|${product}`;
-    const pe = prodMap.get(pk) || { total: 0, new: 0, repeat: 0, qty: 0 };
+    const pe = prodMap.get(pk) || { total: 0, new: 0, repeat: 0, qty: 0, qtyNew: 0, qtyRepeat: 0 };
     pe.total += 1;
     pe.qty += o.qty;
-    if (ft) pe.new += 1;
-    else pe.repeat += 1;
+    if (ft) { pe.new += 1; pe.qtyNew += o.qty; }
+    else { pe.repeat += 1; pe.qtyRepeat += o.qty; }
     prodMap.set(pk, pe);
 
     const method = (o.paymentMethod || "").trim();
@@ -160,7 +165,11 @@ export async function computeItemDaily(
   const productDaily = Array.from(prodMap.entries())
     .map(([k, v]) => {
       const [date, product] = k.split("|");
-      return { date, product, total: v.total, new: v.new, repeat: v.repeat, qty: v.qty };
+      return {
+        date, product,
+        total: v.total, new: v.new, repeat: v.repeat,
+        qty: v.qty, qtyNew: v.qtyNew, qtyRepeat: v.qtyRepeat,
+      };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 

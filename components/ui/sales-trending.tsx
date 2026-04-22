@@ -637,32 +637,157 @@ function StackedAreaChart({
   );
 }
 
-/* ─────── Product Sale — one stacked-area chart per top product ─────── */
+/* ─────── Product Sale — drill into a product + composition across top 5 ─────── */
+function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-wider" style={{ color }}>{label}</p>
+      <p className="mt-0.5 text-2xl font-bold tabular-nums" style={{ color }}>{value}</p>
+    </div>
+  );
+}
+
 export function ProductTrend({ metrics }: { metrics: PeriodData }) {
   const top = metrics.summaryTable.productSale.slice(0, 5);
+  const [selected, setSelected] = useState<string | null>(null);
   if (top.length === 0 || metrics.productDaily.length === 0) return null;
 
+  const active = selected ?? top[0].product;
   const allDates = Array.from(new Set(metrics.productDaily.map((r) => r.date))).sort();
 
   const seriesFor = (product: string) => {
-    const byDate = new Map<string, { new: number; repeat: number }>();
+    const byDate = new Map<string, { total: number; new: number; repeat: number; qty: number }>();
     for (const r of metrics.productDaily) {
       if (r.product !== product) continue;
-      byDate.set(r.date, { new: r.new, repeat: r.repeat });
+      byDate.set(r.date, { total: r.total, new: r.new, repeat: r.repeat, qty: r.qty });
     }
     return allDates.map((d) => ({
       date: d,
+      total: byDate.get(d)?.total ?? 0,
       new: byDate.get(d)?.new ?? 0,
       repeat: byDate.get(d)?.repeat ?? 0,
+      qty: byDate.get(d)?.qty ?? 0,
     }));
   };
+
+  const detailSeries = seriesFor(active);
+  const totals = detailSeries.reduce(
+    (a, d) => ({
+      total: a.total + d.total,
+      new: a.new + d.new,
+      repeat: a.repeat + d.repeat,
+      qty: a.qty + d.qty,
+    }),
+    { total: 0, new: 0, repeat: 0, qty: 0 },
+  );
+  const repeatPct = totals.total > 0 ? Math.round((totals.repeat / totals.total) * 1000) / 10 : 0;
 
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-neutral-900">Product Sale — Composition Over Time</h2>
+        <h2 className="text-lg font-bold text-neutral-900">Product Sale — Drill Into a Product</h2>
         <p className="text-xs italic text-neutral-400">
-          Top 5 products. Each chart stacks new users + repeat = total orders per day.
+          Pick a product to see its orders, volume (qty), and repeat share over time.
+        </p>
+      </div>
+
+      {/* Product selector pills */}
+      <div className="flex flex-wrap gap-2">
+        {top.map((p) => {
+          const isActive = p.product === active;
+          return (
+            <button
+              key={p.product}
+              onClick={() => setSelected(p.product)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                isActive
+                  ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+              }`}
+              title={p.product}
+            >
+              {shortName(p.product, 30)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Detail view: stat card + line chart */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+            Selected product
+          </p>
+          <p className="mt-1 break-words text-base font-bold text-neutral-900">{active}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <StatBox label="Total orders" value={totals.total.toLocaleString()} color={LINE_COLORS.total} />
+            <StatBox label="Volume (qty)" value={totals.qty.toLocaleString()} color="#f59e0b" />
+            <StatBox label="New users" value={totals.new.toLocaleString()} color={LINE_COLORS.new} />
+            <StatBox label="Repeat" value={totals.repeat.toLocaleString()} color={LINE_COLORS.repeat} />
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/40 px-4 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              Repeat %
+            </span>
+            <span className="text-3xl font-bold tabular-nums" style={{ color: LINE_COLORS.repeat }}>
+              {repeatPct}%
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <div className="h-[260px] w-full">
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={detailSeries} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+                  interval="preserveStartEnd"
+                  minTickGap={24}
+                />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} width={40} />
+                <Tooltip
+                  formatter={(value, name) => {
+                    const label =
+                      name === "total" ? "Total orders"
+                      : name === "new" ? "New users"
+                      : name === "repeat" ? "Repeat"
+                      : "Qty";
+                    return [Number(value), label];
+                  }}
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                />
+                <Line type="monotone" dataKey="total" stroke={LINE_COLORS.total} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="new" stroke={LINE_COLORS.new} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="repeat" stroke={LINE_COLORS.repeat} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Volume sparkline strip */}
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+              Volume (qty) over time
+            </span>
+            <span className="text-xs font-bold tabular-nums text-neutral-900">
+              {totals.qty.toLocaleString()}
+            </span>
+            <div className="ml-auto h-8 w-40">
+              <ResponsiveContainer width="100%" height={32}>
+                <LineChart data={detailSeries} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                  <Line type="monotone" dataKey="qty" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Composition view — all top 5 products */}
+      <div className="pt-2">
+        <h3 className="text-sm font-semibold text-neutral-700">All top products — composition view</h3>
+        <p className="text-xs italic text-neutral-400">
+          Each chart stacks new users + repeat = total orders per day.
         </p>
       </div>
       {top.map((p) => {
@@ -675,11 +800,12 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
           tone: "indigo",
           fmt: (n: number) => n.toLocaleString(),
         };
+        const compData = seriesFor(p.product).map((d) => ({ date: d.date, new: d.new, repeat: d.repeat }));
         return (
           <div key={p.product} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
             <MetricCard cfg={cfg} split={split} />
             <div className="h-full min-h-[260px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-              <StackedAreaChart data={seriesFor(p.product)} />
+              <StackedAreaChart data={compData} />
             </div>
           </div>
         );
