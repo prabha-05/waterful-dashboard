@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchAllOrders, ShopifyOrderRaw } from "@/lib/shopify";
 
@@ -309,6 +309,9 @@ export async function POST(request: Request) {
 // Accepts auth via either ?token=<CRON_SECRET> query param or
 // Authorization: Bearer <CRON_SECRET> header (Vercel Cron sends the latter).
 // Pass ?full=true to ignore the incremental cutoff and re-fetch everything.
+// Pass ?wait=true to wait for completion and get the result inline (manual use).
+// Default behaviour returns 200 immediately and runs the sync in the
+// background — keeps cron-job.org happy even on slow Neon wake-ups.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const queryToken = searchParams.get("token");
@@ -317,17 +320,38 @@ export async function GET(request: Request) {
     ?.replace(/^Bearer\s+/, "");
   const token = queryToken ?? headerToken;
   const force = searchParams.get("full") === "true";
+  const wait = searchParams.get("wait") === "true";
   const cronSecret = process.env.CRON_SECRET;
 
   if (cronSecret && token !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const result = await syncOrders(force);
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+  if (wait) {
+    // Inline mode — block until sync finishes (manual debugging)
+    try {
+      const result = await syncOrders(force);
+      return NextResponse.json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sync failed";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   }
+
+  // Async mode — return 200 immediately, run sync in background.
+  // `after()` keeps the serverless function alive after the response is sent
+  // (up to maxDuration), so the sync completes server-side even after the
+  // client (cron-job.org) gets its response.
+  after(async () => {
+    try {
+      await syncOrders(force);
+    } catch (err) {
+      console.error("[shopify/sync] Background sync failed:", err);
+    }
+  });
+
+  return NextResponse.json({
+    accepted: true,
+    message: "Sync started in background. Check /api/shopify/status for result.",
+  });
 }
