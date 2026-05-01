@@ -7,7 +7,9 @@ import { prisma } from "@/lib/db";
 export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get("token");
+  const queryToken = req.nextUrl.searchParams.get("token");
+  const headerToken = req.headers.get("authorization")?.replace(/^Bearer\s+/, "");
+  const token = queryToken ?? headerToken;
   if (process.env.CRON_SECRET && token !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

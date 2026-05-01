@@ -3,6 +3,10 @@
     {
       "path": "/api/shopify/sync",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/shopify/mirror",
+      "schedule": "30 21 * * *"
     }
   ]
 }
