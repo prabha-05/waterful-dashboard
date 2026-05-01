@@ -28,6 +28,12 @@ interface ShopifyCustomer {
   phone?: string;
 }
 
+interface ShopifyDiscountCode {
+  code: string;
+  amount: string;
+  type: string;
+}
+
 export interface ShopifyOrderRaw {
   id: number;
   order_number: number;
@@ -36,6 +42,7 @@ export interface ShopifyOrderRaw {
   total_price: string;
   subtotal_price: string;
   total_tax: string;
+  total_discounts?: string;
   currency: string;
   financial_status: string;
   fulfillment_status?: string;
@@ -49,6 +56,8 @@ export interface ShopifyOrderRaw {
   line_items: ShopifyLineItem[];
   note?: string;
   tags?: string;
+  payment_gateway_names?: string[];
+  discount_codes?: ShopifyDiscountCode[];
 }
 
 interface ShopifyOrdersResponse {

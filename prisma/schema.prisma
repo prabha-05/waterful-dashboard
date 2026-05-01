@@ -62,6 +62,9 @@ model ShopifyOrder {
   itemCount       Int      @default(0)
   note            String?
   tags            String?
+  paymentGatewayNames String?
+  discountCodes       String?
+  totalDiscounts      Float?
   syncedAt        DateTime @default(now())
 
   lineItems       ShopifyLineItem[]

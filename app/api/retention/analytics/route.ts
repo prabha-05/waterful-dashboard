@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 type OrderRec = { date: Date; total: number; flavour: string; state: string };
@@ -16,14 +16,56 @@ function monthLabel(key: string) {
   const [y, m] = key.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
 }
+function formatDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const MS_PER_DAY = 86400000;
 const CHURN_THRESHOLD_DAYS = 90;
 const MAX_COHORT_OFFSET = 12;
 
-export async function GET() {
+function computeWindow(count: number, unit: string, endDay: Date): { from: Date; to: Date } {
+  const today = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate());
+  if (unit === "day") {
+    const from = new Date(today);
+    from.setDate(from.getDate() - (count - 1));
+    const to = new Date(today);
+    to.setDate(to.getDate() + 1);
+    return { from, to };
+  }
+  if (unit === "week") {
+    const dow = today.getDay();
+    const daysSinceMonday = (dow + 6) % 7;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysSinceMonday);
+    const from = new Date(monday);
+    from.setDate(monday.getDate() - (count - 1) * 7);
+    const to = new Date(monday);
+    to.setDate(monday.getDate() + 7);
+    return { from, to };
+  }
+  // month
+  const from = new Date(today.getFullYear(), today.getMonth() - (count - 1), 1);
+  const to = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  return { from, to };
+}
+
+export async function GET(req: NextRequest) {
+  const count = Math.min(Math.max(parseInt(req.nextUrl.searchParams.get("count") || "12"), 1), 52);
+  const unit = req.nextUrl.searchParams.get("unit") || "month";
+  if (!["day", "week", "month"].includes(unit)) {
+    return NextResponse.json({ error: "unit must be day, week, or month" }, { status: 400 });
+  }
+  const endParam = req.nextUrl.searchParams.get("end");
+  const endDay = endParam ? new Date(endParam) : new Date();
+  const { from: windowStart, to: windowEnd } = computeWindow(count, unit, endDay);
+
   const orders = await prisma.salesOrder.findMany({
-    where: { duplicate: 1, mobile: { not: "" } },
+    where: {
+      duplicate: 1,
+      mobile: { not: "" },
+      date: { gte: windowStart, lt: windowEnd },
+    },
     select: { mobile: true, total: true, date: true, flavour: true, billingState: true },
     orderBy: { date: "asc" },
   });
@@ -50,7 +92,9 @@ export async function GET() {
     });
   }
 
-  const now = new Date();
+  // Anchor "now" to the window end so churn / time-since calculations pivot
+  // at the user-chosen date rather than today.
+  const now = new Date(windowEnd.getTime() - 1);
   const nowMs = now.getTime();
 
   // ─── 1. Cohort retention matrix ──────────────────────────────────
@@ -252,6 +296,13 @@ export async function GET() {
     .slice(0, 15);
 
   return NextResponse.json({
+    count,
+    unit,
+    window: {
+      from: formatDate(windowStart),
+      // API `to` is exclusive — subtract one day for a human-facing inclusive end
+      to: formatDate(new Date(windowEnd.getTime() - MS_PER_DAY)),
+    },
     totalCustomers: totalCount,
     churnRate,
     churnThresholdDays: CHURN_THRESHOLD_DAYS,

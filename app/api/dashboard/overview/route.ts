@@ -89,10 +89,12 @@ export async function GET(req: NextRequest) {
   const prevTo = new Date(globalFrom.getTime());
   const prevFrom = new Date(globalFrom.getTime() - windowMs);
 
-  // Fetch all orders in current + previous range in one query
+  // Fetch all orders in current + previous range in one query.
+  // We include orderId so we can count DISTINCT orders (not line items) —
+  // a single Shopify order with N flavours produces N SalesOrder rows.
   const orders = await prisma.salesOrder.findMany({
     where: { duplicate: 1, mobile: { not: "" }, date: { gte: prevFrom, lt: globalTo } },
-    select: { mobile: true, total: true, date: true, status: true },
+    select: { mobile: true, total: true, date: true, status: true, orderId: true },
   });
 
   // Get first order dates for all mobiles in range
@@ -119,46 +121,59 @@ export async function GET(req: NextRequest) {
     const mobiles = new Set<string>();
     const ftMobiles = new Set<string>();
     const repeatMobiles = new Set<string>();
+    // Track DISTINCT orderIds — a single order can have multiple SalesOrder rows
+    // (one per flavour). Counting rows would overstate everything by the average
+    // line items per order (~1.5x for this store).
+    const allOrderIds = new Set<number>();
+    const ftOrderIds = new Set<number>();
+    const repeatOrderIds = new Set<number>();
+    const cancelledOrderIds = new Set<number>();
+    const rtoOrderIds = new Set<number>();
+    const ftCancelledOrderIds = new Set<number>();
+    const repeatCancelledOrderIds = new Set<number>();
+    const ftRtoOrderIds = new Set<number>();
+    const repeatRtoOrderIds = new Set<number>();
     let revenue = 0;
     let ftRevenue = 0;
     let repeatRevenue = 0;
-    let ftOrders = 0;
-    let repeatOrders = 0;
-    let cancelled = 0;
-    let rto = 0;
-    let ftCancelled = 0;
-    let repeatCancelled = 0;
-    let ftRto = 0;
-    let repeatRto = 0;
 
     for (const o of bucketOrders) {
       mobiles.add(o.mobile);
+      allOrderIds.add(o.orderId);
       revenue += o.total;
 
       const status = (o.status || "").toLowerCase();
       const isCancelled = status.includes("cancel");
       const isRto = status.includes("rto") || status.includes("return");
-      if (isCancelled) cancelled++;
-      if (isRto) rto++;
+      if (isCancelled) cancelledOrderIds.add(o.orderId);
+      if (isRto) rtoOrderIds.add(o.orderId);
 
       const firstDate = firstOrderDate.get(o.mobile);
       const isFt = firstDate && firstDate >= bucket.from && firstDate < bucket.to;
       if (isFt) {
         ftMobiles.add(o.mobile);
-        ftOrders++;
+        ftOrderIds.add(o.orderId);
         ftRevenue += o.total;
-        if (isCancelled) ftCancelled++;
-        if (isRto) ftRto++;
+        if (isCancelled) ftCancelledOrderIds.add(o.orderId);
+        if (isRto) ftRtoOrderIds.add(o.orderId);
       } else {
         repeatMobiles.add(o.mobile);
-        repeatOrders++;
+        repeatOrderIds.add(o.orderId);
         repeatRevenue += o.total;
-        if (isCancelled) repeatCancelled++;
-        if (isRto) repeatRto++;
+        if (isCancelled) repeatCancelledOrderIds.add(o.orderId);
+        if (isRto) repeatRtoOrderIds.add(o.orderId);
       }
     }
 
-    const orderCount = bucketOrders.length;
+    const orderCount = allOrderIds.size;
+    const ftOrders = ftOrderIds.size;
+    const repeatOrders = repeatOrderIds.size;
+    const cancelled = cancelledOrderIds.size;
+    const rto = rtoOrderIds.size;
+    const ftCancelled = ftCancelledOrderIds.size;
+    const repeatCancelled = repeatCancelledOrderIds.size;
+    const ftRto = ftRtoOrderIds.size;
+    const repeatRto = repeatRtoOrderIds.size;
     const customerCount = mobiles.size;
 
     return {
@@ -191,45 +206,57 @@ export async function GET(req: NextRequest) {
     orders.filter((o) => o.date && o.date >= globalFrom && o.date < globalTo).map((o) => o.mobile)
   ).size;
 
-  // Previous-window totals for delta comparison
+  // Previous-window totals for delta comparison.
+  // Same DISTINCT-orderId rule as the per-bucket logic above.
   const prevOrdersRows = orders.filter(
     (o) => o.date && o.date >= prevFrom && o.date < prevTo
   );
-  const prevOrdersCount = prevOrdersRows.length;
-  const prevRevenue = Math.round(prevOrdersRows.reduce((s, o) => s + o.total, 0));
-  const prevCustomers = new Set(prevOrdersRows.map((o) => o.mobile)).size;
-  const prevAov = prevOrdersCount > 0 ? Math.round(prevRevenue / prevOrdersCount) : 0;
-
+  const prevOrderIds = new Set<number>();
+  const prevFtOrderIds = new Set<number>();
+  const prevRepeatOrderIds = new Set<number>();
+  const prevCancelledIds = new Set<number>();
+  const prevRtoIds = new Set<number>();
+  const prevFtCancelledIds = new Set<number>();
+  const prevRepeatCancelledIds = new Set<number>();
+  const prevFtRtoIds = new Set<number>();
+  const prevRepeatRtoIds = new Set<number>();
+  let prevRevenue = 0;
   let prevFtRevenue = 0;
   let prevRepeatRevenue = 0;
-  let prevFtOrders = 0;
-  let prevRepeatOrders = 0;
-  let prevCancelled = 0;
-  let prevRto = 0;
-  let prevFtCancelled = 0;
-  let prevRepeatCancelled = 0;
-  let prevFtRto = 0;
-  let prevRepeatRto = 0;
   for (const o of prevOrdersRows) {
+    prevOrderIds.add(o.orderId);
+    prevRevenue += o.total;
     const s = (o.status || "").toLowerCase();
     const isCancelled = s.includes("cancel");
     const isRto = s.includes("rto") || s.includes("return");
-    if (isCancelled) prevCancelled++;
-    if (isRto) prevRto++;
+    if (isCancelled) prevCancelledIds.add(o.orderId);
+    if (isRto) prevRtoIds.add(o.orderId);
     const firstDate = firstOrderDate.get(o.mobile);
     const isFt = firstDate && firstDate >= prevFrom && firstDate < prevTo;
     if (isFt) {
-      prevFtOrders++;
+      prevFtOrderIds.add(o.orderId);
       prevFtRevenue += o.total;
-      if (isCancelled) prevFtCancelled++;
-      if (isRto) prevFtRto++;
+      if (isCancelled) prevFtCancelledIds.add(o.orderId);
+      if (isRto) prevFtRtoIds.add(o.orderId);
     } else {
-      prevRepeatOrders++;
+      prevRepeatOrderIds.add(o.orderId);
       prevRepeatRevenue += o.total;
-      if (isCancelled) prevRepeatCancelled++;
-      if (isRto) prevRepeatRto++;
+      if (isCancelled) prevRepeatCancelledIds.add(o.orderId);
+      if (isRto) prevRepeatRtoIds.add(o.orderId);
     }
   }
+  prevRevenue = Math.round(prevRevenue);
+  const prevOrdersCount = prevOrderIds.size;
+  const prevCustomers = new Set(prevOrdersRows.map((o) => o.mobile)).size;
+  const prevAov = prevOrdersCount > 0 ? Math.round(prevRevenue / prevOrdersCount) : 0;
+  const prevFtOrders = prevFtOrderIds.size;
+  const prevRepeatOrders = prevRepeatOrderIds.size;
+  const prevCancelled = prevCancelledIds.size;
+  const prevRto = prevRtoIds.size;
+  const prevFtCancelled = prevFtCancelledIds.size;
+  const prevRepeatCancelled = prevRepeatCancelledIds.size;
+  const prevFtRto = prevFtRtoIds.size;
+  const prevRepeatRto = prevRepeatRtoIds.size;
   const prevFtAov = prevFtOrders > 0 ? Math.round(prevFtRevenue / prevFtOrders) : 0;
   const prevRepeatAov = prevRepeatOrders > 0 ? Math.round(prevRepeatRevenue / prevRepeatOrders) : 0;
 

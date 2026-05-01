@@ -14,12 +14,36 @@ function customerName(order: ShopifyOrderRaw): string {
   return [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
 }
 
-async function syncOrders() {
-  // Find the last successful sync to do incremental fetch
-  const lastSync = await prisma.syncLog.findFirst({
-    where: { status: "completed" },
-    orderBy: { completedAt: "desc" },
+async function syncOrders(force: boolean = false) {
+  // Refuse to start if another sync is already in progress (within last 30 min).
+  // Prevents the duplicate-shopifyId errors we hit before from concurrent runs.
+  const STUCK_THRESHOLD_MS = 30 * 60 * 1000;
+  const inProgress = await prisma.syncLog.findFirst({
+    where: {
+      status: "running",
+      startedAt: { gte: new Date(Date.now() - STUCK_THRESHOLD_MS) },
+    },
+    orderBy: { startedAt: "desc" },
   });
+  if (inProgress) {
+    throw new Error(
+      `Another sync is already running (started ${inProgress.startedAt.toISOString()}). Wait for it to finish or restart the dev server.`
+    );
+  }
+
+  // Mark any older stuck "running" rows as failed for housekeeping
+  await prisma.syncLog.updateMany({
+    where: { status: "running" },
+    data: { status: "failed", completedAt: new Date(), error: "Marked failed by next sync run" },
+  });
+
+  // Find the last successful sync to do incremental fetch (unless forcing full)
+  const lastSync = force
+    ? null
+    : await prisma.syncLog.findFirst({
+        where: { status: "completed" },
+        orderBy: { completedAt: "desc" },
+      });
 
   const sinceDate = lastSync?.completedAt ?? undefined;
 
@@ -66,24 +90,46 @@ async function syncOrders() {
         itemCount: order.line_items.reduce((sum, li) => sum + li.quantity, 0),
         note: order.note ?? null,
         tags: order.tags ?? null,
+        paymentGatewayNames:
+          order.payment_gateway_names && order.payment_gateway_names.length > 0
+            ? order.payment_gateway_names.join(", ")
+            : null,
+        discountCodes:
+          order.discount_codes && order.discount_codes.length > 0
+            ? order.discount_codes.map((d) => d.code).join(", ")
+            : null,
+        totalDiscounts: order.total_discounts
+          ? parseFloat(order.total_discounts)
+          : null,
         syncedAt: new Date(),
       };
 
-      if (existing) {
-        await prisma.shopifyOrder.update({
-          where: { shopifyId: BigInt(order.id) },
-          data: orderData,
-        });
+      // Get the resolved order row (existing update or fresh create)
+      const orderRow = existing
+        ? await prisma.shopifyOrder.update({
+            where: { shopifyId: BigInt(order.id) },
+            data: orderData,
+          })
+        : await prisma.shopifyOrder.create({ data: orderData });
 
-        // Replace line items
-        await prisma.shopifyLineItem.deleteMany({
-          where: { orderId: existing.id },
-        });
+      // Delete any prior line items for this order AND any orphan rows that
+      // happen to share the same lineItem.shopifyId (from interrupted past
+      // syncs). This prevents the unique-constraint crash we hit before.
+      const incomingLineItemIds = order.line_items.map((li) => BigInt(li.id));
+      await prisma.shopifyLineItem.deleteMany({
+        where: {
+          OR: [
+            { orderId: orderRow.id },
+            { shopifyId: { in: incomingLineItemIds } },
+          ],
+        },
+      });
 
+      if (order.line_items.length > 0) {
         await prisma.shopifyLineItem.createMany({
           data: order.line_items.map((li) => ({
             shopifyId: BigInt(li.id),
-            orderId: existing.id,
+            orderId: orderRow.id,
             title: li.title,
             variantTitle: li.variant_title ?? null,
             sku: li.sku ?? null,
@@ -94,29 +140,96 @@ async function syncOrders() {
             productId: li.product_id ? BigInt(li.product_id) : null,
           })),
         });
+      }
 
+      if (existing) {
         updated++;
       } else {
-        const created = await prisma.shopifyOrder.create({
-          data: orderData,
-        });
-
-        await prisma.shopifyLineItem.createMany({
-          data: order.line_items.map((li) => ({
-            shopifyId: BigInt(li.id),
-            orderId: created.id,
-            title: li.title,
-            variantTitle: li.variant_title ?? null,
-            sku: li.sku ?? null,
-            quantity: li.quantity,
-            price: parseFloat(li.price),
-            totalDiscount: parseFloat(li.total_discount),
-            vendor: li.vendor ?? null,
-            productId: li.product_id ? BigInt(li.product_id) : null,
-          })),
-        });
-
         added++;
+      }
+    }
+
+    // Mirror Shopify orders into SalesOrder rows so the dashboard pages
+    // (Trends, Retention, Sales) can read them. SalesOrder is per-line-item
+    // so each Shopify order fans out into N rows.
+    let salesRowsWritten = 0;
+    if (orders.length > 0) {
+      const orderNumbers = orders.map((o) => o.order_number);
+
+      // Shopify is source of truth — re-syncs replace any prior rows for these orderIds
+      await prisma.salesOrder.deleteMany({
+        where: { orderId: { in: orderNumbers } },
+      });
+
+      const salesRows: Array<{
+        month: string;
+        duplicate: number;
+        orderId: number;
+        date: Date;
+        flavour: string;
+        qty: number;
+        customerName: string;
+        mobile: string;
+        billingCity: string;
+        pincode: string;
+        billingState: string;
+        total: number;
+        status: string;
+        paymentMethod: string | null;
+      }> = [];
+
+      for (const order of orders) {
+        const orderDate = parseDate(order.processed_at) ?? new Date(order.created_at);
+        const monthLabel = orderDate.toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+        // Phone preferred, email fallback so phoneless orders show up
+        const mobile = order.customer?.phone || order.email || "";
+        const cName = customerName(order);
+        // Mark voided / refunded as cancelled so the dashboard's "cancel" string match catches them
+        const fs = (order.financial_status ?? "").toLowerCase();
+        const isVoided = fs === "voided";
+        const isRefunded = fs === "refunded" || fs === "partially_refunded";
+        const status =
+          order.cancelled_at || isVoided || isRefunded
+            ? "cancelled"
+            : order.financial_status ?? "";
+        const billingCity = order.billing_address?.city ?? "";
+        const billingState = order.billing_address?.province ?? "";
+        const pincode = order.billing_address?.zip ?? "";
+        const paymentMethod =
+          order.payment_gateway_names && order.payment_gateway_names.length > 0
+            ? order.payment_gateway_names.join(", ")
+            : null;
+
+        for (const li of order.line_items) {
+          const flavour = [li.title, li.variant_title].filter(Boolean).join(" — ");
+          const lineTotal =
+            parseFloat(li.price) * li.quantity - parseFloat(li.total_discount || "0");
+
+          salesRows.push({
+            month: monthLabel,
+            duplicate: 1,
+            orderId: order.order_number,
+            date: orderDate,
+            flavour,
+            qty: li.quantity,
+            customerName: cName,
+            mobile,
+            billingCity,
+            pincode,
+            billingState,
+            total: lineTotal,
+            status,
+            paymentMethod,
+          });
+        }
+      }
+
+      if (salesRows.length > 0) {
+        await prisma.salesOrder.createMany({ data: salesRows });
+        salesRowsWritten = salesRows.length;
       }
     }
 
@@ -130,7 +243,13 @@ async function syncOrders() {
       },
     });
 
-    return { success: true, ordersAdded: added, ordersUpdated: updated, total: orders.length };
+    return {
+      success: true,
+      ordersAdded: added,
+      ordersUpdated: updated,
+      salesRowsWritten,
+      total: orders.length,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     await prisma.syncLog.update({
@@ -159,10 +278,18 @@ export async function POST(request: Request) {
   }
 }
 
-// GET for easy manual trigger during dev (also checks CRON_SECRET if set)
+// GET for easy manual trigger during dev (also checks CRON_SECRET if set).
+// Accepts auth via either ?token=<CRON_SECRET> query param or
+// Authorization: Bearer <CRON_SECRET> header (Vercel Cron sends the latter).
+// Pass ?full=true to ignore the incremental cutoff and re-fetch everything.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const token = searchParams.get("token");
+  const queryToken = searchParams.get("token");
+  const headerToken = request.headers
+    .get("authorization")
+    ?.replace(/^Bearer\s+/, "");
+  const token = queryToken ?? headerToken;
+  const force = searchParams.get("full") === "true";
   const cronSecret = process.env.CRON_SECRET;
 
   if (cronSecret && token !== cronSecret) {
@@ -170,7 +297,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await syncOrders();
+    const result = await syncOrders(force);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Sync failed";

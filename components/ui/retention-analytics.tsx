@@ -18,6 +18,7 @@ import {
   Clock,
   Repeat,
 } from "lucide-react";
+import { PeriodPicker, formatDateParam, type Unit } from "@/components/ui/period-picker";
 
 const INK = "#4a3a2e";
 const MUTED = "#9a8571";
@@ -37,6 +38,9 @@ type CohortMonth = { offset: number; count: number; pct: number };
 type CohortRow = { cohort: string; label: string; size: number; months: CohortMonth[] };
 
 type Analytics = {
+  count: number;
+  unit: string;
+  window: { from: string; to: string };
   totalCustomers: number;
   churnRate: number;
   churnThresholdDays: number;
@@ -106,13 +110,20 @@ function formatInt(n: number) {
 }
 
 export function RetentionAnalytics() {
+  const [count, setCount] = useState(12);
+  const [unit, setUnit] = useState<Unit>("month");
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const [endDate, setEndDate] = useState<Date>(yesterday);
+
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch("/api/retention/analytics")
+    const qs = `count=${count}&unit=${unit}&end=${formatDateParam(endDate)}`;
+    fetch(`/api/retention/analytics?${qs}`)
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled) setData(d);
@@ -126,20 +137,50 @@ export function RetentionAnalytics() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [count, unit, endDate]);
 
-  if (loading) {
+  const startingLabel = (() => {
+    const fromStr = data?.window?.from;
+    if (!fromStr) return "starting from …";
+    const [y, m, d] = fromStr.split("-").map(Number);
+    const start = new Date(y, m - 1, d);
+    const formatted =
+      unit === "month"
+        ? start.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+        : start.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    return `starting from ${formatted}`;
+  })();
+
+  const picker = (
+    <PeriodPicker
+      count={count}
+      unit={unit}
+      endDate={endDate}
+      onCountChange={setCount}
+      onUnitChange={setUnit}
+      onEndDateChange={setEndDate}
+      trailingLabel={startingLabel}
+    />
+  );
+
+  if (loading && !data) {
     return (
-      <div className="text-center py-16 text-sm italic" style={{ color: MUTED }}>
-        Crunching every order in your history…
+      <div className="space-y-6">
+        {picker}
+        <div className="text-center py-16 text-sm italic" style={{ color: MUTED }}>
+          Crunching orders in your selected window…
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="text-center py-16 text-sm" style={{ color: ROSE }}>
-        Couldn&apos;t load retention analytics. Try again in a moment.
+      <div className="space-y-6">
+        {picker}
+        <div className="text-center py-16 text-sm" style={{ color: ROSE }}>
+          Couldn&apos;t load retention analytics. Try again in a moment.
+        </div>
       </div>
     );
   }
@@ -153,6 +194,9 @@ export function RetentionAnalytics() {
 
   return (
     <div className="space-y-8">
+      {/* Period picker */}
+      <div className={loading ? "opacity-50 transition-opacity" : ""}>{picker}</div>
+
       {/* Top KPIs */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
