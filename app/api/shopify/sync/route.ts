@@ -18,6 +18,24 @@ function customerName(order: ShopifyOrderRaw): string {
   return [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown";
 }
 
+// Retry wrapper for the first DB calls — Neon free tier auto-sleeps after
+// 5 min of inactivity, and the first connection while it's waking up can
+// fail with "Can't reach database server". Up to 30s of retries handles it.
+async function withDbRetry<T>(fn: () => Promise<T>, attempts = 6, baseDelayMs = 1500): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) {
+        await new Promise((r) => setTimeout(r, baseDelayMs + i * 1500));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 async function syncOrders(force: boolean = false) {
   // Refuse to start if another sync is genuinely in progress (within last 3 min).
   // Window is short because the SyncLog status field is unreliable — Neon drops
@@ -25,13 +43,15 @@ async function syncOrders(force: boolean = false) {
   // Real concurrent syncs (two cron triggers racing) only overlap by seconds,
   // so 3 min is plenty to catch actual races without punishing stuck rows.
   const STUCK_THRESHOLD_MS = 3 * 60 * 1000;
-  const inProgress = await prisma.syncLog.findFirst({
-    where: {
-      status: "running",
-      startedAt: { gte: new Date(Date.now() - STUCK_THRESHOLD_MS) },
-    },
-    orderBy: { startedAt: "desc" },
-  });
+  const inProgress = await withDbRetry(() =>
+    prisma.syncLog.findFirst({
+      where: {
+        status: "running",
+        startedAt: { gte: new Date(Date.now() - STUCK_THRESHOLD_MS) },
+      },
+      orderBy: { startedAt: "desc" },
+    })
+  );
   if (inProgress) {
     throw new Error(
       `Another sync is already running (started ${inProgress.startedAt.toISOString()}). Wait for it to finish or restart the dev server.`
