@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 // One-shot endpoint: walks the ShopifyOrder + ShopifyLineItem tables and
 // creates matching SalesOrder rows so the dashboard pages can read them.
 // Does NOT re-fetch from Shopify — purely a DB-to-DB transform. Idempotent.
+export const maxDuration = 60;
+
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
   if (process.env.CRON_SECRET && token !== process.env.CRON_SECRET) {

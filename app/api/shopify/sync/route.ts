@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchAllOrders, ShopifyOrderRaw } from "@/lib/shopify";
 
+// Allow this serverless function up to 60s on Vercel (Hobby max).
+// Default 10s isn't enough when Neon is sleeping + cold-start + actual sync work.
+export const maxDuration = 60;
+
 function parseDate(val?: string | null): Date | null {
   if (!val) return null;
   const d = new Date(val);
