@@ -19,9 +19,12 @@ function customerName(order: ShopifyOrderRaw): string {
 }
 
 async function syncOrders(force: boolean = false) {
-  // Refuse to start if another sync is already in progress (within last 30 min).
-  // Prevents the duplicate-shopifyId errors we hit before from concurrent runs.
-  const STUCK_THRESHOLD_MS = 30 * 60 * 1000;
+  // Refuse to start if another sync is genuinely in progress (within last 3 min).
+  // Window is short because the SyncLog status field is unreliable — Neon drops
+  // long connections so the final "completed" update sometimes doesn't persist.
+  // Real concurrent syncs (two cron triggers racing) only overlap by seconds,
+  // so 3 min is plenty to catch actual races without punishing stuck rows.
+  const STUCK_THRESHOLD_MS = 3 * 60 * 1000;
   const inProgress = await prisma.syncLog.findFirst({
     where: {
       status: "running",
