@@ -7,77 +7,88 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const shopifyTotal = await prisma.shopifyOrder.count();
-  const shopifyWithPaymentGateway = await prisma.shopifyOrder.count({
-    where: { paymentGatewayNames: { not: null } },
-  });
-  const paymentGatewayBreakdown = await prisma.shopifyOrder.groupBy({
-    by: ["paymentGatewayNames"],
-    _count: { _all: true },
-    orderBy: { _count: { paymentGatewayNames: "desc" } },
-  });
-
-  const orderIds = (
-    await prisma.shopifyOrder.findMany({ select: { orderNumber: true } })
-  ).map((o) => o.orderNumber);
-
-  const salesMirrored = await prisma.salesOrder.count({
-    where: { orderId: { in: orderIds } },
-  });
-  const salesWithPayment = await prisma.salesOrder.count({
-    where: { orderId: { in: orderIds }, paymentMethod: { not: null } },
-  });
-  const salesPaymentBreakdown = await prisma.salesOrder.groupBy({
-    by: ["paymentMethod"],
-    where: { orderId: { in: orderIds } },
-    _count: { _all: true },
-    orderBy: { _count: { paymentMethod: "desc" } },
-  });
-
-  const sample = await prisma.shopifyOrder.findFirst({
-    where: { paymentGatewayNames: { not: null } },
+  // Latest 15 ShopifyOrder rows by createdAt
+  const latestShopify = await prisma.shopifyOrder.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 15,
     select: {
       orderNumber: true,
+      createdAt: true,
+      processedAt: true,
+      financialStatus: true,
+      cancelledAt: true,
+      totalPrice: true,
+      phone: true,
+      email: true,
       paymentGatewayNames: true,
-      discountCodes: true,
-      totalDiscounts: true,
     },
   });
 
-  // SyncLog history — to see if any completed
-  const recentLogs = await prisma.syncLog.findMany({
-    orderBy: { startedAt: "desc" },
-    take: 10,
+  // Latest 15 SalesOrder rows by date
+  const latestSales = await prisma.salesOrder.findMany({
+    orderBy: { date: "desc" },
+    take: 15,
+    select: {
+      orderId: true,
+      date: true,
+      flavour: true,
+      mobile: true,
+      total: true,
+      status: true,
+      paymentMethod: true,
+    },
+  });
+
+  // Counts for last 3 days (UTC)
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const yesterday = new Date(today.getTime() - 86400000);
+  const dayBefore = new Date(today.getTime() - 2 * 86400000);
+  const tomorrow = new Date(today.getTime() + 86400000);
+
+  const shopifyToday = await prisma.shopifyOrder.count({
+    where: { createdAt: { gte: today, lt: tomorrow } },
+  });
+  const shopifyYesterday = await prisma.shopifyOrder.count({
+    where: { createdAt: { gte: yesterday, lt: today } },
+  });
+  const salesToday = await prisma.salesOrder.count({
+    where: { date: { gte: today, lt: tomorrow } },
+  });
+  const salesYesterday = await prisma.salesOrder.count({
+    where: { date: { gte: yesterday, lt: today } },
+  });
+  const salesDayBefore = await prisma.salesOrder.count({
+    where: { date: { gte: dayBefore, lt: yesterday } },
+  });
+
+  // Same with mobile filter (what the dashboard actually queries)
+  const salesTodayWithMobile = await prisma.salesOrder.count({
+    where: { date: { gte: today, lt: tomorrow }, duplicate: 1, mobile: { not: "" } },
+  });
+  const salesYesterdayWithMobile = await prisma.salesOrder.count({
+    where: { date: { gte: yesterday, lt: today }, duplicate: 1, mobile: { not: "" } },
   });
 
   return NextResponse.json({
-    syncLogs: recentLogs.map((l) => ({
-      id: l.id,
-      status: l.status,
-      startedAt: l.startedAt,
-      completedAt: l.completedAt,
-      ordersAdded: l.ordersAdded,
-      ordersUpdated: l.ordersUpdated,
-      error: l.error,
-    })),
-    shopifyOrder: {
-      total: shopifyTotal,
-      withPaymentGatewaySet: shopifyWithPaymentGateway,
-      withoutPaymentGateway: shopifyTotal - shopifyWithPaymentGateway,
-      paymentGatewayBreakdown: paymentGatewayBreakdown.slice(0, 15).map((r) => ({
-        gateway: r.paymentGatewayNames,
-        count: r._count._all,
-      })),
+    nowUtc: now.toISOString(),
+    todayUtcStart: today.toISOString(),
+    counts: {
+      shopifyOrder: {
+        today: shopifyToday,
+        yesterday: shopifyYesterday,
+      },
+      salesOrder_raw: {
+        dayBefore: salesDayBefore,
+        yesterday: salesYesterday,
+        today: salesToday,
+      },
+      salesOrder_dashboardFiltered: {
+        yesterday: salesYesterdayWithMobile,
+        today: salesTodayWithMobile,
+      },
     },
-    salesOrder: {
-      total: salesMirrored,
-      withPaymentMethod: salesWithPayment,
-      withoutPaymentMethod: salesMirrored - salesWithPayment,
-      paymentMethodBreakdown: salesPaymentBreakdown.slice(0, 15).map((r) => ({
-        paymentMethod: r.paymentMethod,
-        count: r._count._all,
-      })),
-    },
-    sampleEnrichedShopifyOrder: sample,
+    latestShopifyOrders: latestShopify,
+    latestSalesOrders: latestSales,
   });
 }

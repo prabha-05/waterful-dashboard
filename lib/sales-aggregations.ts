@@ -314,9 +314,20 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
 
   const totalSales = Math.round(primaryOrders.reduce((sum, o) => sum + o.total, 0));
   const totalCustomers = new Set(primaryOrders.map((o) => o.customerName.trim())).size;
-  const totalOrders = primaryOrders.length;
-  const rtoCount = allRawOrders.filter((o) => o.status === "RTO" || o.status === "RTO In Transit").length;
-  const cancelledCount = allRawOrders.filter((o) => o.status === "Cancelled").length;
+  // Count DISTINCT orderId — each Shopify order fans out to N SalesOrder rows
+  // (one per flavour). Counting rows would inflate the count by ~1.5x.
+  const totalOrders = new Set(primaryOrders.map((o) => o.orderId)).size;
+  // Status check is case-insensitive + substring match so it catches Shopify
+  // statuses like "cancelled", "voided", "refunded" mapped via the sync.
+  const rtoOrderIds = new Set<number>();
+  const cancelledOrderIds = new Set<number>();
+  for (const o of allRawOrders) {
+    const s = (o.status || "").toLowerCase();
+    if (s.includes("rto") || s.includes("return")) rtoOrderIds.add(o.orderId);
+    if (s.includes("cancel")) cancelledOrderIds.add(o.orderId);
+  }
+  const rtoCount = rtoOrderIds.size;
+  const cancelledCount = cancelledOrderIds.size;
 
   const top5Orders = [...primaryOrders]
     .sort((a, b) => b.total - a.total)
@@ -689,16 +700,37 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
 
   for (const o of primaryOrders) {
     const ft = isFirstTime(o.mobile);
+    // Sales total stays per-line-item (each line contributes its ₹).
     bump(sales, o.total, ft);
     if (o.mobile) (ft ? firstTimeMobiles : repeatMobiles).add(o.mobile);
   }
+  // Order counters dedupe by orderId so a 2-flavour order counts as 1 order.
+  // Status match is case-insensitive substring so Shopify-mapped values
+  // ("cancelled", "voided", "refunded") all land in the cancelled bucket.
+  const seenConfirmed = new Set<number>();
+  const seenCancelled = new Set<number>();
+  const seenRto = new Set<number>();
   for (const o of allRawOrders) {
     const ft = isFirstTime(o.mobile);
-    const isRto = o.status === "RTO" || o.status === "RTO In Transit";
-    const isCancel = o.status === "Cancelled";
-    if (isRto) bump(rtoSplit, 1, ft);
-    else if (isCancel) bump(cancelledOrdersSplit, 1, ft);
-    else if (o.duplicate === 1) bump(confirmedOrders, 1, ft);
+    const s = (o.status || "").toLowerCase();
+    const isRto = s.includes("rto") || s.includes("return");
+    const isCancel = s.includes("cancel");
+    if (isRto) {
+      if (!seenRto.has(o.orderId)) {
+        seenRto.add(o.orderId);
+        bump(rtoSplit, 1, ft);
+      }
+    } else if (isCancel) {
+      if (!seenCancelled.has(o.orderId)) {
+        seenCancelled.add(o.orderId);
+        bump(cancelledOrdersSplit, 1, ft);
+      }
+    } else if (o.duplicate === 1) {
+      if (!seenConfirmed.has(o.orderId)) {
+        seenConfirmed.add(o.orderId);
+        bump(confirmedOrders, 1, ft);
+      }
+    }
   }
 
   const aov: BuyerSplit = {
