@@ -51,6 +51,6 @@ next-env.d.ts
 
 /lib/generated/prisma
 
-# claude code local settings
-.claude/settings.local.json
+# claude code local settings + state
+.claude/
 .next-dev.log
