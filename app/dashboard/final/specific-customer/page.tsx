@@ -11,7 +11,7 @@ export default function FinalSpecificCustomerPage() {
             "radial-gradient(circle at 0% 0%, rgba(217,119,119,0.08), transparent 45%), radial-gradient(circle at 100% 0%, rgba(122,148,113,0.08), transparent 45%), radial-gradient(circle at 50% 100%, rgba(201,153,84,0.06), transparent 50%)",
         }}
       />
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="mb-6">
           <p
             className="text-xs uppercase tracking-[0.3em]"

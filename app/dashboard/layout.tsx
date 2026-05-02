@@ -16,9 +16,10 @@ export default async function DashboardLayout({
   const username = session.user.name || "User";
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       <Sidebar username={username} />
-      <main className="flex-1 bg-neutral-50 min-h-screen">
+      {/* min-w-0 prevents flex items (charts/tables) from forcing horizontal overflow */}
+      <main className="flex-1 bg-neutral-50 min-h-screen min-w-0">
         {children}
       </main>
     </div>

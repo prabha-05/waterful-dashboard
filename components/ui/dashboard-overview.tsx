@@ -813,9 +813,9 @@ export function DashboardOverview() {
 
       {!loading && data && splits && (
         <>
-          {/* Chart mode toggle */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#e8dfd0" }}>
+          {/* Chart mode toggle — horizontal scroll on narrow screens */}
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+            <div className="inline-flex rounded-xl border overflow-hidden whitespace-nowrap" style={{ borderColor: "#e8dfd0" }}>
               {(["revenue", "orders", "customers", "aov", "products"] as const).map((m) => (
                 <button
                   key={m}
