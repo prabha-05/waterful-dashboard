@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import {
+  startOfIstDay,
+  startOfIstMonth,
+  addDays,
+  addIstMonths,
+  istDayOfWeek,
+  formatIstYmd,
+  formatIstShort,
+  formatIstMonthYear,
+} from "@/lib/timezone";
 
 type PeriodBucket = {
   label: string;
@@ -23,44 +33,35 @@ type PeriodBucket = {
   repeatRtoOrders: number;
 };
 
-function formatDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
+// All date math is IST-aligned. Day boundaries match Shopify's IST view
+// regardless of the server's TZ (Vercel reserves the `TZ` env var name so
+// we can't set it that way; doing it explicitly in code is more robust).
 function buildBuckets(count: number, unit: string, endDay: Date): { label: string; from: Date; to: Date }[] {
   const buckets: { label: string; from: Date; to: Date }[] = [];
-  const today = startOfDay(endDay);
+  const today = startOfIstDay(endDay);
 
   for (let i = count - 1; i >= 0; i--) {
     let from: Date, to: Date, label: string;
 
     if (unit === "day") {
-      from = new Date(today);
-      from.setDate(from.getDate() - i);
-      to = new Date(from);
-      to.setDate(to.getDate() + 1);
-      label = from.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      from = addDays(today, -i);
+      to = addDays(from, 1);
+      label = formatIstShort(from);
     } else if (unit === "week") {
-      // Weeks aligned to Monday (Mon–Sun). The most recent week is the one
-      // containing `today`; earlier weeks step back 7 days at a time.
-      const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, ..., Saturday = 6
+      // Monday-aligned weeks (Mon–Sun) in IST.
+      const dayOfWeek = istDayOfWeek(today); // Sun=0, Mon=1, ..., Sat=6
       const daysSinceMonday = (dayOfWeek + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
-      const mondayOfCurrentWeek = new Date(today);
-      mondayOfCurrentWeek.setDate(today.getDate() - daysSinceMonday);
-      from = new Date(mondayOfCurrentWeek);
-      from.setDate(mondayOfCurrentWeek.getDate() - i * 7);
-      to = new Date(from);
-      to.setDate(from.getDate() + 7);
-      label = `${from.toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(to.getTime() - 86400000).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+      const mondayOfCurrentWeek = addDays(today, -daysSinceMonday);
+      from = addDays(mondayOfCurrentWeek, -i * 7);
+      to = addDays(from, 7);
+      const lastDayOfWeek = addDays(to, -1);
+      label = `${formatIstShort(from)} – ${formatIstShort(lastDayOfWeek)}`;
     } else {
       // month
-      from = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      to = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
-      label = from.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+      const monthStart = startOfIstMonth(today);
+      from = addIstMonths(monthStart, -i);
+      to = addIstMonths(from, 1);
+      label = formatIstMonthYear(from);
     }
 
     buckets.push({ label, from, to });
@@ -178,8 +179,8 @@ export async function GET(req: NextRequest) {
 
     return {
       label: bucket.label,
-      from: formatDate(bucket.from),
-      to: formatDate(bucket.to),
+      from: formatIstYmd(bucket.from),
+      to: formatIstYmd(bucket.to),
       orders: orderCount,
       revenue: Math.round(revenue),
       customers: customerCount,
@@ -285,8 +286,8 @@ export async function GET(req: NextRequest) {
       repeatRtoOrders: prevRepeatRto,
     },
     previousWindow: {
-      from: formatDate(prevFrom),
-      to: formatDate(prevTo),
+      from: formatIstYmd(prevFrom),
+      to: formatIstYmd(prevTo),
     },
   });
 }

@@ -70,6 +70,26 @@ export async function GET(req: NextRequest) {
     where: { date: { gte: yesterday, lt: today }, duplicate: 1, mobile: { not: "" } },
   });
 
+  // Status breakdown for the last 2 days (UTC)
+  const statusBreakdownYesterday = await prisma.shopifyOrder.groupBy({
+    by: ["financialStatus"],
+    where: { createdAt: { gte: yesterday, lt: today } },
+    _count: { _all: true },
+  });
+  const statusBreakdownToday = await prisma.shopifyOrder.groupBy({
+    by: ["financialStatus"],
+    where: { createdAt: { gte: today, lt: tomorrow } },
+    _count: { _all: true },
+  });
+
+  // Cancelled-at-set count (Shopify's "cancelled" definition)
+  const cancelledByCancelledAtYesterday = await prisma.shopifyOrder.count({
+    where: { createdAt: { gte: yesterday, lt: today }, cancelledAt: { not: null } },
+  });
+  const cancelledByCancelledAtToday = await prisma.shopifyOrder.count({
+    where: { createdAt: { gte: today, lt: tomorrow }, cancelledAt: { not: null } },
+  });
+
   return NextResponse.json({
     nowUtc: now.toISOString(),
     todayUtcStart: today.toISOString(),
@@ -86,6 +106,22 @@ export async function GET(req: NextRequest) {
       salesOrder_dashboardFiltered: {
         yesterday: salesYesterdayWithMobile,
         today: salesTodayWithMobile,
+      },
+    },
+    statusBreakdown: {
+      today: {
+        cancelledAt: cancelledByCancelledAtToday,
+        byFinancialStatus: statusBreakdownToday.map((r) => ({
+          status: r.financialStatus,
+          count: r._count._all,
+        })),
+      },
+      yesterday: {
+        cancelledAt: cancelledByCancelledAtYesterday,
+        byFinancialStatus: statusBreakdownYesterday.map((r) => ({
+          status: r.financialStatus,
+          count: r._count._all,
+        })),
       },
     },
     latestShopifyOrders: latestShopify,
