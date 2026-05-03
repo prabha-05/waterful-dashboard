@@ -117,15 +117,23 @@ function MetricCard({
           >
             {format(split.total)}
           </p>
-          <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
-            <span className="flex items-center gap-1.5">
-              <span className="font-bold tabular-nums text-violet-700">{format(split.firstTime)}</span>
-              <span className="text-neutral-600">new users</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="text-neutral-600">repeat</span>
-              <span className="font-bold tabular-nums text-emerald-700">{format(split.repeat)}</span>
-            </span>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            {/* New users — left */}
+            <div>
+              <p className="text-base font-bold tabular-nums text-violet-700">{format(split.firstTime)}</p>
+              <p className="text-xs tabular-nums text-neutral-500">
+                <span className="font-semibold text-violet-600">{pct(split.firstTime, split.total)}%</span>{" "}
+                new
+              </p>
+            </div>
+            {/* Repeat — right */}
+            <div className="text-right">
+              <p className="text-base font-bold tabular-nums text-emerald-700">{format(split.repeat)}</p>
+              <p className="text-xs tabular-nums text-neutral-500">
+                repeat{" "}
+                <span className="font-semibold text-emerald-600">{pct(split.repeat, split.total)}%</span>
+              </p>
+            </div>
           </div>
         </div>
         <div className="mt-3">
