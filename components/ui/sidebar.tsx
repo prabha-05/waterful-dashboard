@@ -38,6 +38,15 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    label: "Meta",
+    icon: null,
+    children: [
+      { label: "Campaigns", href: "/dashboard/final/meta" },
+      { label: "Ad Sets", href: "/dashboard/final/meta/ad-sets" },
+      { label: "Ads", href: "/dashboard/final/meta/ads" },
+    ],
+  },
+  {
     label: "Admin",
     icon: null,
     children: [{ label: "Import Sales CSV", href: "/dashboard/admin/import" }],

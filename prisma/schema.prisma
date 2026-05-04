@@ -95,3 +95,129 @@ model SyncLog {
   ordersUpdated Int    @default(0)
   error       String?
 }
+
+model MetaCampaign {
+  id              Int      @id @default(autoincrement())
+  metaCampaignId  String   @unique
+  name            String
+  status          String
+  objective       String?
+  dailyBudget     Float?
+  lifetimeBudget  Float?
+  startTime       DateTime?
+  stopTime        DateTime?
+  createdTime     DateTime
+  updatedTime     DateTime
+  syncedAt        DateTime @default(now())
+
+  spendDays       MetaAdSpendDaily[]
+}
+
+model MetaAdSpendDaily {
+  id            Int      @id @default(autoincrement())
+  campaignId    Int
+  date          DateTime
+  spend         Float    @default(0)
+  impressions   Int      @default(0)
+  reach         Int      @default(0)
+  clicks        Int      @default(0)
+  ctr           Float    @default(0)
+  cpc           Float    @default(0)
+  cpm           Float    @default(0)
+  purchases     Int      @default(0)
+  purchaseValue Float    @default(0)
+  syncedAt      DateTime @default(now())
+
+  campaign      MetaCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+}
+
+model MetaAdSet {
+  id                Int      @id @default(autoincrement())
+  metaAdSetId       String   @unique
+  metaCampaignId    String
+  name              String
+  status            String
+  effectiveStatus   String?
+  optimizationGoal  String?
+  billingEvent      String?
+  dailyBudget       Float?
+  lifetimeBudget    Float?
+  targetingSummary  String?
+  startTime         DateTime?
+  endTime           DateTime?
+  createdTime       DateTime
+  updatedTime       DateTime
+  syncedAt          DateTime @default(now())
+
+  spendDays         MetaAdSetDaily[]
+  ads               MetaAd[]
+}
+
+model MetaAdSetDaily {
+  id            Int      @id @default(autoincrement())
+  adSetId       Int
+  date          DateTime
+  spend         Float    @default(0)
+  impressions   Int      @default(0)
+  reach         Int      @default(0)
+  clicks        Int      @default(0)
+  ctr           Float    @default(0)
+  cpc           Float    @default(0)
+  cpm           Float    @default(0)
+  frequency     Float    @default(0)
+  purchases     Int      @default(0)
+  purchaseValue Float    @default(0)
+  syncedAt      DateTime @default(now())
+
+  adSet         MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+
+  @@unique([adSetId, date])
+}
+
+model MetaAd {
+  id                Int      @id @default(autoincrement())
+  metaAdId          String   @unique
+  adSetId           Int
+  name              String
+  status            String
+  effectiveStatus   String?
+  creativeId        String?
+  creativeName      String?
+  creativeType      String?
+  thumbnailUrl      String?
+  previewLink       String?
+  createdTime       DateTime
+  updatedTime       DateTime
+  syncedAt          DateTime @default(now())
+
+  adSet             MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  spendDays         MetaAdDaily[]
+}
+
+model MetaAdDaily {
+  id                       Int      @id @default(autoincrement())
+  adId                     Int
+  date                     DateTime
+  spend                    Float    @default(0)
+  impressions              Int      @default(0)
+  reach                    Int      @default(0)
+  clicks                   Int      @default(0)
+  ctr                      Float    @default(0)
+  cpc                      Float    @default(0)
+  cpm                      Float    @default(0)
+  frequency                Float    @default(0)
+  video3sViews             Int      @default(0)
+  videoP75Views            Int      @default(0)
+  purchases                Int      @default(0)
+  purchaseValue            Float    @default(0)
+  qualityRanking           String?
+  engagementRateRanking    String?
+  conversionRateRanking    String?
+  syncedAt                 DateTime @default(now())
+
+  ad                       MetaAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@unique([adId, date])
+}
