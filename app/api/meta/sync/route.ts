@@ -9,7 +9,7 @@ import {
   fetchAdDailyInsights,
 } from "@/lib/meta";
 
-// Up to 60s on Vercel Hobby (matches the Shopify sync pattern)
+// Vercel Hobby limit. Bulk operations target <30s for Waterful-sized accounts.
 export const maxDuration = 60;
 
 interface MetaActionEntry {
@@ -17,8 +17,6 @@ interface MetaActionEntry {
   value: string;
 }
 
-// Pull the value for a "purchase" action from Meta's actions array.
-// Meta has many overlapping types — pick the most inclusive in priority order.
 function pickPurchaseValue(
   actions: MetaActionEntry[] | undefined,
   preferredTypes = ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"]
@@ -31,63 +29,86 @@ function pickPurchaseValue(
   return 0;
 }
 
+// Run promises in chunks of `concurrency`, awaiting each chunk.
+async function chunkedAll<T>(items: T[], concurrency: number, fn: (item: T) => Promise<unknown>) {
+  for (let i = 0; i < items.length; i += concurrency) {
+    const slice = items.slice(i, i + concurrency);
+    await Promise.all(slice.map(fn));
+  }
+}
+
 async function syncMeta(daysBack: number = 30) {
+  const t0 = Date.now();
   const sinceDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
   const untilDate = new Date();
+  const now = new Date();
 
-  // ─── 1. Pull campaigns ───────────────────────────────────────────
+  // ─── 1. Campaigns metadata ───────────────────────────────────────
   const campaigns = await fetchAllCampaigns();
-  let campaignsAdded = 0;
-  let campaignsUpdated = 0;
+  const campaignBuilt = campaigns.map((c) => ({
+    metaCampaignId: c.id,
+    name: c.name,
+    status: c.status,
+    objective: c.objective ?? null,
+    dailyBudget: c.daily_budget ? parseFloat(c.daily_budget) / 100 : null,
+    lifetimeBudget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,
+    startTime: c.start_time ? new Date(c.start_time) : null,
+    stopTime: c.stop_time ? new Date(c.stop_time) : null,
+    createdTime: new Date(c.created_time),
+    updatedTime: new Date(c.updated_time),
+    syncedAt: now,
+  }));
 
-  for (const c of campaigns) {
-    const data = {
-      metaCampaignId: c.id,
-      name: c.name,
-      status: c.status,
-      objective: c.objective ?? null,
-      // Meta budgets are in the smallest currency unit (paise for INR).
-      // Convert to rupees for display.
-      dailyBudget: c.daily_budget ? parseFloat(c.daily_budget) / 100 : null,
-      lifetimeBudget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,
-      startTime: c.start_time ? new Date(c.start_time) : null,
-      stopTime: c.stop_time ? new Date(c.stop_time) : null,
-      createdTime: new Date(c.created_time),
-      updatedTime: new Date(c.updated_time),
-      syncedAt: new Date(),
-    };
+  const existingCampaigns = await prisma.metaCampaign.findMany({
+    select: { metaCampaignId: true, updatedTime: true },
+  });
+  const existingCampaignMap = new Map(
+    existingCampaigns.map((c) => [c.metaCampaignId, c.updatedTime.getTime()])
+  );
+  const newCampaigns = campaignBuilt.filter((c) => !existingCampaignMap.has(c.metaCampaignId));
+  // Only update if Meta says it changed
+  const updateCampaigns = campaignBuilt.filter((c) => {
+    const dbTime = existingCampaignMap.get(c.metaCampaignId);
+    return dbTime !== undefined && dbTime !== c.updatedTime.getTime();
+  });
 
-    const existing = await prisma.metaCampaign.findUnique({
-      where: { metaCampaignId: c.id },
-    });
-    if (existing) {
-      await prisma.metaCampaign.update({
-        where: { metaCampaignId: c.id },
-        data,
-      });
-      campaignsUpdated++;
-    } else {
-      await prisma.metaCampaign.create({ data });
-      campaignsAdded++;
-    }
+  if (newCampaigns.length > 0) {
+    await prisma.metaCampaign.createMany({ data: newCampaigns, skipDuplicates: true });
   }
+  await chunkedAll(updateCampaigns, 25, (c) =>
+    prisma.metaCampaign.update({ where: { metaCampaignId: c.metaCampaignId }, data: c })
+  );
 
-  // ─── 2. Pull daily insights per campaign ─────────────────────────
-  const insights = await fetchDailyInsights(sinceDate, untilDate);
-  let spendRowsWritten = 0;
+  // ─── 2. Campaign daily insights ──────────────────────────────────
+  const campaignInsights = await fetchDailyInsights(sinceDate, untilDate);
 
-  for (const ins of insights) {
-    const campaign = await prisma.metaCampaign.findUnique({
-      where: { metaCampaignId: ins.campaign_id },
-    });
-    if (!campaign) continue;
+  // Build metaCampaignId → dbId map
+  const allCampaigns = await prisma.metaCampaign.findMany({
+    select: { id: true, metaCampaignId: true },
+  });
+  const campaignIdMap = new Map(allCampaigns.map((c) => [c.metaCampaignId, c.id]));
 
-    // Insight date_start is YYYY-MM-DD — store as midnight UTC of that date
-    // (consistent with how Shopify createdAt comes in).
+  const campaignDailyRows: Array<{
+    campaignId: number;
+    date: Date;
+    spend: number;
+    impressions: number;
+    reach: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    cpm: number;
+    purchases: number;
+    purchaseValue: number;
+    syncedAt: Date;
+  }> = [];
+
+  for (const ins of campaignInsights) {
+    const campaignId = campaignIdMap.get(ins.campaign_id);
+    if (!campaignId) continue;
     const date = new Date(`${ins.date_start}T00:00:00Z`);
-
-    const row = {
-      campaignId: campaign.id,
+    campaignDailyRows.push({
+      campaignId,
       date,
       spend: parseFloat(ins.spend || "0"),
       impressions: parseInt(ins.impressions || "0", 10),
@@ -98,59 +119,98 @@ async function syncMeta(daysBack: number = 30) {
       cpm: parseFloat(ins.cpm || "0"),
       purchases: Math.round(pickPurchaseValue(ins.actions)),
       purchaseValue: pickPurchaseValue(ins.action_values),
-      syncedAt: new Date(),
-    };
-
-    await prisma.metaAdSpendDaily.upsert({
-      where: { campaignId_date: { campaignId: campaign.id, date } },
-      update: row,
-      create: row,
+      syncedAt: now,
     });
-    spendRowsWritten++;
   }
 
-  // ─── 3. Pull ad sets ─────────────────────────────────────────────
-  const adSets = await fetchAllAdSets();
-  let adSetsAdded = 0;
-  let adSetsUpdated = 0;
-
-  for (const a of adSets) {
-    const data = {
-      metaAdSetId: a.id,
-      metaCampaignId: a.campaign_id,
-      name: a.name,
-      status: a.status,
-      effectiveStatus: a.effective_status ?? null,
-      optimizationGoal: a.optimization_goal ?? null,
-      billingEvent: a.billing_event ?? null,
-      dailyBudget: a.daily_budget ? parseFloat(a.daily_budget) / 100 : null,
-      lifetimeBudget: a.lifetime_budget ? parseFloat(a.lifetime_budget) / 100 : null,
-      targetingSummary: a.targeting ? JSON.stringify(a.targeting).slice(0, 1000) : null,
-      startTime: a.start_time ? new Date(a.start_time) : null,
-      endTime: a.end_time ? new Date(a.end_time) : null,
-      createdTime: new Date(a.created_time),
-      updatedTime: new Date(a.updated_time),
-      syncedAt: new Date(),
-    };
-    const existing = await prisma.metaAdSet.findUnique({ where: { metaAdSetId: a.id } });
-    if (existing) {
-      await prisma.metaAdSet.update({ where: { metaAdSetId: a.id }, data });
-      adSetsUpdated++;
-    } else {
-      await prisma.metaAdSet.create({ data });
-      adSetsAdded++;
+  // Replace strategy: delete window rows we're about to write, then bulk-insert.
+  if (campaignDailyRows.length > 0) {
+    const dates = Array.from(new Set(campaignDailyRows.map((r) => r.date.toISOString()))).map(
+      (s) => new Date(s)
+    );
+    await prisma.metaAdSpendDaily.deleteMany({ where: { date: { in: dates } } });
+    for (let i = 0; i < campaignDailyRows.length; i += 1000) {
+      await prisma.metaAdSpendDaily.createMany({
+        data: campaignDailyRows.slice(i, i + 1000),
+        skipDuplicates: true,
+      });
     }
   }
 
-  // ─── 4. Daily insights per ad set ────────────────────────────────
+  // ─── 3. Ad sets metadata ─────────────────────────────────────────
+  const adSets = await fetchAllAdSets();
+  const adSetBuilt = adSets.map((a) => ({
+    metaAdSetId: a.id,
+    metaCampaignId: a.campaign_id,
+    name: a.name,
+    status: a.status,
+    effectiveStatus: a.effective_status ?? null,
+    optimizationGoal: a.optimization_goal ?? null,
+    billingEvent: a.billing_event ?? null,
+    dailyBudget: a.daily_budget ? parseFloat(a.daily_budget) / 100 : null,
+    lifetimeBudget: a.lifetime_budget ? parseFloat(a.lifetime_budget) / 100 : null,
+    targetingSummary: a.targeting ? JSON.stringify(a.targeting).slice(0, 1000) : null,
+    startTime: a.start_time ? new Date(a.start_time) : null,
+    endTime: a.end_time ? new Date(a.end_time) : null,
+    createdTime: new Date(a.created_time),
+    updatedTime: new Date(a.updated_time),
+    syncedAt: now,
+  }));
+
+  const existingAdSets = await prisma.metaAdSet.findMany({
+    select: { metaAdSetId: true, updatedTime: true },
+  });
+  const existingAdSetMap = new Map(
+    existingAdSets.map((a) => [a.metaAdSetId, a.updatedTime.getTime()])
+  );
+  const newAdSets = adSetBuilt.filter((a) => !existingAdSetMap.has(a.metaAdSetId));
+  const updateAdSets = adSetBuilt.filter((a) => {
+    const dbTime = existingAdSetMap.get(a.metaAdSetId);
+    return dbTime !== undefined && dbTime !== a.updatedTime.getTime();
+  });
+
+  if (newAdSets.length > 0) {
+    for (let i = 0; i < newAdSets.length; i += 500) {
+      await prisma.metaAdSet.createMany({
+        data: newAdSets.slice(i, i + 500),
+        skipDuplicates: true,
+      });
+    }
+  }
+  await chunkedAll(updateAdSets, 25, (a) =>
+    prisma.metaAdSet.update({ where: { metaAdSetId: a.metaAdSetId }, data: a })
+  );
+
+  // ─── 4. Ad set daily insights ────────────────────────────────────
   const adSetInsights = await fetchAdSetDailyInsights(sinceDate, untilDate);
-  let adSetSpendRows = 0;
+
+  const allAdSets = await prisma.metaAdSet.findMany({
+    select: { id: true, metaAdSetId: true },
+  });
+  const adSetIdMap = new Map(allAdSets.map((a) => [a.metaAdSetId, a.id]));
+
+  const adSetDailyRows: Array<{
+    adSetId: number;
+    date: Date;
+    spend: number;
+    impressions: number;
+    reach: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    cpm: number;
+    frequency: number;
+    purchases: number;
+    purchaseValue: number;
+    syncedAt: Date;
+  }> = [];
+
   for (const ins of adSetInsights) {
-    const adSet = await prisma.metaAdSet.findUnique({ where: { metaAdSetId: ins.adset_id } });
-    if (!adSet) continue;
+    const adSetId = adSetIdMap.get(ins.adset_id);
+    if (!adSetId) continue;
     const date = new Date(`${ins.date_start}T00:00:00Z`);
-    const row = {
-      adSetId: adSet.id,
+    adSetDailyRows.push({
+      adSetId,
       date,
       spend: parseFloat(ins.spend || "0"),
       impressions: parseInt(ins.impressions || "0", 10),
@@ -162,34 +222,57 @@ async function syncMeta(daysBack: number = 30) {
       frequency: parseFloat(ins.frequency || "0"),
       purchases: Math.round(pickPurchaseValue(ins.actions)),
       purchaseValue: pickPurchaseValue(ins.action_values),
-      syncedAt: new Date(),
-    };
-    await prisma.metaAdSetDaily.upsert({
-      where: { adSetId_date: { adSetId: adSet.id, date } },
-      update: row,
-      create: row,
+      syncedAt: now,
     });
-    adSetSpendRows++;
   }
 
-  // ─── 5. Pull ads ─────────────────────────────────────────────────
+  if (adSetDailyRows.length > 0) {
+    const dates = Array.from(new Set(adSetDailyRows.map((r) => r.date.toISOString()))).map(
+      (s) => new Date(s)
+    );
+    await prisma.metaAdSetDaily.deleteMany({ where: { date: { in: dates } } });
+    for (let i = 0; i < adSetDailyRows.length; i += 1000) {
+      await prisma.metaAdSetDaily.createMany({
+        data: adSetDailyRows.slice(i, i + 1000),
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  // ─── 5. Ads metadata ─────────────────────────────────────────────
   const ads = await fetchAllAds();
-  let adsAdded = 0;
-  let adsUpdated = 0;
+
+  const adsBuilt: Array<{
+    metaAdId: string;
+    adSetId: number;
+    name: string;
+    status: string;
+    effectiveStatus: string | null;
+    creativeId: string | null;
+    creativeName: string | null;
+    creativeType: string | null;
+    thumbnailUrl: string | null;
+    previewLink: string | null;
+    createdTime: Date;
+    updatedTime: Date;
+    syncedAt: Date;
+  }> = [];
+  let orphans = 0;
 
   for (const a of ads) {
-    const adSet = await prisma.metaAdSet.findUnique({ where: { metaAdSetId: a.adset_id } });
-    if (!adSet) continue; // skip orphans
-
-    // Detect creative type
+    const adSetDbId = adSetIdMap.get(a.adset_id);
+    if (!adSetDbId) {
+      orphans++;
+      continue;
+    }
     let creativeType: string | null = null;
     if (a.creative?.video_id) creativeType = "video";
     else if (a.creative?.object_type) creativeType = a.creative.object_type.toLowerCase();
     else if (a.creative?.image_url || a.creative?.thumbnail_url) creativeType = "image";
 
-    const data = {
+    adsBuilt.push({
       metaAdId: a.id,
-      adSetId: adSet.id,
+      adSetId: adSetDbId,
       name: a.name,
       status: a.status,
       effectiveStatus: a.effective_status ?? null,
@@ -200,33 +283,74 @@ async function syncMeta(daysBack: number = 30) {
       previewLink: a.preview_shareable_link ?? null,
       createdTime: new Date(a.created_time),
       updatedTime: new Date(a.updated_time),
-      syncedAt: new Date(),
-    };
-
-    const existing = await prisma.metaAd.findUnique({ where: { metaAdId: a.id } });
-    if (existing) {
-      await prisma.metaAd.update({ where: { metaAdId: a.id }, data });
-      adsUpdated++;
-    } else {
-      await prisma.metaAd.create({ data });
-      adsAdded++;
-    }
+      syncedAt: now,
+    });
   }
 
-  // ─── 6. Daily insights per ad ────────────────────────────────────
-  const adInsights = await fetchAdDailyInsights(sinceDate, untilDate);
-  let adSpendRows = 0;
-  for (const ins of adInsights) {
-    const ad = await prisma.metaAd.findUnique({ where: { metaAdId: ins.ad_id } });
-    if (!ad) continue;
-    const date = new Date(`${ins.date_start}T00:00:00Z`);
+  const existingAds = await prisma.metaAd.findMany({
+    select: { metaAdId: true, updatedTime: true },
+  });
+  const existingAdMap = new Map(
+    existingAds.map((a) => [a.metaAdId, a.updatedTime.getTime()])
+  );
+  const newAds = adsBuilt.filter((a) => !existingAdMap.has(a.metaAdId));
+  const updateAds = adsBuilt.filter((a) => {
+    const dbTime = existingAdMap.get(a.metaAdId);
+    return dbTime !== undefined && dbTime !== a.updatedTime.getTime();
+  });
 
+  if (newAds.length > 0) {
+    for (let i = 0; i < newAds.length; i += 500) {
+      await prisma.metaAd.createMany({
+        data: newAds.slice(i, i + 500),
+        skipDuplicates: true,
+      });
+    }
+  }
+  // Higher concurrency for ads since there are many of them.
+  await chunkedAll(updateAds, 50, (a) =>
+    prisma.metaAd.update({ where: { metaAdId: a.metaAdId }, data: a })
+  );
+
+  // ─── 6. Ad daily insights ────────────────────────────────────────
+  const adInsights = await fetchAdDailyInsights(sinceDate, untilDate);
+
+  const allAdsRows = await prisma.metaAd.findMany({
+    select: { id: true, metaAdId: true },
+  });
+  const adIdMap = new Map(allAdsRows.map((a) => [a.metaAdId, a.id]));
+
+  const adDailyRows: Array<{
+    adId: number;
+    date: Date;
+    spend: number;
+    impressions: number;
+    reach: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    cpm: number;
+    frequency: number;
+    video3sViews: number;
+    videoP75Views: number;
+    purchases: number;
+    purchaseValue: number;
+    qualityRanking: string | null;
+    engagementRateRanking: string | null;
+    conversionRateRanking: string | null;
+    syncedAt: Date;
+  }> = [];
+
+  for (const ins of adInsights) {
+    const adId = adIdMap.get(ins.ad_id);
+    if (!adId) continue;
+    const date = new Date(`${ins.date_start}T00:00:00Z`);
     // Meta v22 removed video_3_sec_watched_actions — derive from actions[video_view].
     const video3s = pickPurchaseValue(ins.actions, ["video_view"]);
     const videoP75 = pickPurchaseValue(ins.video_p75_watched_actions, ["video_view"]);
 
-    const row = {
-      adId: ad.id,
+    adDailyRows.push({
+      adId,
       date,
       spend: parseFloat(ins.spend || "0"),
       impressions: parseInt(ins.impressions || "0", 10),
@@ -243,14 +367,21 @@ async function syncMeta(daysBack: number = 30) {
       qualityRanking: ins.quality_ranking ?? null,
       engagementRateRanking: ins.engagement_rate_ranking ?? null,
       conversionRateRanking: ins.conversion_rate_ranking ?? null,
-      syncedAt: new Date(),
-    };
-    await prisma.metaAdDaily.upsert({
-      where: { adId_date: { adId: ad.id, date } },
-      update: row,
-      create: row,
+      syncedAt: now,
     });
-    adSpendRows++;
+  }
+
+  if (adDailyRows.length > 0) {
+    const dates = Array.from(new Set(adDailyRows.map((r) => r.date.toISOString()))).map(
+      (s) => new Date(s)
+    );
+    await prisma.metaAdDaily.deleteMany({ where: { date: { in: dates } } });
+    for (let i = 0; i < adDailyRows.length; i += 1000) {
+      await prisma.metaAdDaily.createMany({
+        data: adDailyRows.slice(i, i + 1000),
+        skipDuplicates: true,
+      });
+    }
   }
 
   return {
@@ -258,16 +389,16 @@ async function syncMeta(daysBack: number = 30) {
     daysBack,
     sinceDate: sinceDate.toISOString(),
     untilDate: untilDate.toISOString(),
-    campaigns: { total: campaigns.length, added: campaignsAdded, updated: campaignsUpdated },
-    adSets: { total: adSets.length, added: adSetsAdded, updated: adSetsUpdated, spendRows: adSetSpendRows },
-    ads: { total: ads.length, added: adsAdded, updated: adsUpdated, spendRows: adSpendRows },
-    campaignSpendRows: spendRowsWritten,
+    campaigns: { total: campaigns.length, added: newCampaigns.length, updated: updateCampaigns.length, dailyRows: campaignDailyRows.length },
+    adSets: { total: adSets.length, added: newAdSets.length, updated: updateAdSets.length, dailyRows: adSetDailyRows.length },
+    ads: { total: ads.length, added: newAds.length, updated: updateAds.length, dailyRows: adDailyRows.length, orphans },
+    elapsedMs: Date.now() - t0,
   };
 }
 
 // GET handler — accepts auth via ?token= query OR Authorization Bearer header.
 // ?wait=true blocks until done (manual debugging); default is async via after().
-// ?days=N controls lookback window (default 30).
+// ?days=N controls lookback window (default 30, capped at 90).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const queryToken = searchParams.get("token");
@@ -293,7 +424,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Async — keep cron-job.org happy with instant 200, work continues in background
+  // Async path for cron — return 200 instantly, run in background.
   after(async () => {
     try {
       await syncMeta(daysBack);

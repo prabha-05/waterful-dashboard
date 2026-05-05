@@ -332,3 +332,40 @@ export async function fetchAdDailyInsights(
   }
   return all;
 }
+
+// ─── Single-record fetches (for cron self-healing) ───────────────
+// When daily insights returns IDs we don't have in DB yet, fetch their
+// metadata one by one. Avoids the slow fetchAll* paginated calls.
+
+const CAMPAIGN_FIELDS =
+  "id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,created_time,updated_time";
+const ADSET_FIELDS =
+  "id,campaign_id,name,status,effective_status,optimization_goal,billing_event,daily_budget,lifetime_budget,start_time,end_time,created_time,updated_time,targeting";
+const AD_FIELDS =
+  "id,adset_id,name,status,effective_status,created_time,updated_time,preview_shareable_link,creative{id,name,title,body,thumbnail_url,image_url,video_id,object_type}";
+
+async function metaGetById<T>(metaId: string, fields: string): Promise<T | null> {
+  if (!META_ACCESS_TOKEN) {
+    throw new Error("META_ACCESS_TOKEN must be set in .env");
+  }
+  const url = `${BASE_URL}/${metaId}?fields=${fields}&access_token=${META_ACCESS_TOKEN}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    const text = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export function fetchCampaignById(metaCampaignId: string): Promise<MetaCampaignRaw | null> {
+  return metaGetById<MetaCampaignRaw>(metaCampaignId, CAMPAIGN_FIELDS);
+}
+
+export function fetchAdSetById(metaAdSetId: string): Promise<MetaAdSetRaw | null> {
+  return metaGetById<MetaAdSetRaw>(metaAdSetId, ADSET_FIELDS);
+}
+
+export function fetchAdById(metaAdId: string): Promise<MetaAdRaw | null> {
+  return metaGetById<MetaAdRaw>(metaAdId, AD_FIELDS);
+}

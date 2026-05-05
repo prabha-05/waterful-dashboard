@@ -7,6 +7,10 @@
     {
       "path": "/api/shopify/mirror",
       "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/meta/sync-ads-daily?days=7",
+      "schedule": "0 22 * * *"
     }
   ]
 }
