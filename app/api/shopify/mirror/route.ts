@@ -67,9 +67,44 @@ export async function GET(req: NextRequest) {
         ? "cancelled"
         : dbOrder.financialStatus;
 
+    if (dbOrder.lineItems.length === 0) {
+      // Defensive: if line items are missing (sync gap, interrupted run, etc.)
+      // still create one placeholder row so the order is counted in totals.
+      // Future sync runs that successfully fetch line items will overwrite this.
+      salesRows.push({
+        month: monthLabel,
+        duplicate: 1,
+        orderId: dbOrder.orderNumber,
+        date: orderDate,
+        flavour: "(no line items)",
+        qty: 0,
+        customerName: dbOrder.customerName,
+        mobile,
+        billingCity: dbOrder.billingCity ?? "",
+        pincode: dbOrder.billingZip ?? "",
+        billingState: dbOrder.billingState ?? "",
+        total: dbOrder.totalPrice,
+        status,
+        paymentMethod: dbOrder.paymentGatewayNames,
+      });
+      continue;
+    }
+
+    // Shopify's `subtotal_price` is already post-order-level-discount, but our
+    // line items only carry per-line discounts. Sum of (price*qty - lineDiscount)
+    // overshoots subtotalPrice when discount codes (WELCOME10 etc.) were used.
+    // Scale each line down so per-order totals match Shopify exactly.
+    const lineGrossSum = dbOrder.lineItems.reduce(
+      (s, li) => s + li.price * li.quantity - li.totalDiscount,
+      0,
+    );
+    const lineScale =
+      lineGrossSum > 0 ? dbOrder.totalPrice / lineGrossSum : 1;
+
     for (const li of dbOrder.lineItems) {
       const flavour = [li.title, li.variantTitle].filter(Boolean).join(" — ");
-      const lineTotal = li.price * li.quantity - li.totalDiscount;
+      const lineGross = li.price * li.quantity - li.totalDiscount;
+      const lineTotal = lineGross * lineScale;
 
       salesRows.push({
         month: monthLabel,

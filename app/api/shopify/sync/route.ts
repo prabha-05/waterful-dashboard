@@ -141,9 +141,11 @@ async function syncOrders(force: boolean = false) {
 
       // Delete any prior line items for this order AND any orphan rows that
       // happen to share the same lineItem.shopifyId (from interrupted past
-      // syncs). This prevents the unique-constraint crash we hit before.
+      // syncs). Wrap with createMany in a transaction so a Neon disconnect
+      // between the two can't leave the order with zero line items
+      // (which silently drops it from the dashboard during mirror).
       const incomingLineItemIds = order.line_items.map((li) => BigInt(li.id));
-      await prisma.shopifyLineItem.deleteMany({
+      const deleteOp = prisma.shopifyLineItem.deleteMany({
         where: {
           OR: [
             { orderId: orderRow.id },
@@ -153,7 +155,7 @@ async function syncOrders(force: boolean = false) {
       });
 
       if (order.line_items.length > 0) {
-        await prisma.shopifyLineItem.createMany({
+        const createOp = prisma.shopifyLineItem.createMany({
           data: order.line_items.map((li) => ({
             shopifyId: BigInt(li.id),
             orderId: orderRow.id,
@@ -167,6 +169,9 @@ async function syncOrders(force: boolean = false) {
             productId: li.product_id ? BigInt(li.product_id) : null,
           })),
         });
+        await prisma.$transaction([deleteOp, createOp]);
+      } else {
+        await deleteOp;
       }
 
       if (existing) {
