@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   fetchAdDailyInsights,
+  fetchAdSetDailyInsights,
+  fetchDailyInsights,
   fetchAdById,
   fetchAdSetById,
   fetchCampaignById,
@@ -257,6 +259,90 @@ export async function GET(request: Request) {
   }
   const tWritten = Date.now();
 
+  // 6. Ad-set daily insights — same delete-then-create pattern.
+  const adSetInsights = await fetchAdSetDailyInsights(sinceDate, untilDate);
+  const adSetDailyRows = adSetInsights
+    .map((ins) => {
+      const adSetDbId = adSetIdMap.get(ins.adset_id);
+      if (!adSetDbId) return null;
+      return {
+        adSetId: adSetDbId,
+        date: new Date(`${ins.date_start}T00:00:00Z`),
+        spend: parseFloat(ins.spend || "0"),
+        impressions: parseInt(ins.impressions || "0", 10),
+        reach: parseInt(ins.reach || "0", 10),
+        clicks: parseInt(ins.clicks || "0", 10),
+        ctr: parseFloat(ins.ctr || "0"),
+        cpc: parseFloat(ins.cpc || "0"),
+        cpm: parseFloat(ins.cpm || "0"),
+        frequency: parseFloat(ins.frequency || "0"),
+        purchases: Math.round(pickValue(ins.actions)),
+        purchaseValue: pickValue(ins.action_values),
+        syncedAt: now,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  let adSetWritten = 0;
+  if (adSetDailyRows.length > 0) {
+    const dates = Array.from(new Set(adSetDailyRows.map((r) => r.date.toISOString()))).map(
+      (s) => new Date(s),
+    );
+    await prisma.metaAdSetDaily.deleteMany({ where: { date: { in: dates } } });
+    for (let i = 0; i < adSetDailyRows.length; i += 1000) {
+      const res = await prisma.metaAdSetDaily.createMany({
+        data: adSetDailyRows.slice(i, i + 1000),
+        skipDuplicates: true,
+      });
+      adSetWritten += res.count;
+    }
+  }
+  const tAdSetWritten = Date.now();
+
+  // 7. Campaign daily insights — same pattern. Need a campaign ID map.
+  const campaignRows = await prisma.metaCampaign.findMany({
+    select: { id: true, metaCampaignId: true },
+  });
+  const campaignIdMap = new Map(campaignRows.map((c) => [c.metaCampaignId, c.id]));
+
+  const campaignInsights = await fetchDailyInsights(sinceDate, untilDate);
+  const campaignDailyRows = campaignInsights
+    .map((ins) => {
+      const campaignDbId = campaignIdMap.get(ins.campaign_id);
+      if (!campaignDbId) return null;
+      return {
+        campaignId: campaignDbId,
+        date: new Date(`${ins.date_start}T00:00:00Z`),
+        spend: parseFloat(ins.spend || "0"),
+        impressions: parseInt(ins.impressions || "0", 10),
+        reach: parseInt(ins.reach || "0", 10),
+        clicks: parseInt(ins.clicks || "0", 10),
+        ctr: parseFloat(ins.ctr || "0"),
+        cpc: parseFloat(ins.cpc || "0"),
+        cpm: parseFloat(ins.cpm || "0"),
+        purchases: Math.round(pickValue(ins.actions)),
+        purchaseValue: pickValue(ins.action_values),
+        syncedAt: now,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  let campaignWritten = 0;
+  if (campaignDailyRows.length > 0) {
+    const dates = Array.from(new Set(campaignDailyRows.map((r) => r.date.toISOString()))).map(
+      (s) => new Date(s),
+    );
+    await prisma.metaAdSpendDaily.deleteMany({ where: { date: { in: dates } } });
+    for (let i = 0; i < campaignDailyRows.length; i += 1000) {
+      const res = await prisma.metaAdSpendDaily.createMany({
+        data: campaignDailyRows.slice(i, i + 1000),
+        skipDuplicates: true,
+      });
+      campaignWritten += res.count;
+    }
+  }
+  const tCampaignWritten = Date.now();
+
   return NextResponse.json({
     success: true,
     daysBack,
@@ -269,6 +355,10 @@ export async function GET(request: Request) {
       rowsToWrite: rows.length,
       skippedUnknownAds: skipped,
       written,
+      adSetInsightsFetched: adSetInsights.length,
+      adSetDailyWritten: adSetWritten,
+      campaignInsightsFetched: campaignInsights.length,
+      campaignDailyWritten: campaignWritten,
       distinctDates: distinctDates.length,
     },
     timings: {
@@ -278,7 +368,9 @@ export async function GET(request: Request) {
       transformMs: tRowsBuilt - tAdsLoaded,
       deleteMs: tDeleted - tRowsBuilt,
       writeMs: tWritten - tDeleted,
-      totalMs: tWritten - t0,
+      adSetSyncMs: tAdSetWritten - tWritten,
+      campaignSyncMs: tCampaignWritten - tAdSetWritten,
+      totalMs: tCampaignWritten - t0,
     },
   });
 }
