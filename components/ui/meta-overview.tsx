@@ -206,9 +206,9 @@ function FunnelStage({
 export function MetaOverview() {
   const [count, setCount] = useState(7);
   const [unit, setUnit] = useState<Unit>("day");
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const [endDate, setEndDate] = useState<Date>(yesterday);
+  const defaultStart = new Date();
+  defaultStart.setDate(defaultStart.getDate() - 7);
+  const [startDate, setStartDate] = useState<Date>(defaultStart);
 
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,7 +216,7 @@ export function MetaOverview() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const qs = `count=${count}&unit=${unit}&end=${formatDateParam(endDate)}`;
+    const qs = `count=${count}&unit=${unit}&start=${formatDateParam(startDate)}`;
     fetch(`/api/meta/overview?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -231,7 +231,7 @@ export function MetaOverview() {
     return () => {
       cancelled = true;
     };
-  }, [count, unit, endDate]);
+  }, [count, unit, startDate]);
 
   const startingLabel = (() => {
     const fromStr = data?.periods?.[0]?.from;
@@ -249,10 +249,10 @@ export function MetaOverview() {
     <PeriodPicker
       count={count}
       unit={unit}
-      endDate={endDate}
+      startDate={startDate}
       onCountChange={setCount}
       onUnitChange={setUnit}
-      onEndDateChange={setEndDate}
+      onStartDateChange={setStartDate}
       trailingLabel={startingLabel}
     />
   );

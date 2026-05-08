@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/style.css";
 import { Minus, Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 const INK = "#4a3a2e";
 const AMBER = "#c99954";
 const SAGE = "#7a9471";
+const BORDER = "#e8dfd0";
+const CREAM_BG = "#faf6ef";
 
 export const UNITS = ["day", "week", "month"] as const;
 export type Unit = (typeof UNITS)[number];
@@ -67,13 +67,13 @@ function MonthGridPicker({
               style={
                 isSelected
                   ? { background: INK, color: "white" }
-                  : { color: INK, background: isFuture ? "transparent" : "#faf6ef" }
+                  : { color: INK, background: isFuture ? "transparent" : CREAM_BG }
               }
               onMouseEnter={(e) => {
                 if (!isSelected && !isFuture) e.currentTarget.style.background = `${AMBER}22`;
               }}
               onMouseLeave={(e) => {
-                if (!isSelected && !isFuture) e.currentTarget.style.background = "#faf6ef";
+                if (!isSelected && !isFuture) e.currentTarget.style.background = CREAM_BG;
               }}
             >
               {m}
@@ -88,10 +88,10 @@ function MonthGridPicker({
 type Props = {
   count: number;
   unit: Unit;
-  endDate: Date;
+  startDate: Date;
   onCountChange: (n: number) => void;
   onUnitChange: (u: Unit) => void;
-  onEndDateChange: (d: Date) => void;
+  onStartDateChange: (d: Date) => void;
   maxCount?: number;
   trailingLabel?: string;
 };
@@ -99,15 +99,15 @@ type Props = {
 export function PeriodPicker({
   count,
   unit,
-  endDate,
+  startDate,
   onCountChange,
   onUnitChange,
-  onEndDateChange,
+  onStartDateChange,
   maxCount = 52,
   trailingLabel,
 }: Props) {
   const [inputValue, setInputValue] = useState(String(count));
-  const [showPicker, setShowPicker] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
   useEffect(() => {
     setInputValue(String(count));
@@ -122,10 +122,14 @@ export function PeriodPicker({
   const inc = () => commit(count + 1);
   const dec = () => commit(count - 1);
 
-  const pickEndDate = (date: Date | undefined) => {
-    if (!date) return;
-    onEndDateChange(date);
-    setShowPicker(false);
+  const todayYmd = formatDateParam(new Date());
+  const startYmd = formatDateParam(startDate);
+
+  const onDateInputChange = (value: string) => {
+    if (!value) return;
+    // value is YYYY-MM-DD — parse as local-time midnight
+    const [y, m, d] = value.split("-").map((s) => parseInt(s, 10));
+    onStartDateChange(new Date(y, m - 1, d));
   };
 
   const pickMonth = (year: number, monthIdx: number) => {
@@ -133,8 +137,8 @@ export function PeriodPicker({
     const lastDay = new Date(year, monthIdx + 1, 0);
     const capped =
       year === today.getFullYear() && monthIdx === today.getMonth() ? today : lastDay;
-    onEndDateChange(capped);
-    setShowPicker(false);
+    onStartDateChange(capped);
+    setShowMonthPicker(false);
   };
 
   const unitLabel = (u: Unit) => ({ day: "Days", week: "Weeks", month: "Months" }[u]);
@@ -181,55 +185,48 @@ export function PeriodPicker({
         ))}
       </div>
 
-      <div className="relative inline-block">
-        <button
-          onClick={() => setShowPicker(!showPicker)}
-          className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
-          style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
-        >
-          <Calendar size={16} style={{ color: AMBER }} />
-          {unit === "month"
-            ? endDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
-            : endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-        </button>
-        {showPicker && (
-          <div
-            className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
-            style={{ background: "white", borderColor: "#e8dfd0" }}
+      {unit === "month" ? (
+        <div className="relative inline-block">
+          <button
+            onClick={() => setShowMonthPicker(!showMonthPicker)}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
+            style={{ background: "white", borderColor: BORDER, color: INK }}
           >
-            {unit === "month" ? (
-              <>
-                <MonthGridPicker selectedDate={endDate} onPick={pickMonth} />
-                <button
-                  onClick={() => { onEndDateChange(new Date()); setShowPicker(false); }}
-                  className="mt-1 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
-                  style={{ background: SAGE }}
-                >
-                  This month
-                </button>
-              </>
-            ) : (
-              <>
-                <DayPicker
-                  mode="single"
-                  selected={endDate}
-                  onSelect={pickEndDate}
-                  endMonth={new Date()}
-                  startMonth={new Date(2022, 0)}
-                  captionLayout="dropdown"
-                />
-                <button
-                  onClick={() => { onEndDateChange(new Date()); setShowPicker(false); }}
-                  className="mt-2 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
-                  style={{ background: SAGE }}
-                >
-                  Reset to Today
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+            <Calendar size={16} style={{ color: AMBER }} />
+            {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+          </button>
+          {showMonthPicker && (
+            <div
+              className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
+              style={{ background: "white", borderColor: BORDER }}
+            >
+              <MonthGridPicker selectedDate={startDate} onPick={pickMonth} />
+              <button
+                onClick={() => { onStartDateChange(new Date()); setShowMonthPicker(false); }}
+                className="mt-1 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
+                style={{ background: SAGE }}
+              >
+                This month
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-2">
+          <Calendar size={14} style={{ color: AMBER }} />
+          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+            Date
+          </label>
+          <input
+            type="date"
+            value={startYmd}
+            max={todayYmd}
+            onChange={(e) => onDateInputChange(e.target.value)}
+            className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+            style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+          />
+        </div>
+      )}
 
       {trailingLabel !== undefined && (
         <p className="text-sm" style={{ color: "#9a8571" }}>

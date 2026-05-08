@@ -11,25 +11,26 @@ import {
   formatIstMonthYear,
 } from "@/lib/timezone";
 
-function buildBuckets(count: number, unit: string, endDay: Date) {
+// Build N buckets going FORWARD from startDay.
+function buildBuckets(count: number, unit: string, startDay: Date) {
   const buckets: { label: string; from: Date; to: Date }[] = [];
-  const today = startOfIstDay(endDay);
-  for (let i = count - 1; i >= 0; i--) {
+  const start = startOfIstDay(startDay);
+  for (let i = 0; i < count; i++) {
     let from: Date, to: Date, label: string;
     if (unit === "day") {
-      from = addDays(today, -i);
+      from = addDays(start, i);
       to = addDays(from, 1);
       label = formatIstShort(from);
     } else if (unit === "week") {
-      const dayOfWeek = istDayOfWeek(today);
+      const dayOfWeek = istDayOfWeek(start);
       const daysSinceMonday = (dayOfWeek + 6) % 7;
-      const monday = addDays(today, -daysSinceMonday);
-      from = addDays(monday, -i * 7);
+      const monday = addDays(start, -daysSinceMonday);
+      from = addDays(monday, i * 7);
       to = addDays(from, 7);
       label = `${formatIstShort(from)} – ${formatIstShort(addDays(to, -1))}`;
     } else {
-      const ms = startOfIstMonth(today);
-      from = addIstMonths(ms, -i);
+      const ms = startOfIstMonth(start);
+      from = addIstMonths(ms, i);
       to = addIstMonths(from, 1);
       label = formatIstMonthYear(from);
     }
@@ -44,10 +45,18 @@ export async function GET(req: NextRequest) {
   if (!["day", "week", "month"].includes(unit)) {
     return NextResponse.json({ error: "unit must be day, week, or month" }, { status: 400 });
   }
-  const endParam = req.nextUrl.searchParams.get("end");
-  const endDay = endParam ? new Date(endParam) : new Date();
+  const startParam = req.nextUrl.searchParams.get("start");
+  const endParam = req.nextUrl.searchParams.get("end"); // back-compat
+  let startDay: Date;
+  if (startParam) {
+    startDay = new Date(startParam);
+  } else if (endParam) {
+    startDay = addDays(new Date(endParam), -(count - 1));
+  } else {
+    startDay = addDays(new Date(), -(count - 1));
+  }
 
-  const buckets = buildBuckets(count, unit, endDay);
+  const buckets = buildBuckets(count, unit, startDay);
   const globalFrom = buckets[0].from;
   const globalTo = buckets[buckets.length - 1].to;
 

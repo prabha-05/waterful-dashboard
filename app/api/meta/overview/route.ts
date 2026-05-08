@@ -11,33 +11,33 @@ import {
   formatIstMonthYear,
 } from "@/lib/timezone";
 
-// Build IST-aligned period buckets matching the Trends page convention.
+// Build N consecutive IST-aligned buckets going FORWARD from startDay.
 function buildBuckets(
   count: number,
   unit: string,
-  endDay: Date
+  startDay: Date
 ): { label: string; from: Date; to: Date }[] {
   const buckets: { label: string; from: Date; to: Date }[] = [];
-  const today = startOfIstDay(endDay);
+  const start = startOfIstDay(startDay);
 
-  for (let i = count - 1; i >= 0; i--) {
+  for (let i = 0; i < count; i++) {
     let from: Date, to: Date, label: string;
 
     if (unit === "day") {
-      from = addDays(today, -i);
+      from = addDays(start, i);
       to = addDays(from, 1);
       label = formatIstShort(from);
     } else if (unit === "week") {
-      const dayOfWeek = istDayOfWeek(today);
+      const dayOfWeek = istDayOfWeek(start);
       const daysSinceMonday = (dayOfWeek + 6) % 7;
-      const mondayOfCurrentWeek = addDays(today, -daysSinceMonday);
-      from = addDays(mondayOfCurrentWeek, -i * 7);
+      const mondayOfStartWeek = addDays(start, -daysSinceMonday);
+      from = addDays(mondayOfStartWeek, i * 7);
       to = addDays(from, 7);
       const lastDay = addDays(to, -1);
       label = `${formatIstShort(from)} – ${formatIstShort(lastDay)}`;
     } else {
-      const monthStart = startOfIstMonth(today);
-      from = addIstMonths(monthStart, -i);
+      const monthStart = startOfIstMonth(start);
+      from = addIstMonths(monthStart, i);
       to = addIstMonths(from, 1);
       label = formatIstMonthYear(from);
     }
@@ -73,10 +73,18 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const endParam = req.nextUrl.searchParams.get("end");
-  const endDay = endParam ? new Date(endParam) : new Date();
+  const startParam = req.nextUrl.searchParams.get("start");
+  const endParam = req.nextUrl.searchParams.get("end"); // back-compat
+  let startDay: Date;
+  if (startParam) {
+    startDay = new Date(startParam);
+  } else if (endParam) {
+    startDay = addDays(new Date(endParam), -(count - 1));
+  } else {
+    startDay = addDays(new Date(), -(count - 1));
+  }
 
-  const buckets = buildBuckets(count, unit, endDay);
+  const buckets = buildBuckets(count, unit, startDay);
   const globalFrom = buckets[0].from;
   const globalTo = buckets[buckets.length - 1].to;
 

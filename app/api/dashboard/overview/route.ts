@@ -36,30 +36,32 @@ type PeriodBucket = {
 // All date math is IST-aligned. Day boundaries match Shopify's IST view
 // regardless of the server's TZ (Vercel reserves the `TZ` env var name so
 // we can't set it that way; doing it explicitly in code is more robust).
-function buildBuckets(count: number, unit: string, endDay: Date): { label: string; from: Date; to: Date }[] {
+// Build N consecutive buckets going FORWARD from startDay.
+// Day → N days starting on startDay. Week → N Monday-aligned weeks
+// starting from the Monday of startDay's week. Month → N calendar months
+// starting on the 1st of startDay's month.
+function buildBuckets(count: number, unit: string, startDay: Date): { label: string; from: Date; to: Date }[] {
   const buckets: { label: string; from: Date; to: Date }[] = [];
-  const today = startOfIstDay(endDay);
+  const start = startOfIstDay(startDay);
 
-  for (let i = count - 1; i >= 0; i--) {
+  for (let i = 0; i < count; i++) {
     let from: Date, to: Date, label: string;
 
     if (unit === "day") {
-      from = addDays(today, -i);
+      from = addDays(start, i);
       to = addDays(from, 1);
       label = formatIstShort(from);
     } else if (unit === "week") {
-      // Monday-aligned weeks (Mon–Sun) in IST.
-      const dayOfWeek = istDayOfWeek(today); // Sun=0, Mon=1, ..., Sat=6
-      const daysSinceMonday = (dayOfWeek + 6) % 7; // Mon=0, Tue=1, ..., Sun=6
-      const mondayOfCurrentWeek = addDays(today, -daysSinceMonday);
-      from = addDays(mondayOfCurrentWeek, -i * 7);
+      const dayOfWeek = istDayOfWeek(start);
+      const daysSinceMonday = (dayOfWeek + 6) % 7;
+      const mondayOfStartWeek = addDays(start, -daysSinceMonday);
+      from = addDays(mondayOfStartWeek, i * 7);
       to = addDays(from, 7);
       const lastDayOfWeek = addDays(to, -1);
       label = `${formatIstShort(from)} – ${formatIstShort(lastDayOfWeek)}`;
     } else {
-      // month
-      const monthStart = startOfIstMonth(today);
-      from = addIstMonths(monthStart, -i);
+      const monthStart = startOfIstMonth(start);
+      from = addIstMonths(monthStart, i);
       to = addIstMonths(from, 1);
       label = formatIstMonthYear(from);
     }
@@ -78,10 +80,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unit must be day, week, or month" }, { status: 400 });
   }
 
+  const startParam = req.nextUrl.searchParams.get("start");
+  // Back-compat: also accept old `end` param so a stale client doesn't 500.
   const endParam = req.nextUrl.searchParams.get("end");
-  const endDay = endParam ? new Date(endParam) : new Date();
+  let startDay: Date;
+  if (startParam) {
+    startDay = new Date(startParam);
+  } else if (endParam) {
+    // Old end-anchored: convert to start-anchored equivalent.
+    startDay = addDays(new Date(endParam), -(count - 1));
+  } else {
+    // Default: window starting (count - 1) days/weeks/months back.
+    const today = new Date();
+    startDay = addDays(today, -(count - 1));
+  }
 
-  const buckets = buildBuckets(count, unit, endDay);
+  const buckets = buildBuckets(count, unit, startDay);
   const globalFrom = buckets[0].from;
   const globalTo = buckets[buckets.length - 1].to;
 

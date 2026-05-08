@@ -24,29 +24,28 @@ const MS_PER_DAY = 86400000;
 const CHURN_THRESHOLD_DAYS = 90;
 const MAX_COHORT_OFFSET = 12;
 
-function computeWindow(count: number, unit: string, endDay: Date): { from: Date; to: Date } {
-  const today = new Date(endDay.getFullYear(), endDay.getMonth(), endDay.getDate());
+// Window covering N consecutive periods going FORWARD from startDay.
+function computeWindow(count: number, unit: string, startDay: Date): { from: Date; to: Date } {
+  const start = new Date(startDay.getFullYear(), startDay.getMonth(), startDay.getDate());
   if (unit === "day") {
-    const from = new Date(today);
-    from.setDate(from.getDate() - (count - 1));
-    const to = new Date(today);
-    to.setDate(to.getDate() + 1);
+    const from = new Date(start);
+    const to = new Date(start);
+    to.setDate(to.getDate() + count);
     return { from, to };
   }
   if (unit === "week") {
-    const dow = today.getDay();
+    const dow = start.getDay();
     const daysSinceMonday = (dow + 6) % 7;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - daysSinceMonday);
+    const monday = new Date(start);
+    monday.setDate(start.getDate() - daysSinceMonday);
     const from = new Date(monday);
-    from.setDate(monday.getDate() - (count - 1) * 7);
     const to = new Date(monday);
-    to.setDate(monday.getDate() + 7);
+    to.setDate(monday.getDate() + count * 7);
     return { from, to };
   }
   // month
-  const from = new Date(today.getFullYear(), today.getMonth() - (count - 1), 1);
-  const to = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const from = new Date(start.getFullYear(), start.getMonth(), 1);
+  const to = new Date(from.getFullYear(), from.getMonth() + count, 1);
   return { from, to };
 }
 
@@ -56,9 +55,21 @@ export async function GET(req: NextRequest) {
   if (!["day", "week", "month"].includes(unit)) {
     return NextResponse.json({ error: "unit must be day, week, or month" }, { status: 400 });
   }
-  const endParam = req.nextUrl.searchParams.get("end");
-  const endDay = endParam ? new Date(endParam) : new Date();
-  const { from: windowStart, to: windowEnd } = computeWindow(count, unit, endDay);
+  const startParam = req.nextUrl.searchParams.get("start");
+  const endParam = req.nextUrl.searchParams.get("end"); // back-compat
+  let startDay: Date;
+  if (startParam) {
+    startDay = new Date(startParam);
+  } else if (endParam) {
+    const ed = new Date(endParam);
+    ed.setDate(ed.getDate() - (count - 1));
+    startDay = ed;
+  } else {
+    const today = new Date();
+    today.setDate(today.getDate() - (count - 1));
+    startDay = today;
+  }
+  const { from: windowStart, to: windowEnd } = computeWindow(count, unit, startDay);
 
   const orders = await prisma.salesOrder.findMany({
     where: {

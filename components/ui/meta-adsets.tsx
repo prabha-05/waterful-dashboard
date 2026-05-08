@@ -119,32 +119,34 @@ function KpiCard({
 export function MetaAdSets() {
   const [count, setCount] = useState(7);
   const [unit, setUnit] = useState<Unit>("day");
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const [endDate, setEndDate] = useState<Date>(yesterday);
+  // Default: window starting 7 days ago so it covers roughly the same data
+  // we used to show with the end-anchored 7-day-ending-yesterday default.
+  const defaultStart = new Date();
+  defaultStart.setDate(defaultStart.getDate() - 7);
+  const [startDate, setStartDate] = useState<Date>(defaultStart);
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const qs = `count=${count}&unit=${unit}&end=${formatDateParam(endDate)}`;
+    const qs = `count=${count}&unit=${unit}&start=${formatDateParam(startDate)}`;
     fetch(`/api/meta/ad-sets?${qs}`)
       .then((r) => r.json())
       .then((d) => { if (!cancelled) setData(d); })
       .catch(() => { if (!cancelled) setData(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [count, unit, endDate]);
+  }, [count, unit, startDate]);
 
   const picker = (
     <PeriodPicker
       count={count}
       unit={unit}
-      endDate={endDate}
+      startDate={startDate}
       onCountChange={setCount}
       onUnitChange={setUnit}
-      onEndDateChange={setEndDate}
+      onStartDateChange={setStartDate}
     />
   );
 

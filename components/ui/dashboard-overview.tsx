@@ -395,9 +395,9 @@ export function DashboardOverview() {
   const [count, setCount] = useState(7);
   const [inputValue, setInputValue] = useState("7");
   const [unit, setUnit] = useState<Unit>("day");
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const [endDate, setEndDate] = useState<Date>(yesterday);
+  const defaultStart = new Date();
+  defaultStart.setDate(defaultStart.getDate() - 7);
+  const [startDate, setStartDate] = useState<Date>(defaultStart);
   const [showPicker, setShowPicker] = useState(false);
   const [data, setData] = useState<OverviewData | null>(null);
   const [salesData, setSalesData] = useState<any | null>(null);
@@ -406,10 +406,10 @@ export function DashboardOverview() {
   const [chartMode, setChartMode] = useState<ChartMode>("revenue");
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
 
-  const fetchData = useCallback(async (c: number, u: string, end: Date) => {
+  const fetchData = useCallback(async (c: number, u: string, start: Date) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard/overview?count=${c}&unit=${u}&end=${formatDateParam(end)}`);
+      const res = await fetch(`/api/dashboard/overview?count=${c}&unit=${u}&start=${formatDateParam(start)}`);
       setData(await res.json());
     } catch {
       setData(null);
@@ -419,8 +419,8 @@ export function DashboardOverview() {
   }, []);
 
   useEffect(() => {
-    fetchData(count, unit, endDate);
-  }, [count, unit, endDate, fetchData]);
+    fetchData(count, unit, startDate);
+  }, [count, unit, startDate, fetchData]);
 
   // Fetch deep-dive trending data for the same window shown in the overview.
   useEffect(() => {
@@ -448,20 +448,14 @@ export function DashboardOverview() {
     };
   }, [data]);
 
-  const pickEndDate = (date: Date | undefined) => {
-    if (!date) return;
-    setEndDate(date);
-    setShowPicker(false);
-  };
-
-  // Month mode: selecting April 2026 means "window ends on the last day of April".
+  // Month mode: selecting April 2026 means "window starts on the 1st of April".
   // If the picked month is the current month, cap at today (API rejects future dates).
   const pickMonth = (year: number, monthIdx: number) => {
     const today = new Date();
-    const lastDay = new Date(year, monthIdx + 1, 0); // day 0 of next month = last day of this month
+    const firstDay = new Date(year, monthIdx, 1);
     const capped =
-      year === today.getFullYear() && monthIdx === today.getMonth() ? today : lastDay;
-    setEndDate(capped);
+      year === today.getFullYear() && monthIdx === today.getMonth() ? today : firstDay;
+    setStartDate(capped);
     setShowPicker(false);
   };
 
@@ -706,56 +700,52 @@ export function DashboardOverview() {
           ))}
         </div>
 
-        <div className="relative inline-block">
-          <button
-            onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
-            style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
-          >
-            <Calendar size={16} style={{ color: AMBER }} />
-            {unit === "month"
-              ? endDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })
-              : endDate.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-          </button>
-
-          {showPicker && (
-            <div
-              className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
-              style={{ background: "white", borderColor: "#e8dfd0" }}
+        {unit === "month" ? (
+          <div className="relative inline-block">
+            <button
+              onClick={() => setShowPicker(!showPicker)}
+              className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
+              style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
             >
-              {unit === "month" ? (
-                <>
-                  <MonthGridPicker selectedDate={endDate} onPick={pickMonth} />
-                  <button
-                    onClick={() => { setEndDate(new Date()); setShowPicker(false); }}
-                    className="mt-1 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
-                    style={{ background: SAGE }}
-                  >
-                    This month
-                  </button>
-                </>
-              ) : (
-                <>
-                  <DayPicker
-                    mode="single"
-                    selected={endDate}
-                    onSelect={pickEndDate}
-                    endMonth={new Date()}
-                    startMonth={new Date(2022, 0)}
-                    captionLayout="dropdown"
-                  />
-                  <button
-                    onClick={() => { setEndDate(new Date()); setShowPicker(false); }}
-                    className="mt-2 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
-                    style={{ background: SAGE }}
-                  >
-                    Reset to Today
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+              <Calendar size={16} style={{ color: AMBER }} />
+              {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+            </button>
+            {showPicker && (
+              <div
+                className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
+                style={{ background: "white", borderColor: "#e8dfd0" }}
+              >
+                <MonthGridPicker selectedDate={startDate} onPick={pickMonth} />
+                <button
+                  onClick={() => { setStartDate(new Date()); setShowPicker(false); }}
+                  className="mt-1 w-full rounded-lg px-4 py-2 text-xs font-medium text-white"
+                  style={{ background: SAGE }}
+                >
+                  This month
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-2">
+            <Calendar size={14} style={{ color: AMBER }} />
+            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+              Date
+            </label>
+            <input
+              type="date"
+              value={formatDateParam(startDate)}
+              max={formatDateParam(new Date())}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const [y, m, d] = e.target.value.split("-").map((s) => parseInt(s, 10));
+                setStartDate(new Date(y, m - 1, d));
+              }}
+              className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+              style={{ borderColor: "#e8dfd0", color: INK, background: "#faf6ef" }}
+            />
+          </div>
+        )}
 
         <p className="text-sm" style={{ color: "#9a8571" }}>
           <span className="font-bold" style={{ color: INK }}>
