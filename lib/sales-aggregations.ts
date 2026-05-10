@@ -106,7 +106,11 @@ export async function computeItemDaily(
   endDate: Date,
 ): Promise<{ productDaily: ProductDailyPoint[]; paymentDaily: PaymentDailyPoint[] }> {
   const rows = await prisma.salesOrder.findMany({
-    where: { date: { gte: startDate, lt: endDate }, duplicate: 1 },
+    where: {
+      date: { gte: startDate, lt: endDate },
+      duplicate: 1,
+      NOT: { status: { contains: "cancel", mode: "insensitive" } },
+    },
     select: { date: true, flavour: true, qty: true, total: true, paymentMethod: true, mobile: true },
   });
 
@@ -206,7 +210,11 @@ export async function computeDailyBreakdown(
 ): Promise<DailyBreakdownPoint[]> {
   const [primary, allRaw] = await Promise.all([
     prisma.salesOrder.findMany({
-      where: { date: { gte: startDate, lt: endDate }, duplicate: 1 },
+      where: {
+        date: { gte: startDate, lt: endDate },
+        duplicate: 1,
+        NOT: { status: { contains: "cancel", mode: "insensitive" } },
+      },
       select: { date: true, total: true, mobile: true },
     }),
     prisma.salesOrder.findMany({
@@ -301,10 +309,15 @@ export async function computeDailyBreakdown(
 }
 
 export async function computeSalesMetrics(startDate: Date, endDate: Date): Promise<SalesMetrics> {
+  // Primary line-item rows (one per flavour per order), excluding cancelled.
+  // Excluding cancelled at the source so totals/customers/products/payments
+  // all match Shopify's "Total sales" view. Cancelled + RTO rows are handled
+  // separately below via allRawOrders.
   const primaryOrders = await prisma.salesOrder.findMany({
     where: {
       date: { gte: startDate, lt: endDate },
       duplicate: 1,
+      NOT: { status: { contains: "cancel", mode: "insensitive" } },
     },
   });
 
@@ -314,9 +327,12 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
 
   const totalSales = Math.round(primaryOrders.reduce((sum, o) => sum + o.total, 0));
   const totalCustomers = new Set(primaryOrders.map((o) => o.customerName.trim())).size;
-  // Count DISTINCT orderId — each Shopify order fans out to N SalesOrder rows
-  // (one per flavour). Counting rows would inflate the count by ~1.5x.
-  const totalOrders = new Set(primaryOrders.map((o) => o.orderId)).size;
+  // Count DISTINCT orderId across ALL primary rows including cancelled —
+  // matches Shopify's "Orders" header which counts every order placed.
+  // (primaryOrders is filtered to exclude cancelled, so we count from allRawOrders.)
+  const totalOrders = new Set(
+    allRawOrders.filter((o) => o.duplicate === 1).map((o) => o.orderId),
+  ).size;
   // Status check is case-insensitive + substring match so it catches Shopify
   // statuses like "cancelled", "voided", "refunded" mapped via the sync.
   const rtoOrderIds = new Set<number>();
@@ -782,6 +798,47 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
     }))
     .sort((a, b) => b.total - a.total);
 
+  // Discount codes — pulled from ShopifyOrder.discountCodes (comma-separated).
+  // Aggregated as revenue per code with first-time vs repeat split.
+  // Each line of a multi-line order contributes its line.total to the code(s)
+  // its parent order used, so the per-code "total" sums to revenue attributable
+  // to that code (matches the payment column logic).
+  const orderIdsForCodes = Array.from(new Set(primaryOrders.map((o) => o.orderId)));
+  const codeRows = orderIdsForCodes.length
+    ? await prisma.shopifyOrder.findMany({
+        where: { orderNumber: { in: orderIdsForCodes }, discountCodes: { not: null } },
+        select: { orderNumber: true, discountCodes: true },
+      })
+    : [];
+  const codesByOrder = new Map<number, string[]>();
+  for (const r of codeRows) {
+    if (!r.discountCodes) continue;
+    const codes = r.discountCodes.split(",").map((c) => c.trim()).filter(Boolean);
+    if (codes.length > 0) codesByOrder.set(r.orderNumber, codes);
+  }
+
+  const codeMap = new Map<string, { total: number; firstTime: number; repeat: number }>();
+  for (const o of primaryOrders) {
+    const codes = codesByOrder.get(o.orderId);
+    if (!codes) continue;
+    const ft = isFirstTime(o.mobile);
+    for (const code of codes) {
+      const e = codeMap.get(code) || { total: 0, firstTime: 0, repeat: 0 };
+      e.total += o.total;
+      if (ft) e.firstTime += o.total;
+      else e.repeat += o.total;
+      codeMap.set(code, e);
+    }
+  }
+  const discountCodes = Array.from(codeMap.entries())
+    .map(([code, v]) => ({
+      code,
+      total: Math.round(v.total),
+      firstTime: Math.round(v.firstTime),
+      repeat: Math.round(v.repeat),
+    }))
+    .sort((a, b) => b.total - a.total);
+
   const summaryTable: SummaryTable = {
     overallSale: {
       sales: {
@@ -797,7 +854,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
     },
     productSale,
     payment,
-    discountCodes: [],
+    discountCodes,
   };
 
   return {

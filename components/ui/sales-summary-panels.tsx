@@ -352,13 +352,24 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         icon={<TicketPercent size={18} />}
         tone="amber"
       >
-        <p className="rounded-xl border border-dashed border-neutral-200 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-6 text-center text-sm text-neutral-500">
-          Discount code data isn&apos;t tracked in the current dataset.
-          <br />
-          <span className="text-xs text-neutral-400">
-            Add a <code className="rounded bg-white px-1.5 py-0.5 text-amber-700">discountCode</code> column to the order import and this panel will light up.
-          </span>
-        </p>
+        {s.discountCodes.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-neutral-200 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-6 text-center text-sm text-neutral-500">
+            No discount codes used in this period.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {s.discountCodes.map((p, i) => (
+              <SplitRow
+                key={p.code}
+                rank={i + 1}
+                label={p.code}
+                split={{ total: p.total, firstTime: p.firstTime, repeat: p.repeat }}
+                format={fmtMoney}
+                accent="from-amber-500 to-orange-500"
+              />
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* Heat Map */}
