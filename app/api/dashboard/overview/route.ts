@@ -155,26 +155,27 @@ export async function GET(req: NextRequest) {
     for (const o of bucketOrders) {
       mobiles.add(o.mobile);
       allOrderIds.add(o.orderId);
-      revenue += o.total;
 
       const status = (o.status || "").toLowerCase();
       const isCancelled = status.includes("cancel");
       const isRto = status.includes("rto") || status.includes("return");
       if (isCancelled) cancelledOrderIds.add(o.orderId);
       if (isRto) rtoOrderIds.add(o.orderId);
+      // Revenue excludes cancelled to match Shopify's "Total sales" view.
+      if (!isCancelled) revenue += o.total;
 
       const firstDate = firstOrderDate.get(o.mobile);
       const isFt = firstDate && firstDate >= bucket.from && firstDate < bucket.to;
       if (isFt) {
         ftMobiles.add(o.mobile);
         ftOrderIds.add(o.orderId);
-        ftRevenue += o.total;
+        if (!isCancelled) ftRevenue += o.total;
         if (isCancelled) ftCancelledOrderIds.add(o.orderId);
         if (isRto) ftRtoOrderIds.add(o.orderId);
       } else {
         repeatMobiles.add(o.mobile);
         repeatOrderIds.add(o.orderId);
-        repeatRevenue += o.total;
+        if (!isCancelled) repeatRevenue += o.total;
         if (isCancelled) repeatCancelledOrderIds.add(o.orderId);
         if (isRto) repeatRtoOrderIds.add(o.orderId);
       }
@@ -240,22 +241,22 @@ export async function GET(req: NextRequest) {
   let prevRepeatRevenue = 0;
   for (const o of prevOrdersRows) {
     prevOrderIds.add(o.orderId);
-    prevRevenue += o.total;
     const s = (o.status || "").toLowerCase();
     const isCancelled = s.includes("cancel");
     const isRto = s.includes("rto") || s.includes("return");
     if (isCancelled) prevCancelledIds.add(o.orderId);
     if (isRto) prevRtoIds.add(o.orderId);
+    if (!isCancelled) prevRevenue += o.total;
     const firstDate = firstOrderDate.get(o.mobile);
     const isFt = firstDate && firstDate >= prevFrom && firstDate < prevTo;
     if (isFt) {
       prevFtOrderIds.add(o.orderId);
-      prevFtRevenue += o.total;
+      if (!isCancelled) prevFtRevenue += o.total;
       if (isCancelled) prevFtCancelledIds.add(o.orderId);
       if (isRto) prevFtRtoIds.add(o.orderId);
     } else {
       prevRepeatOrderIds.add(o.orderId);
-      prevRepeatRevenue += o.total;
+      if (!isCancelled) prevRepeatRevenue += o.total;
       if (isCancelled) prevRepeatCancelledIds.add(o.orderId);
       if (isRto) prevRepeatRtoIds.add(o.orderId);
     }
