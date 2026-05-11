@@ -487,7 +487,7 @@ export function SalesTrendingDetails({ data }: { data: PeriodData }) {
 
       <ProductTrend metrics={data} />
       <PaymentTrend metrics={data} />
-      <DiscountCodesPlaceholder />
+      <DiscountCodes metrics={data} />
     </div>
   );
 }
@@ -498,7 +498,7 @@ export function SalesTrendingExtras({ data }: { data: PeriodData }) {
   return (
     <div className="space-y-6">
       <PaymentTrend metrics={data} />
-      <DiscountCodesPlaceholder />
+      <DiscountCodes metrics={data} />
     </div>
   );
 }
@@ -854,17 +854,55 @@ function PaymentTrend({ metrics }: { metrics: PeriodData }) {
   );
 }
 
-/* ─────── Discount codes placeholder (not in data yet) ─────── */
-function DiscountCodesPlaceholder() {
+/* ─────── Discount codes — top codes with FT/repeat split ─────── */
+function DiscountCodes({ metrics }: { metrics: PeriodData }) {
+  const codes = metrics.summaryTable.discountCodes.slice(0, 8);
+  if (codes.length === 0) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold text-neutral-900">Discount Codes</h2>
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/60 p-6 text-center text-sm text-neutral-500">
+          No discount codes used in this period.
+        </div>
+      </section>
+    );
+  }
+  const max = Math.max(...codes.map((c) => c.total), 1);
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-bold text-neutral-900">Discount Codes</h2>
-      <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50/60 p-6 text-sm text-amber-900">
-        <p className="font-medium">No discount data yet.</p>
-        <p className="mt-1 text-amber-800/80">
-          Your order import (CSV + <code className="rounded bg-white px-1.5 py-0.5 text-amber-700">SalesOrder</code> schema) doesn&apos;t carry a discount-code column.
-          Add a <code className="rounded bg-white px-1.5 py-0.5 text-amber-700">discountCode</code> field to the import and this panel will light up with code-by-code trends.
-        </p>
+      <p className="text-xs italic text-neutral-400">
+        Top codes by revenue. Bar split shows first-time vs repeat customer share.
+      </p>
+      <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="space-y-3">
+          {codes.map((c, i) => {
+            const ftPct = c.total > 0 ? (c.firstTime / c.total) * 100 : 0;
+            const repeatPct = c.total > 0 ? (c.repeat / c.total) * 100 : 0;
+            const widthPct = (c.total / max) * 100;
+            return (
+              <div key={c.code} className="space-y-1">
+                <div className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-mono text-xs text-neutral-400">{i + 1}.</span>
+                    <span className="font-semibold text-neutral-900">{c.code}</span>
+                  </span>
+                  <span className="tabular-nums font-medium text-neutral-700">
+                    {formatCurrency(c.total)}
+                  </span>
+                </div>
+                <div className="flex h-2 w-full overflow-hidden rounded-full bg-neutral-100" style={{ width: `${widthPct}%` }}>
+                  <div className="h-full bg-violet-500" style={{ width: `${ftPct}%` }} />
+                  <div className="h-full bg-emerald-500" style={{ width: `${repeatPct}%` }} />
+                </div>
+                <div className="flex justify-between text-[10px] tabular-nums text-neutral-500">
+                  <span className="text-violet-600">FT {formatCurrency(c.firstTime)}</span>
+                  <span className="text-emerald-600">Repeat {formatCurrency(c.repeat)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
