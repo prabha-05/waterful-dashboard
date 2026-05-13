@@ -330,6 +330,8 @@ export function MetaAds() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [activeOnly, setActiveOnly] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -349,6 +351,45 @@ export function MetaAds() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [from, to]);
+
+  // Client-side filters: active-only toggle + smart search.
+  // Search keywords:
+  //   - "performing" / "top" / "winning"  → ROAS >= 2
+  //   - "losing" / "killer" / "bad"       → ROAS < 1 AND spend > 1000
+  //   - "fatigue" / "fatigued" / "tired"  → avgFrequency > 3
+  // Otherwise: substring match on ad name (case-insensitive).
+  const filteredAds = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    const isPerforming = /performing|^top$|top |winning/.test(q);
+    const isLosing = /losing|killer|^bad$|bad /.test(q);
+    const isFatigued = /fatigue|tired/.test(q);
+    const isHealth = isPerforming || isLosing || isFatigued;
+
+    return data.ads.filter((a) => {
+      if (activeOnly && a.status !== "ACTIVE") return false;
+      if (!q) return true;
+      if (isHealth) {
+        if (isPerforming && !(a.roas >= 2)) return false;
+        if (isLosing && !(a.roas < 1 && a.spend > 1000)) return false;
+        if (isFatigued && !(a.avgFrequency > 3)) return false;
+        return true;
+      }
+      return a.name.toLowerCase().includes(q);
+    });
+  }, [data, activeOnly, search]);
+
+  // If the currently-selected ad gets filtered out, fall back to the top of
+  // the filtered list (or clear selection if the list is empty).
+  useEffect(() => {
+    if (filteredAds.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!filteredAds.some((a) => a.adId === selectedId)) {
+      setSelectedId(filteredAds[0].adId);
+    }
+  }, [filteredAds, selectedId]);
 
   const selected = useMemo(() => {
     if (!data || selectedId == null) return null;
@@ -383,10 +424,56 @@ export function MetaAds() {
           style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
         />
       </div>
+
+      {/* Active-only toggle */}
+      <button
+        onClick={() => setActiveOnly((v) => !v)}
+        className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+        style={{
+          borderColor: BORDER,
+          background: activeOnly ? `${SAGE}22` : CREAM_BG,
+          color: activeOnly ? SAGE : MUTED,
+        }}
+        title="Show only ads with status = ACTIVE"
+      >
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ background: activeOnly ? SAGE : MUTED }}
+        />
+        Active only
+      </button>
+
+      {/* Search box */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Name / performing / losing / fatigued…"
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG, width: 200 }}
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="text-xs"
+            style={{ color: MUTED }}
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       <span className="ml-auto text-xs" style={{ color: MUTED }}>
         {data ? (
           <>
-            <span className="font-bold" style={{ color: INK }}>{data.totals.adsCount}</span> ads with spend
+            <span className="font-bold" style={{ color: INK }}>{filteredAds.length}</span>
+            {(activeOnly || search) ? " of " : " "}
+            {(activeOnly || search) && (
+              <span className="font-semibold" style={{ color: INK }}>{data.totals.adsCount}</span>
+            )}
+            {(activeOnly || search) ? " ads" : "ads with spend"}
             {" · "}
             Last sync: <span className="font-semibold" style={{ color: INK }}>{formatRelative(data.meta.lastSyncedAt)}</span>
           </>
@@ -490,14 +577,16 @@ export function MetaAds() {
               </tr>
             </thead>
             <tbody>
-              {data.ads.length === 0 && (
+              {filteredAds.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
-                    No ad spend in this window. Try a wider date range.
+                    {data.ads.length === 0
+                      ? "No ad spend in this window. Try a wider date range."
+                      : "No ads match the current filters. Try clearing search or turning off 'Active only'."}
                   </td>
                 </tr>
               )}
-              {data.ads.map((ad) => {
+              {filteredAds.map((ad) => {
                 const isSelected = ad.adId === selectedId;
                 const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
                 const freqColor = ad.avgFrequency > 3 ? ROSE : ad.avgFrequency > 2 ? AMBER : INK;
@@ -583,7 +672,7 @@ export function MetaAds() {
                 className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400 max-w-xs"
                 style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
               >
-                {data.ads.map((a) => (
+                {filteredAds.map((a) => (
                   <option key={a.adId} value={a.adId}>{a.name}</option>
                 ))}
               </select>

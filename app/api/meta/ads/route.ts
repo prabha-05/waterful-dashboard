@@ -131,10 +131,34 @@ export async function GET(req: NextRequest) {
     if (r.conversionRateRanking) agg.conversionRateRanking = r.conversionRateRanking;
   }
 
+  // Generate full list of date strings in window so we can pad each ad's
+  // daily series with zeros for days it had no spend. Without padding,
+  // an ad that only ran on 1 day shows a single-dot sparkline instead
+  // of a curve over the full window.
+  const windowDates: string[] = [];
+  for (let d = new Date(from); d < toExclusive; d = addDays(d, 1)) {
+    windowDates.push(formatIstYmd(d));
+  }
+  const emptyDay = (date: string): DailyPoint => ({
+    date,
+    spend: 0,
+    impressions: 0,
+    reach: 0,
+    clicks: 0,
+    purchases: 0,
+    purchaseValue: 0,
+    frequency: 0,
+    hookRate: 0,
+    holdRate: 0,
+  });
+
   const now = Date.now();
   const ads = Array.from(map.values())
     .map((a) => {
       a.daily.sort((x, y) => x.date.localeCompare(y.date));
+      // Pad with zero-rows for missing days
+      const byDate = new Map(a.daily.map((d) => [d.date, d]));
+      a.daily = windowDates.map((date) => byDate.get(date) ?? emptyDay(date));
       const t = a.daily.reduce(
         (acc, d) => ({
           spend: acc.spend + d.spend,
@@ -144,7 +168,8 @@ export async function GET(req: NextRequest) {
           purchases: acc.purchases + d.purchases,
           purchaseValue: acc.purchaseValue + d.purchaseValue,
           frequencySum: acc.frequencySum + d.frequency,
-          days: acc.days + 1,
+          // Count only days the ad actually ran (frequency=0 = padded zero-row)
+          days: acc.days + (d.frequency > 0 ? 1 : 0),
         }),
         { spend: 0, impressions: 0, reach: 0, clicks: 0, purchases: 0, purchaseValue: 0, frequencySum: 0, days: 0 }
       );
