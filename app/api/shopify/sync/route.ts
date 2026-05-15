@@ -235,10 +235,47 @@ async function syncOrders(force: boolean = false) {
             ? order.payment_gateway_names.join(", ")
             : null;
 
+        // Defensive: if Shopify returned an order with zero line items
+        // (sync gap), still push one placeholder row so the order isn't
+        // silently dropped from totals. The /api/shopify/mirror route does
+        // the same thing.
+        if (order.line_items.length === 0) {
+          salesRows.push({
+            month: monthLabel,
+            duplicate: 1,
+            orderId: order.order_number,
+            date: orderDate,
+            flavour: "(no line items)",
+            qty: 0,
+            customerName: cName,
+            mobile,
+            billingCity,
+            pincode,
+            billingState,
+            total: parseFloat(order.total_price),
+            status,
+            paymentMethod,
+          });
+          continue;
+        }
+
+        // Apply the same per-order scale the mirror uses so the sum of
+        // per-line totals equals Shopify's totalPrice exactly. Shopify's
+        // subtotalPrice is already post-order-level-discount; our line
+        // totals (price*qty - lineDiscount) overshoot when discount codes
+        // like WELCOME10 were used.
+        const orderTotalPrice = parseFloat(order.total_price);
+        const lineGrossSum = order.line_items.reduce(
+          (s, li) => s + parseFloat(li.price) * li.quantity - parseFloat(li.total_discount || "0"),
+          0,
+        );
+        const lineScale = lineGrossSum > 0 ? orderTotalPrice / lineGrossSum : 1;
+
         for (const li of order.line_items) {
           const flavour = [li.title, li.variant_title].filter(Boolean).join(" — ");
-          const lineTotal =
+          const lineGross =
             parseFloat(li.price) * li.quantity - parseFloat(li.total_discount || "0");
+          const lineTotal = lineGross * lineScale;
 
           salesRows.push({
             month: monthLabel,
