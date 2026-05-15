@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/ui/sidebar";
-import { OutageBanner } from "@/components/ui/outage-banner";
 
 export default async function DashboardLayout({
   children,
@@ -21,7 +20,6 @@ export default async function DashboardLayout({
       <Sidebar username={username} />
       {/* min-w-0 prevents flex items (charts/tables) from forcing horizontal overflow */}
       <main className="flex-1 bg-neutral-50 min-h-screen min-w-0">
-        <OutageBanner />
         {children}
       </main>
     </div>
