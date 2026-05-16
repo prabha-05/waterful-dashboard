@@ -111,23 +111,52 @@ export async function computeItemDaily(
       duplicate: 1,
       NOT: { status: { contains: "cancel", mode: "insensitive" } },
     },
-    select: { date: true, flavour: true, qty: true, total: true, paymentMethod: true, mobile: true },
+    select: {
+      date: true,
+      flavour: true,
+      qty: true,
+      total: true,
+      paymentMethod: true,
+      mobile: true,
+      shopifyCustomerId: true,
+    },
   });
 
-  const mobiles = Array.from(new Set(rows.map((o) => o.mobile).filter(Boolean)));
-  const earliest = mobiles.length
-    ? await prisma.salesOrder.groupBy({
-        by: ["mobile"],
-        where: { mobile: { in: mobiles } },
-        _min: { date: true },
-      })
-    : [];
+  // Identity prefers Shopify's customer.id, falls back to mobile.
+  const identityOf = (o: { shopifyCustomerId: bigint | null; mobile: string }): string =>
+    o.shopifyCustomerId ? `cid:${o.shopifyCustomerId}` : `mob:${o.mobile}`;
+
+  const periodCids = Array.from(
+    new Set(rows.filter((o) => o.shopifyCustomerId).map((o) => o.shopifyCustomerId!))
+  );
+  const periodMobiles = Array.from(
+    new Set(rows.filter((o) => !o.shopifyCustomerId && o.mobile).map((o) => o.mobile))
+  );
+  const [cidGroups, mobileGroups] = await Promise.all([
+    periodCids.length
+      ? prisma.salesOrder.groupBy({
+          by: ["shopifyCustomerId"],
+          where: { shopifyCustomerId: { in: periodCids } },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+    periodMobiles.length
+      ? prisma.salesOrder.groupBy({
+          by: ["mobile"],
+          where: { mobile: { in: periodMobiles }, shopifyCustomerId: null },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const firstOrderDate = new Map<string, Date>();
-  for (const r of earliest) {
-    if (r.mobile && r._min.date) firstOrderDate.set(r.mobile, r._min.date);
+  for (const r of cidGroups) {
+    if (r.shopifyCustomerId && r._min.date) firstOrderDate.set(`cid:${r.shopifyCustomerId}`, r._min.date);
   }
-  const isFT = (m: string) => {
-    const d = firstOrderDate.get(m);
+  for (const r of mobileGroups) {
+    if (r.mobile && r._min.date) firstOrderDate.set(`mob:${r.mobile}`, r._min.date);
+  }
+  const isFT = (o: { shopifyCustomerId: bigint | null; mobile: string }) => {
+    const d = firstOrderDate.get(identityOf(o));
     return !!d && d >= startDate && d < endDate;
   };
 
@@ -144,7 +173,7 @@ export async function computeItemDaily(
 
   for (const o of rows) {
     const dk = dateKey(o.date);
-    const ft = isFT(o.mobile);
+    const ft = isFT(o);
     const product = o.flavour || "Unknown";
     const pk = `${dk}|${product}`;
     const pe = prodMap.get(pk) || { total: 0, new: 0, repeat: 0, qty: 0, qtyNew: 0, qtyRepeat: 0 };
@@ -215,30 +244,50 @@ export async function computeDailyBreakdown(
         duplicate: 1,
         NOT: { status: { contains: "cancel", mode: "insensitive" } },
       },
-      select: { date: true, total: true, mobile: true },
+      select: { date: true, total: true, mobile: true, shopifyCustomerId: true },
     }),
     prisma.salesOrder.findMany({
       where: { date: { gte: startDate, lt: endDate } },
-      select: { date: true, duplicate: true, status: true, mobile: true },
+      select: { date: true, duplicate: true, status: true, mobile: true, shopifyCustomerId: true },
     }),
   ]);
 
-  const mobiles = Array.from(
-    new Set([...primary, ...allRaw].map((o) => o.mobile).filter(Boolean)),
+  // Identity prefers Shopify's customer.id, falls back to mobile.
+  const identityOf = (o: { shopifyCustomerId: bigint | null; mobile: string }): string =>
+    o.shopifyCustomerId ? `cid:${o.shopifyCustomerId}` : `mob:${o.mobile}`;
+
+  const allOrdersForLookup = [...primary, ...allRaw];
+  const periodCids = Array.from(
+    new Set(allOrdersForLookup.filter((o) => o.shopifyCustomerId).map((o) => o.shopifyCustomerId!))
   );
-  const earliest = mobiles.length
-    ? await prisma.salesOrder.groupBy({
-        by: ["mobile"],
-        where: { mobile: { in: mobiles } },
-        _min: { date: true },
-      })
-    : [];
+  const periodMobiles = Array.from(
+    new Set(allOrdersForLookup.filter((o) => !o.shopifyCustomerId && o.mobile).map((o) => o.mobile))
+  );
+  const [cidGroups, mobileGroups] = await Promise.all([
+    periodCids.length
+      ? prisma.salesOrder.groupBy({
+          by: ["shopifyCustomerId"],
+          where: { shopifyCustomerId: { in: periodCids } },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+    periodMobiles.length
+      ? prisma.salesOrder.groupBy({
+          by: ["mobile"],
+          where: { mobile: { in: periodMobiles }, shopifyCustomerId: null },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const firstOrderDate = new Map<string, Date>();
-  for (const r of earliest) {
-    if (r.mobile && r._min.date) firstOrderDate.set(r.mobile, r._min.date);
+  for (const r of cidGroups) {
+    if (r.shopifyCustomerId && r._min.date) firstOrderDate.set(`cid:${r.shopifyCustomerId}`, r._min.date);
   }
-  const isFT = (m: string) => {
-    const d = firstOrderDate.get(m);
+  for (const r of mobileGroups) {
+    if (r.mobile && r._min.date) firstOrderDate.set(`mob:${r.mobile}`, r._min.date);
+  }
+  const isFT = (o: { shopifyCustomerId: bigint | null; mobile: string }) => {
+    const d = firstOrderDate.get(identityOf(o));
     return !!d && d >= startDate && d < endDate;
   };
 
@@ -268,14 +317,14 @@ export async function computeDailyBreakdown(
 
   for (const o of primary) {
     const b = getDay(dateKey(o.date));
-    const ft = isFT(o.mobile);
+    const ft = isFT(o);
     b.salesT += o.total;
     if (ft) b.salesN += o.total; else b.salesR += o.total;
     if (o.mobile) (ft ? b.mobN : b.mobR).add(o.mobile);
   }
   for (const o of allRaw) {
     const b = getDay(dateKey(o.date));
-    const ft = isFT(o.mobile);
+    const ft = isFT(o);
     const isRto = o.status === "RTO" || o.status === "RTO In Transit";
     const isCancel = o.status === "Cancelled";
     if (isRto) { b.rtoT++; if (ft) b.rtoN++; else b.rtoR++; }
@@ -679,24 +728,52 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
     .slice(0, 10);
 
   // First-time vs repeat buyer classification.
-  // A customer (by mobile) is "first-time" in this period if their first-ever order
-  // in the whole dataset falls inside [startDate, endDate).
-  const periodMobiles = Array.from(
-    new Set(allRawOrders.map((o) => o.mobile).filter(Boolean))
+  // A customer is "first-time" in this period if their first-ever order in the
+  // whole dataset falls inside [startDate, endDate). Identity prefers Shopify's
+  // stable customer.id (matches Shopify's classification exactly); falls back
+  // to mobile only for orders without a customer.id (rare).
+  const identityOf = (o: { shopifyCustomerId: bigint | null; mobile: string }): string =>
+    o.shopifyCustomerId ? `cid:${o.shopifyCustomerId}` : `mob:${o.mobile}`;
+
+  const periodCids = Array.from(
+    new Set(allRawOrders.filter((o) => o.shopifyCustomerId).map((o) => o.shopifyCustomerId!))
   );
-  const earliestByMobile = periodMobiles.length
-    ? await prisma.salesOrder.groupBy({
-        by: ["mobile"],
-        where: { mobile: { in: periodMobiles } },
-        _min: { date: true },
-      })
-    : [];
+  const periodMobiles = Array.from(
+    new Set(
+      allRawOrders
+        .filter((o) => !o.shopifyCustomerId && o.mobile)
+        .map((o) => o.mobile)
+    )
+  );
+  const [cidGroups, mobileGroups] = await Promise.all([
+    periodCids.length
+      ? prisma.salesOrder.groupBy({
+          by: ["shopifyCustomerId"],
+          where: { shopifyCustomerId: { in: periodCids } },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+    periodMobiles.length
+      ? prisma.salesOrder.groupBy({
+          by: ["mobile"],
+          where: { mobile: { in: periodMobiles }, shopifyCustomerId: null },
+          _min: { date: true },
+        })
+      : Promise.resolve([]),
+  ]);
   const firstOrderDate = new Map<string, Date>();
-  for (const row of earliestByMobile) {
-    if (row.mobile && row._min.date) firstOrderDate.set(row.mobile, row._min.date);
+  for (const row of cidGroups) {
+    if (row.shopifyCustomerId && row._min.date) {
+      firstOrderDate.set(`cid:${row.shopifyCustomerId}`, row._min.date);
+    }
   }
-  const isFirstTime = (mobile: string) => {
-    const d = firstOrderDate.get(mobile);
+  for (const row of mobileGroups) {
+    if (row.mobile && row._min.date) {
+      firstOrderDate.set(`mob:${row.mobile}`, row._min.date);
+    }
+  }
+  const isFirstTime = (o: { shopifyCustomerId: bigint | null; mobile: string }) => {
+    const d = firstOrderDate.get(identityOf(o));
     return !!d && d >= startDate && d < endDate;
   };
 
@@ -715,7 +792,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
   const repeatMobiles = new Set<string>();
 
   for (const o of primaryOrders) {
-    const ft = isFirstTime(o.mobile);
+    const ft = isFirstTime(o);
     // Sales total stays per-line-item (each line contributes its ₹).
     bump(sales, o.total, ft);
     if (o.mobile) (ft ? firstTimeMobiles : repeatMobiles).add(o.mobile);
@@ -727,7 +804,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
   const seenCancelled = new Set<number>();
   const seenRto = new Set<number>();
   for (const o of allRawOrders) {
-    const ft = isFirstTime(o.mobile);
+    const ft = isFirstTime(o);
     const s = (o.status || "").toLowerCase();
     const isRto = s.includes("rto") || s.includes("return");
     const isCancel = s.includes("cancel");
@@ -766,7 +843,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
   const prodMap = new Map<string, { total: number; firstTime: number; repeat: number }>();
   for (const o of primaryOrders) {
     const key = o.flavour || "Unknown";
-    const ft = isFirstTime(o.mobile);
+    const ft = isFirstTime(o);
     const e = prodMap.get(key) || { total: 0, firstTime: 0, repeat: 0 };
     e.total++;
     if (ft) e.firstTime++;
@@ -782,7 +859,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
   for (const o of primaryOrders) {
     const method = (o.paymentMethod || "").trim();
     if (!method) continue;
-    const ft = isFirstTime(o.mobile);
+    const ft = isFirstTime(o);
     const e = payMap.get(method) || { total: 0, firstTime: 0, repeat: 0 };
     e.total += o.total;
     if (ft) e.firstTime += o.total;
@@ -821,7 +898,7 @@ export async function computeSalesMetrics(startDate: Date, endDate: Date): Promi
   for (const o of primaryOrders) {
     const codes = codesByOrder.get(o.orderId);
     if (!codes) continue;
-    const ft = isFirstTime(o.mobile);
+    const ft = isFirstTime(o);
     for (const code of codes) {
       const e = codeMap.get(code) || { total: 0, firstTime: 0, repeat: 0 };
       e.total += o.total;

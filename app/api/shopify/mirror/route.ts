@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
     qty: number;
     customerName: string;
     mobile: string;
+    shopifyCustomerId: bigint | null;
     billingCity: string;
     pincode: string;
     billingState: string;
@@ -80,6 +81,7 @@ export async function GET(req: NextRequest) {
         qty: 0,
         customerName: dbOrder.customerName,
         mobile,
+        shopifyCustomerId: dbOrder.shopifyCustomerId,
         billingCity: dbOrder.billingCity ?? "",
         pincode: dbOrder.billingZip ?? "",
         billingState: dbOrder.billingState ?? "",
@@ -115,6 +117,7 @@ export async function GET(req: NextRequest) {
         qty: li.quantity,
         customerName: dbOrder.customerName,
         mobile,
+        shopifyCustomerId: dbOrder.shopifyCustomerId,
         billingCity: dbOrder.billingCity ?? "",
         pincode: dbOrder.billingZip ?? "",
         billingState: dbOrder.billingState ?? "",

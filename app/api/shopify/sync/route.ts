@@ -95,6 +95,7 @@ async function syncOrders(force: boolean = false) {
         email: order.email ?? null,
         customerName: customerName(order),
         phone: order.customer?.phone ?? null,
+        shopifyCustomerId: order.customer?.id ? BigInt(order.customer.id) : null,
         totalPrice: parseFloat(order.total_price),
         subtotalPrice: parseFloat(order.subtotal_price),
         totalTax: parseFloat(order.total_tax),
@@ -202,6 +203,7 @@ async function syncOrders(force: boolean = false) {
         qty: number;
         customerName: string;
         mobile: string;
+        shopifyCustomerId: bigint | null;
         billingCity: string;
         pincode: string;
         billingState: string;
@@ -218,6 +220,7 @@ async function syncOrders(force: boolean = false) {
         });
         // Phone preferred, email fallback so phoneless orders show up
         const mobile = order.customer?.phone || order.email || "";
+        const shopifyCustomerId = order.customer?.id ? BigInt(order.customer.id) : null;
         const cName = customerName(order);
         // Mark voided / refunded as cancelled so the dashboard's "cancel" string match catches them
         const fs = (order.financial_status ?? "").toLowerCase();
@@ -249,6 +252,7 @@ async function syncOrders(force: boolean = false) {
             qty: 0,
             customerName: cName,
             mobile,
+            shopifyCustomerId,
             billingCity,
             pincode,
             billingState,
@@ -286,6 +290,7 @@ async function syncOrders(force: boolean = false) {
             qty: li.quantity,
             customerName: cName,
             mobile,
+            shopifyCustomerId,
             billingCity,
             pincode,
             billingState,

@@ -25,12 +25,19 @@ model SalesOrder {
   qty          Int
   customerName String
   mobile       String
+  // Shopify's stable customer.id — used to dedup customers across orders.
+  // Matches Shopify's "First-time vs returning" classification exactly.
+  // Nullable because (a) guest checkouts may not have one and (b) old rows
+  // synced before this column was added.
+  shopifyCustomerId BigInt?
   billingCity  String
   pincode      String
   billingState String
   total        Float
   status       String
   paymentMethod String?
+
+  @@index([shopifyCustomerId])
 }
 
 model ShopifyOrder {
@@ -40,6 +47,9 @@ model ShopifyOrder {
   email           String?
   customerName    String
   phone           String?
+  // Shopify's stable customer.id — source of truth for "is this a returning customer".
+  // Nullable: guest checkouts and old rows pre-sync don't have it.
+  shopifyCustomerId BigInt?
   totalPrice      Float
   subtotalPrice   Float
   totalTax        Float
