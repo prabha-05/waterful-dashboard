@@ -83,6 +83,11 @@ export function LoginForm() {
             type="text"
             placeholder="username"
             required
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="username"
+            inputMode="email"
             className="w-full rounded-lg border border-white/10 bg-white/[0.05] px-4 py-3 text-sm
             text-white placeholder-white/25 outline-none transition-all
             focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30"

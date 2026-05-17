@@ -17,7 +17,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: string;
           password: string;
         };
-        if (email !== SHARED_USERNAME || password !== SHARED_PASSWORD) {
+        // Mobile browsers can sneak in trailing whitespace via autocomplete
+        // and we lowercase the username to be tolerant of auto-capitalization.
+        const usernameInput = (email ?? "").trim();
+        const passwordInput = (password ?? "").trim();
+        if (
+          usernameInput.toLowerCase() !== SHARED_USERNAME.toLowerCase() ||
+          passwordInput !== SHARED_PASSWORD
+        ) {
           return null;
         }
         return { id: "shared", name: SHARED_USERNAME, email: SHARED_USERNAME };
