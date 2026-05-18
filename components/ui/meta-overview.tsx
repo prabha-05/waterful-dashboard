@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -18,8 +18,8 @@ import {
   MousePointerClick,
   Target,
   Activity,
+  Calendar,
 } from "lucide-react";
-import { PeriodPicker, formatDateParam, type Unit } from "@/components/ui/period-picker";
 
 const INK = "#4a3a2e";
 const MUTED = "#9a8571";
@@ -27,7 +27,25 @@ const AMBER = "#c99954";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const CREAM = "#f1e7d3";
+const CREAM_BG = "#faf6ef";
 const BORDER = "#e8dfd0";
+
+function formatDateParam(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function todayYmd() {
+  return formatDateParam(new Date());
+}
+function shiftYmd(ymd: string, days: number) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function daysBetween(fromYmd: string, toYmd: string) {
+  const f = new Date(`${fromYmd}T00:00:00Z`);
+  const t = new Date(`${toYmd}T00:00:00Z`);
+  return Math.max(1, Math.round((t.getTime() - f.getTime()) / 86400000) + 1);
+}
 
 type Period = {
   label: string;
@@ -204,19 +222,24 @@ function FunnelStage({
 }
 
 export function MetaOverview() {
-  const [count, setCount] = useState(7);
-  const [unit, setUnit] = useState<Unit>("day");
-  const defaultStart = new Date();
-  defaultStart.setDate(defaultStart.getDate() - 7);
-  const [startDate, setStartDate] = useState<Date>(defaultStart);
+  // Default: last 7 days ending yesterday (IST)
+  const yesterday = shiftYmd(todayYmd(), -1);
+  const sevenAgo = shiftYmd(yesterday, -6);
+
+  const [from, setFrom] = useState(sevenAgo);
+  const [to, setTo] = useState(yesterday);
+  const [activeOnly, setActiveOnly] = useState(false);
+  const [search, setSearch] = useState("");
 
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Convert from/to → count + unit=day + start for the existing API
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const qs = `count=${count}&unit=${unit}&start=${formatDateParam(startDate)}`;
+    const count = daysBetween(from, to);
+    const qs = `count=${count}&unit=day&start=${from}`;
     fetch(`/api/meta/overview?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -231,30 +254,96 @@ export function MetaOverview() {
     return () => {
       cancelled = true;
     };
-  }, [count, unit, startDate]);
+  }, [from, to]);
 
-  const startingLabel = (() => {
-    const fromStr = data?.periods?.[0]?.from;
-    if (!fromStr) return "starting from …";
-    const [y, m, d] = fromStr.split("-").map(Number);
-    const start = new Date(y, m - 1, d);
-    const formatted =
-      unit === "month"
-        ? start.toLocaleDateString("en-IN", { month: "long", year: "numeric" })
-        : start.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
-    return `starting from ${formatted}`;
-  })();
+  // Client-side filter for the campaigns table — name search + active-only.
+  // Health keywords mirror the Meta Ads page so this looks/feels the same.
+  const filteredCampaigns = useMemo(() => {
+    if (!data) return [];
+    const q = search.trim().toLowerCase();
+    const isPerforming = /performing|^top$|top |winning/.test(q);
+    const isLosing = /losing|killer|^bad$|bad /.test(q);
+    return data.campaigns.filter((c) => {
+      if (activeOnly && c.status !== "ACTIVE") return false;
+      if (!q) return true;
+      if (isPerforming) return c.roas >= 2;
+      if (isLosing) return c.roas < 1 && c.spend > 1000;
+      return c.name.toLowerCase().includes(q);
+    });
+  }, [data, activeOnly, search]);
 
   const picker = (
-    <PeriodPicker
-      count={count}
-      unit={unit}
-      startDate={startDate}
-      onCountChange={setCount}
-      onUnitChange={setUnit}
-      onStartDateChange={setStartDate}
-      trailingLabel={startingLabel}
-    />
+    <div
+      className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
+      style={{ background: "white", borderColor: BORDER }}
+    >
+      <div className="flex items-center gap-2">
+        <Calendar size={14} style={{ color: AMBER }} />
+        <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>From</label>
+        <input
+          type="date"
+          value={from}
+          max={to}
+          onChange={(e) => setFrom(e.target.value)}
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>To</label>
+        <input
+          type="date"
+          value={to}
+          min={from}
+          onChange={(e) => setTo(e.target.value)}
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+        />
+      </div>
+      <button
+        onClick={() => setActiveOnly((v) => !v)}
+        className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+        style={{
+          borderColor: BORDER,
+          background: activeOnly ? `${SAGE}22` : CREAM_BG,
+          color: activeOnly ? SAGE : MUTED,
+        }}
+        title="Show only campaigns with status = ACTIVE"
+      >
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ background: activeOnly ? SAGE : MUTED }}
+        />
+        Active only
+      </button>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Name / performing / losing"
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG, width: 200 }}
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="text-xs" style={{ color: MUTED }} aria-label="Clear search">
+            ✕
+          </button>
+        )}
+      </div>
+      <span className="ml-auto text-xs" style={{ color: MUTED }}>
+        {data ? (
+          <>
+            <span className="font-bold" style={{ color: INK }}>{filteredCampaigns.length}</span>
+            {(activeOnly || search) ? " of " : " "}
+            {(activeOnly || search) && (
+              <span className="font-semibold" style={{ color: INK }}>{data.campaigns.length}</span>
+            )}
+            {(activeOnly || search) ? " campaigns" : "campaigns"}
+          </>
+        ) : "—"}
+      </span>
+    </div>
   );
 
   if (loading && !data) {
@@ -364,7 +453,7 @@ export function MetaOverview() {
             Spend Trend
           </h2>
           <p className="text-xs italic" style={{ color: MUTED }}>
-            ₹ spent per {unit}
+            ₹ spent per day
           </p>
         </div>
         <ResponsiveContainer width="100%" height={300}>
@@ -476,14 +565,16 @@ export function MetaOverview() {
               </tr>
             </thead>
             <tbody>
-              {data.campaigns.length === 0 && (
+              {filteredCampaigns.length === 0 && (
                 <tr>
                   <td colSpan={9} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
-                    No campaigns with spend in this window. Try a wider date range.
+                    {data.campaigns.length === 0
+                      ? "No campaigns with spend in this window. Try a wider date range."
+                      : "No campaigns match the current filters. Try clearing search or turning off 'Active only'."}
                   </td>
                 </tr>
               )}
-              {data.campaigns.map((c, i) => {
+              {filteredCampaigns.map((c, i) => {
                 const roasColor =
                   c.roas >= 2 ? SAGE : c.roas >= 1 ? AMBER : ROSE;
                 return (
