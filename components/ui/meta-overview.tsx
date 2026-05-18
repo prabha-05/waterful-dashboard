@@ -19,6 +19,8 @@ import {
   Target,
   Activity,
   Calendar,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 const INK = "#4a3a2e";
@@ -59,12 +61,11 @@ type Period = {
   purchaseValue: number;
 };
 
-type CampaignRow = {
+type LevelRow = {
   name: string;
   status: string;
   spend: number;
   impressions: number;
-  reach: number;
   clicks: number;
   purchases: number;
   purchaseValue: number;
@@ -72,6 +73,13 @@ type CampaignRow = {
   cpc: number;
   cpa: number;
   roas: number;
+};
+
+type AdRow = LevelRow;
+type AdSetRow = LevelRow & { ads: AdRow[] };
+type CampaignRow = LevelRow & {
+  metaCampaignId: string;
+  adSets: AdSetRow[];
 };
 
 type Overview = {
@@ -230,6 +238,21 @@ export function MetaOverview() {
   const [to, setTo] = useState(yesterday);
   // "ALL" or a specific campaign name. Filters the campaigns table below.
   const [selectedCampaign, setSelectedCampaign] = useState<string>("ALL");
+  // Expansion state for the campaign → adset → ad hierarchy
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
+  const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
+  const toggleCampaign = (name: string) =>
+    setExpandedCampaigns((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  const toggleAdSet = (name: string) =>
+    setExpandedAdSets((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
 
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -352,16 +375,33 @@ export function MetaOverview() {
     );
   }
 
-  // Derived metrics for current window
-  const t = data.totals;
+  // Derived metrics for current window.
+  // If a single campaign is selected, use its numbers; else use the aggregate.
+  // Previous-period numbers are aggregate-only — we don't have per-campaign
+  // history yet, so deltas are hidden when a specific campaign is selected.
   const p = data.previousTotals;
+  const oneCampaign =
+    selectedCampaign !== "ALL"
+      ? data.campaigns.find((c) => c.name === selectedCampaign)
+      : null;
+  const t = oneCampaign
+    ? {
+        spend: oneCampaign.spend,
+        impressions: oneCampaign.impressions,
+        reach: 0, // not tracked per-campaign in current API
+        clicks: oneCampaign.clicks,
+        purchases: oneCampaign.purchases,
+        purchaseValue: oneCampaign.purchaseValue,
+      }
+    : data.totals;
   const ctr = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
   const prevCtr = p.impressions > 0 ? (p.clicks / p.impressions) * 100 : 0;
-  const cpc = t.clicks > 0 ? t.spend / t.clicks : 0;
   const cpa = t.purchases > 0 ? t.spend / t.purchases : 0;
   const prevCpa = p.purchases > 0 ? p.spend / p.purchases : 0;
   const roas = t.spend > 0 ? t.purchaseValue / t.spend : 0;
   const prevRoas = p.spend > 0 ? p.purchaseValue / p.spend : 0;
+  // Hide deltas when a specific campaign is selected (no per-campaign history)
+  const showDelta = !oneCampaign;
 
   // Funnel rates
   const clickRate = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
@@ -382,11 +422,11 @@ export function MetaOverview() {
       </div>
 
       {/* KPI Strip */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <KpiCard
           title="Spend"
           value={formatInr(t.spend)}
-          delta={deltaPct(t.spend, p.spend)}
+          delta={showDelta ? deltaPct(t.spend, p.spend) : null}
           invertDelta
           icon={IndianRupee}
           tint={ROSE}
@@ -395,7 +435,7 @@ export function MetaOverview() {
         <KpiCard
           title="ROAS"
           value={`${roas.toFixed(2)}x`}
-          delta={deltaPct(roas, prevRoas)}
+          delta={showDelta ? deltaPct(roas, prevRoas) : null}
           icon={Target}
           tint={SAGE}
           hint={roas < 1 ? "burning money" : roas < 2 ? "marginal" : "healthy"}
@@ -403,7 +443,7 @@ export function MetaOverview() {
         <KpiCard
           title="CPA"
           value={formatInr(cpa)}
-          delta={deltaPct(cpa, prevCpa)}
+          delta={showDelta ? deltaPct(cpa, prevCpa) : null}
           invertDelta
           icon={ShoppingCart}
           tint={AMBER}
@@ -412,7 +452,7 @@ export function MetaOverview() {
         <KpiCard
           title="CTR"
           value={`${ctr.toFixed(2)}%`}
-          delta={deltaPct(ctr, prevCtr)}
+          delta={showDelta ? deltaPct(ctr, prevCtr) : null}
           icon={MousePointerClick}
           tint="#8b5cf6"
           hint="click-through rate"
@@ -420,10 +460,18 @@ export function MetaOverview() {
         <KpiCard
           title="Purchases"
           value={formatNumber(t.purchases)}
-          delta={deltaPct(t.purchases, p.purchases)}
+          delta={showDelta ? deltaPct(t.purchases, p.purchases) : null}
           icon={Activity}
           tint={INK}
           hint="Meta-attributed"
+        />
+        <KpiCard
+          title="Purchase Value"
+          value={formatInr(t.purchaseValue)}
+          delta={showDelta ? deltaPct(t.purchaseValue, p.purchaseValue) : null}
+          icon={IndianRupee}
+          tint={SAGE}
+          hint="revenue from ads"
         />
       </div>
 
@@ -528,15 +576,8 @@ export function MetaOverview() {
             <thead>
               <tr style={{ background: "#faf6ef" }}>
                 {[
-                  { label: "Campaign", align: "left" },
+                  { label: "Campaign / Ad Set / Ad", align: "left" },
                   { label: "Status", align: "left" },
-                  { label: "Spend", align: "right" },
-                  { label: "CTR", align: "right" },
-                  { label: "CPC", align: "right" },
-                  { label: "Purchases", align: "right" },
-                  { label: "Revenue", align: "right" },
-                  { label: "CPA", align: "right" },
-                  { label: "ROAS", align: "right" },
                 ].map((h) => (
                   <th
                     key={h.label}
@@ -551,55 +592,83 @@ export function MetaOverview() {
             <tbody>
               {filteredCampaigns.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
+                  <td colSpan={2} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
                     {data.campaigns.length === 0
                       ? "No campaigns with spend in this window. Try a wider date range."
-                      : "No campaigns match the current filters. Try clearing search or turning off 'Active only'."}
+                      : "No campaigns match the current filter."}
                   </td>
                 </tr>
               )}
-              {filteredCampaigns.map((c, i) => {
-                const roasColor =
-                  c.roas >= 2 ? SAGE : c.roas >= 1 ? AMBER : ROSE;
-                return (
-                  <tr key={i} className="border-t" style={{ borderColor: CREAM }}>
-                    <td className="px-3 py-2.5 font-medium max-w-md truncate" style={{ color: INK }} title={c.name}>
-                      {c.name}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
-                        style={{
-                          background: c.status === "ACTIVE" ? `${SAGE}22` : `${MUTED}22`,
-                          color: c.status === "ACTIVE" ? SAGE : MUTED,
-                        }}
-                      >
-                        {c.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {formatInr(c.spend)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {c.ctr.toFixed(2)}%
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {formatInr(c.cpc)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {c.purchases}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {formatInr(c.purchaseValue)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {c.purchases > 0 ? formatInr(c.cpa) : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: roasColor }}>
-                      {c.spend > 0 ? `${c.roas.toFixed(2)}x` : "—"}
-                    </td>
-                  </tr>
+              {filteredCampaigns.flatMap((c, i) => {
+                const statusPill = (s: string, size: "lg" | "sm" = "lg") => (
+                  <span
+                    className={`rounded-full font-semibold uppercase ${size === "lg" ? "px-2 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-[9px]"}`}
+                    style={{
+                      background: s === "ACTIVE" ? `${SAGE}22` : `${MUTED}22`,
+                      color: s === "ACTIVE" ? SAGE : MUTED,
+                    }}
+                  >
+                    {s}
+                  </span>
                 );
+                const isCampOpen = expandedCampaigns.has(c.name);
+                const rows = [
+                  <tr key={`c-${i}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM }} onClick={() => toggleCampaign(c.name)}>
+                    <td className="px-3 py-2.5 font-medium" style={{ color: INK }} title={c.name}>
+                      <div className="flex items-center gap-1.5">
+                        {c.adSets.length > 0 ? (
+                          isCampOpen ? <ChevronDown size={14} style={{ color: MUTED }} /> : <ChevronRight size={14} style={{ color: MUTED }} />
+                        ) : <span style={{ width: 14, display: "inline-block" }} />}
+                        <span className="truncate">{c.name}</span>
+                        {c.adSets.length > 0 && (
+                          <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                            · {c.adSets.length} ad set{c.adSets.length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">{statusPill(c.status, "lg")}</td>
+                  </tr>
+                ];
+
+                if (isCampOpen) {
+                  c.adSets.forEach((as, j) => {
+                    const isSetOpen = expandedAdSets.has(`${c.name}|${as.name}`);
+                    rows.push(
+                      <tr key={`c-${i}-as-${j}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM, background: "#fafaf7" }} onClick={() => toggleAdSet(`${c.name}|${as.name}`)}>
+                        <td className="px-3 py-2 pl-8" style={{ color: INK }} title={as.name}>
+                          <div className="flex items-center gap-1.5">
+                            {as.ads.length > 0 ? (
+                              isSetOpen ? <ChevronDown size={12} style={{ color: MUTED }} /> : <ChevronRight size={12} style={{ color: MUTED }} />
+                            ) : <span style={{ width: 12, display: "inline-block" }} />}
+                            <span className="text-[13px] truncate">{as.name}</span>
+                            {as.ads.length > 0 && (
+                              <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                                · {as.ads.length} ad{as.ads.length === 1 ? "" : "s"}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">{statusPill(as.status, "sm")}</td>
+                      </tr>
+                    );
+
+                    if (isSetOpen) {
+                      as.ads.forEach((ad, k) => {
+                        rows.push(
+                          <tr key={`c-${i}-as-${j}-ad-${k}`} className="border-t" style={{ borderColor: CREAM, background: "#f5f5f0" }}>
+                            <td className="px-3 py-1.5 pl-16 text-[12px]" style={{ color: INK }} title={ad.name}>
+                              <span className="truncate">{ad.name}</span>
+                            </td>
+                            <td className="px-3 py-1.5">{statusPill(ad.status, "sm")}</td>
+                          </tr>
+                        );
+                      });
+                    }
+                  });
+                }
+
+                return rows;
               })}
             </tbody>
           </table>

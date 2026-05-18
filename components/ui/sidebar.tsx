@@ -42,7 +42,6 @@ const navItems: NavItem[] = [
     icon: null,
     children: [
       { label: "Campaigns", href: "/dashboard/final/meta" },
-      { label: "Ad Sets", href: "/dashboard/final/meta/ad-sets" },
       { label: "Ads", href: "/dashboard/final/meta/ads" },
     ],
   },

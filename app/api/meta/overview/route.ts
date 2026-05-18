@@ -150,17 +150,21 @@ export async function GET(req: NextRequest) {
   };
 
   // Campaign-level breakdown for the current window
+  type LevelMetrics = {
+    name: string;
+    status: string;
+    spend: number;
+    impressions: number;
+    clicks: number;
+    purchases: number;
+    purchaseValue: number;
+  };
+
   const campaignMap = new Map<
-    number,
-    {
-      name: string;
-      status: string;
-      spend: number;
-      impressions: number;
+    number, // MetaCampaign.id (DB pk)
+    LevelMetrics & {
+      metaCampaignId: string; // Shopify-side string ID
       reach: number;
-      clicks: number;
-      purchases: number;
-      purchaseValue: number;
     }
   >();
 
@@ -174,7 +178,9 @@ export async function GET(req: NextRequest) {
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
     } else {
+      // Need metaCampaignId — fetch in bulk after this loop instead of one-by-one
       campaignMap.set(r.campaignId, {
+        metaCampaignId: "", // filled below
         name: r.campaign.name,
         status: r.campaign.status,
         spend: r.spend,
@@ -187,16 +193,107 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Look up metaCampaignId (string) for each campaign DB id
+  if (campaignMap.size > 0) {
+    const campRows = await prisma.metaCampaign.findMany({
+      where: { id: { in: Array.from(campaignMap.keys()) } },
+      select: { id: true, metaCampaignId: true },
+    });
+    for (const c of campRows) {
+      const m = campaignMap.get(c.id);
+      if (m) m.metaCampaignId = c.metaCampaignId;
+    }
+  }
+
+  // Ad set + ad breakdown within the same window — nested under each campaign
+  const adSetRows = await prisma.metaAdSetDaily.findMany({
+    where: { date: { gte: globalFrom, lt: globalTo } },
+    include: { adSet: { select: { name: true, status: true, metaCampaignId: true } } },
+  });
+  const adSetMap = new Map<
+    number,
+    LevelMetrics & { metaCampaignId: string }
+  >();
+  for (const r of adSetRows) {
+    const existing = adSetMap.get(r.adSetId);
+    if (existing) {
+      existing.spend += r.spend;
+      existing.impressions += r.impressions;
+      existing.clicks += r.clicks;
+      existing.purchases += r.purchases;
+      existing.purchaseValue += r.purchaseValue;
+    } else {
+      adSetMap.set(r.adSetId, {
+        metaCampaignId: r.adSet.metaCampaignId,
+        name: r.adSet.name,
+        status: r.adSet.status,
+        spend: r.spend,
+        impressions: r.impressions,
+        clicks: r.clicks,
+        purchases: r.purchases,
+        purchaseValue: r.purchaseValue,
+      });
+    }
+  }
+
+  const adRows = await prisma.metaAdDaily.findMany({
+    where: { date: { gte: globalFrom, lt: globalTo } },
+    include: { ad: { select: { name: true, status: true, adSetId: true } } },
+  });
+  const adMap = new Map<
+    number,
+    LevelMetrics & { adSetId: number }
+  >();
+  for (const r of adRows) {
+    const existing = adMap.get(r.adId);
+    if (existing) {
+      existing.spend += r.spend;
+      existing.impressions += r.impressions;
+      existing.clicks += r.clicks;
+      existing.purchases += r.purchases;
+      existing.purchaseValue += r.purchaseValue;
+    } else {
+      adMap.set(r.adId, {
+        adSetId: r.ad.adSetId,
+        name: r.ad.name,
+        status: r.ad.status,
+        spend: r.spend,
+        impressions: r.impressions,
+        clicks: r.clicks,
+        purchases: r.purchases,
+        purchaseValue: r.purchaseValue,
+      });
+    }
+  }
+
+  // Compute derived metrics for a single level row
+  const withMetrics = <T extends LevelMetrics>(m: T) => ({
+    ...m,
+    spend: Math.round(m.spend),
+    purchaseValue: Math.round(m.purchaseValue),
+    ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
+    cpc: m.clicks > 0 ? m.spend / m.clicks : 0,
+    cpa: m.purchases > 0 ? m.spend / m.purchases : 0,
+    roas: m.spend > 0 ? m.purchaseValue / m.spend : 0,
+  });
+
+  // Build the nested campaign → adsets → ads structure
   const campaigns = Array.from(campaignMap.values())
-    .map((c) => ({
-      ...c,
-      spend: Math.round(c.spend),
-      purchaseValue: Math.round(c.purchaseValue),
-      ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
-      cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
-      cpa: c.purchases > 0 ? c.spend / c.purchases : 0,
-      roas: c.spend > 0 ? c.purchaseValue / c.spend : 0,
-    }))
+    .map((c) => {
+      const campAdSets = Array.from(adSetMap.entries())
+        .filter(([, a]) => a.metaCampaignId === c.metaCampaignId)
+        .map(([adSetId, a]) => {
+          const setAds = Array.from(adMap.values())
+            .filter((ad) => ad.adSetId === adSetId)
+            .map(({ adSetId: _ignore, ...rest }) => withMetrics(rest))
+            .sort((a, b) => b.spend - a.spend);
+          const { metaCampaignId: _ignore2, ...rest } = a;
+          return { ...withMetrics(rest), ads: setAds };
+        })
+        .sort((a, b) => b.spend - a.spend);
+      const { reach: _reach, ...rest } = c;
+      return { ...withMetrics(rest), adSets: campAdSets };
+    })
     .sort((a, b) => b.spend - a.spend);
 
   // Last sync timestamp
