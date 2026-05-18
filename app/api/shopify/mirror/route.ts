@@ -14,7 +14,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Optional `?days=N` limits the mirror to orders from the last N days.
+  // This keeps the cron-job.org call under their 30s request timeout — a
+  // full-history mirror processes ~14k rows and takes ~17-30s, while
+  // last-7-days runs in ~2s. No param = full mirror (slow, manual only).
+  const daysParam = req.nextUrl.searchParams.get("days");
+  const daysBack = daysParam ? Math.max(1, parseInt(daysParam, 10)) : null;
+  const sinceDate = daysBack
+    ? new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000)
+    : null;
+
   const dbOrders = await prisma.shopifyOrder.findMany({
+    where: sinceDate ? { createdAt: { gte: sinceDate } } : undefined,
     include: { lineItems: true },
   });
 
