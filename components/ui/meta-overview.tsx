@@ -228,8 +228,8 @@ export function MetaOverview() {
 
   const [from, setFrom] = useState(sevenAgo);
   const [to, setTo] = useState(yesterday);
-  const [activeOnly, setActiveOnly] = useState(false);
-  const [search, setSearch] = useState("");
+  // "ALL" or a specific campaign name. Filters the campaigns table below.
+  const [selectedCampaign, setSelectedCampaign] = useState<string>("ALL");
 
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -256,21 +256,18 @@ export function MetaOverview() {
     };
   }, [from, to]);
 
-  // Client-side filter for the campaigns table — name search + active-only.
-  // Health keywords mirror the Meta Ads page so this looks/feels the same.
+  // Dropdown filters the campaigns table to "All" or one specific campaign.
   const filteredCampaigns = useMemo(() => {
     if (!data) return [];
-    const q = search.trim().toLowerCase();
-    const isPerforming = /performing|^top$|top |winning/.test(q);
-    const isLosing = /losing|killer|^bad$|bad /.test(q);
-    return data.campaigns.filter((c) => {
-      if (activeOnly && c.status !== "ACTIVE") return false;
-      if (!q) return true;
-      if (isPerforming) return c.roas >= 2;
-      if (isLosing) return c.roas < 1 && c.spend > 1000;
-      return c.name.toLowerCase().includes(q);
-    });
-  }, [data, activeOnly, search]);
+    if (selectedCampaign === "ALL") return data.campaigns;
+    return data.campaigns.filter((c) => c.name === selectedCampaign);
+  }, [data, selectedCampaign]);
+
+  // Sorted campaign names for the dropdown (alpha)
+  const campaignOptions = useMemo(() => {
+    if (!data) return [] as string[];
+    return [...data.campaigns.map((c) => c.name)].sort((a, b) => a.localeCompare(b));
+  }, [data]);
 
   const picker = (
     <div
@@ -300,46 +297,33 @@ export function MetaOverview() {
           style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
         />
       </div>
-      <button
-        onClick={() => setActiveOnly((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
-        style={{
-          borderColor: BORDER,
-          background: activeOnly ? `${SAGE}22` : CREAM_BG,
-          color: activeOnly ? SAGE : MUTED,
-        }}
-        title="Show only campaigns with status = ACTIVE"
-      >
-        <span
-          className="inline-block h-2 w-2 rounded-full"
-          style={{ background: activeOnly ? SAGE : MUTED }}
-        />
-        Active only
-      </button>
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Name / performing / losing"
-          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
-          style={{ borderColor: BORDER, color: INK, background: CREAM_BG, width: 200 }}
-        />
-        {search && (
-          <button onClick={() => setSearch("")} className="text-xs" style={{ color: MUTED }} aria-label="Clear search">
-            ✕
-          </button>
-        )}
+        <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Campaign</label>
+        <select
+          value={selectedCampaign}
+          onChange={(e) => setSelectedCampaign(e.target.value)}
+          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400 max-w-xs"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+        >
+          <option value="ALL">All campaigns</option>
+          {campaignOptions.map((name) => (
+            <option key={name} value={name}>
+              {name.length > 60 ? name.slice(0, 60) + "…" : name}
+            </option>
+          ))}
+        </select>
       </div>
       <span className="ml-auto text-xs" style={{ color: MUTED }}>
         {data ? (
           <>
             <span className="font-bold" style={{ color: INK }}>{filteredCampaigns.length}</span>
-            {(activeOnly || search) ? " of " : " "}
-            {(activeOnly || search) && (
-              <span className="font-semibold" style={{ color: INK }}>{data.campaigns.length}</span>
+            {selectedCampaign !== "ALL" && (
+              <>
+                {" of "}
+                <span className="font-semibold" style={{ color: INK }}>{data.campaigns.length}</span>
+              </>
             )}
-            {(activeOnly || search) ? " campaigns" : "campaigns"}
+            {" campaigns"}
           </>
         ) : "—"}
       </span>
