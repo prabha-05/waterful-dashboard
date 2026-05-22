@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -330,8 +330,22 @@ export function MetaAds() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Format filter: ALL | video | image | carousel
+  const [formatFilter, setFormatFilter] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
+  // Status filter: ALL | ACTIVE | PAUSED
   const [activeOnly, setActiveOnly] = useState(false);
-  const [search, setSearch] = useState("");
+  const drillRef = useRef<HTMLElement | null>(null);
+
+  const selectAndScroll = (adId: number) => {
+    setSelectedId(adId);
+    // Defer to next frame so the drill section is mounted before we scroll
+    requestAnimationFrame(() => {
+      drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  // Sort key: by spend, hook rate, ROAS, CTR, frequency
+  type SortKey = "spend" | "hookRate" | "roas" | "ctr" | "frequency";
+  const [sortBy, setSortBy] = useState<SortKey>("spend");
 
   useEffect(() => {
     let cancelled = false;
@@ -352,32 +366,50 @@ export function MetaAds() {
     return () => { cancelled = true; };
   }, [from, to]);
 
-  // Client-side filters: active-only toggle + smart search.
-  // Search keywords:
-  //   - "performing" / "top" / "winning"  → ROAS >= 2
-  //   - "losing" / "killer" / "bad"       → ROAS < 1 AND spend > 1000
-  //   - "fatigue" / "fatigued" / "tired"  → avgFrequency > 3
-  // Otherwise: substring match on ad name (case-insensitive).
+  // Weighted-average helpers (across daily series for a single ad)
+  const weightedAvg = (ad: Ad, key: "hookRate" | "holdRate") => {
+    let num = 0;
+    let denom = 0;
+    for (const d of ad.daily) {
+      num += d[key] * d.impressions;
+      denom += d.impressions;
+    }
+    return denom > 0 ? num / denom : 0;
+  };
+
+  // Normalize Meta's creativeType (which can be "share", "dco", "post", etc.)
+  // into the 3 buckets we display: video / carousel / image.
+  const normalizeFormat = (t: string | null): "video" | "carousel" | "image" => {
+    const raw = (t ?? "").toLowerCase();
+    if (raw === "video") return "video";
+    if (raw === "carousel") return "carousel";
+    return "image"; // everything else (share, dco, post, null, etc.)
+  };
+
+  // Filter by format + sort
   const filteredAds = useMemo(() => {
     if (!data) return [];
-    const q = search.trim().toLowerCase();
-    const isPerforming = /performing|^top$|top |winning/.test(q);
-    const isLosing = /losing|killer|^bad$|bad /.test(q);
-    const isFatigued = /fatigue|tired/.test(q);
-    const isHealth = isPerforming || isLosing || isFatigued;
-
-    return data.ads.filter((a) => {
+    const filtered = data.ads.filter((a) => {
+      if (formatFilter !== "ALL" && normalizeFormat(a.creativeType) !== formatFilter) return false;
       if (activeOnly && a.status !== "ACTIVE") return false;
-      if (!q) return true;
-      if (isHealth) {
-        if (isPerforming && !(a.roas >= 2)) return false;
-        if (isLosing && !(a.roas < 1 && a.spend > 1000)) return false;
-        if (isFatigued && !(a.avgFrequency > 3)) return false;
-        return true;
-      }
-      return a.name.toLowerCase().includes(q);
+      return true;
     });
-  }, [data, activeOnly, search]);
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "hookRate":
+          return weightedAvg(b, "hookRate") - weightedAvg(a, "hookRate");
+        case "roas":
+          return b.roas - a.roas;
+        case "ctr":
+          return b.ctr - a.ctr;
+        case "frequency":
+          return b.avgFrequency - a.avgFrequency;
+        default:
+          return b.spend - a.spend;
+      }
+    });
+    return sorted;
+  }, [data, formatFilter, activeOnly, sortBy]);
 
   // If the currently-selected ad gets filtered out, fall back to the top of
   // the filtered list (or clear selection if the list is empty).
@@ -425,55 +457,17 @@ export function MetaAds() {
         />
       </div>
 
-      {/* Active-only toggle */}
-      <button
-        onClick={() => setActiveOnly((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
-        style={{
-          borderColor: BORDER,
-          background: activeOnly ? `${SAGE}22` : CREAM_BG,
-          color: activeOnly ? SAGE : MUTED,
-        }}
-        title="Show only ads with status = ACTIVE"
-      >
-        <span
-          className="inline-block h-2 w-2 rounded-full"
-          style={{ background: activeOnly ? SAGE : MUTED }}
-        />
-        Active only
-      </button>
-
-      {/* Search box */}
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Name / performing / losing / fatigued…"
-          className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
-          style={{ borderColor: BORDER, color: INK, background: CREAM_BG, width: 200 }}
-        />
-        {search && (
-          <button
-            onClick={() => setSearch("")}
-            className="text-xs"
-            style={{ color: MUTED }}
-            aria-label="Clear search"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
       <span className="ml-auto text-xs" style={{ color: MUTED }}>
         {data ? (
           <>
             <span className="font-bold" style={{ color: INK }}>{filteredAds.length}</span>
-            {(activeOnly || search) ? " of " : " "}
-            {(activeOnly || search) && (
-              <span className="font-semibold" style={{ color: INK }}>{data.totals.adsCount}</span>
+            {formatFilter !== "ALL" && (
+              <>
+                {" of "}
+                <span className="font-semibold" style={{ color: INK }}>{data.totals.adsCount}</span>
+              </>
             )}
-            {(activeOnly || search) ? " ads" : "ads with spend"}
+            {" ads"}
             {" · "}
             Last sync: <span className="font-semibold" style={{ color: INK }}>{formatRelative(data.meta.lastSyncedAt)}</span>
           </>
@@ -547,24 +541,86 @@ export function MetaAds() {
 
       {/* Ads table */}
       <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
-        <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
-          <h2 className="text-lg font-semibold" style={{ color: INK }}>Ads with spend</h2>
-          <p className="text-xs italic mt-1" style={{ color: MUTED }}>
-            Sorted by spend (highest first). Click any row to drill in below. Sparkline = daily spend trend.
-          </p>
+        <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-semibold" style={{ color: INK }}>Ads with spend</h2>
+            <p className="text-xs italic mt-1" style={{ color: MUTED }}>
+              Click any row to drill in below.
+            </p>
+          </div>
+          <label
+            className="flex items-center gap-2 cursor-pointer select-none rounded-lg border px-3 py-1.5 text-sm"
+            style={{
+              borderColor: activeOnly ? SAGE : BORDER,
+              color: activeOnly ? SAGE : INK,
+              background: activeOnly ? `${SAGE}15` : CREAM_BG,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer accent-emerald-600"
+            />
+            <span className="font-semibold">Active only</span>
+            {data && (
+              <span
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
+                style={{ background: `${SAGE}22`, color: SAGE }}
+              >
+                {data.ads.filter((a) => a.status === "ACTIVE").length}
+              </span>
+            )}
+          </label>
+          <div className="inline-flex rounded-lg border overflow-hidden" style={{ borderColor: BORDER }}>
+            {(["ALL", "video", "image", "carousel"] as const).map((f) => {
+              const active = formatFilter === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFormatFilter(f)}
+                  className="px-3 py-1.5 text-xs font-medium capitalize transition-colors"
+                  style={{
+                    background: active ? INK : "white",
+                    color: active ? "white" : INK,
+                  }}
+                >
+                  {f === "ALL" ? "All" : f}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Sort by</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+              style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+            >
+              <option value="spend">Spend</option>
+              <option value="hookRate">Hook rate</option>
+              <option value="roas">ROAS</option>
+              <option value="ctr">CTR</option>
+              <option value="frequency">Frequency</option>
+            </select>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: CREAM_BG }}>
                 {[
-                  { label: "Ad", align: "left" },
-                  { label: "Status", align: "left" },
+                  { label: "Creative", align: "left" },
+                  { label: "Format", align: "left" },
                   { label: "Spend", align: "right" },
-                  { label: "Trend", align: "left" },
+                  { label: "Hook rate", align: "right" },
+                  { label: "ThruPlay", align: "right" },
+                  { label: "CTR", align: "right" },
+                  { label: "CPA", align: "right" },
                   { label: "ROAS", align: "right" },
-                  { label: "Purchases", align: "right" },
-                  { label: "Frequency", align: "right" },
+                  { label: "Fatigue", align: "left" },
+                  { label: "Status", align: "left" },
                 ].map((h) => (
                   <th
                     key={h.label}
@@ -579,21 +635,51 @@ export function MetaAds() {
             <tbody>
               {filteredAds.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
+                  <td colSpan={10} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
                     {data.ads.length === 0
                       ? "No ad spend in this window. Try a wider date range."
-                      : "No ads match the current filters. Try clearing search or turning off 'Active only'."}
+                      : "No ads match the current format filter."}
                   </td>
                 </tr>
               )}
               {filteredAds.map((ad) => {
                 const isSelected = ad.adId === selectedId;
                 const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
-                const freqColor = ad.avgFrequency > 3 ? ROSE : ad.avgFrequency > 2 ? AMBER : INK;
+                const hookRate = weightedAvg(ad, "hookRate");
+                const holdRate = weightedAvg(ad, "holdRate");
+                // Hook-rate quality: >=30% Good / 20-30% Decent / <20% Poor
+                const hookQuality =
+                  hookRate >= 30
+                    ? { label: "Good", color: SAGE }
+                    : hookRate >= 20
+                    ? { label: "Decent", color: AMBER }
+                    : { label: "Poor", color: ROSE };
+                // ThruPlay quality: >=15% Good / 10-15% Decent / <10% Poor
+                const holdQuality =
+                  holdRate >= 15
+                    ? { label: "Good", color: SAGE }
+                    : holdRate >= 10
+                    ? { label: "Decent", color: AMBER }
+                    : { label: "Poor", color: ROSE };
+                const fmt = normalizeFormat(ad.creativeType);
+                // Fatigue pill: Fresh (freq < 2) → Tiring (2-3) → Fatigued (>3)
+                const fatigue =
+                  ad.avgFrequency > 3
+                    ? { label: "Fatigued", color: ROSE }
+                    : ad.avgFrequency > 2
+                    ? { label: "Tiring", color: AMBER }
+                    : { label: "Fresh", color: SAGE };
+                // Status: Running (active + healthy) / Pause? (active + bad ROAS) / Paused
+                const statusInfo =
+                  ad.status !== "ACTIVE"
+                    ? { label: "Paused", color: MUTED }
+                    : ad.roas < 1 && ad.spend > 1000
+                    ? { label: "Pause?", color: ROSE }
+                    : { label: "Running", color: SAGE };
                 return (
                   <tr
                     key={ad.adId}
-                    onClick={() => setSelectedId(ad.adId)}
+                    onClick={() => selectAndScroll(ad.adId)}
                     className="border-t cursor-pointer transition-colors"
                     style={{
                       borderColor: CREAM,
@@ -631,24 +717,61 @@ export function MetaAds() {
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
-                        style={{
-                          background: ad.status === "ACTIVE" ? `${SAGE}22` : `${MUTED}22`,
-                          color: ad.status === "ACTIVE" ? SAGE : MUTED,
-                        }}
-                      >
-                        {ad.status}
+                      <span className="rounded-full px-2 py-0.5 text-[10px] capitalize" style={{ background: CREAM_BG, color: INK }}>
+                        {fmt}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums font-semibold" style={{ color: INK }}>{formatInr(ad.spend)}</td>
-                    <td className="px-3 py-3"><MiniSparkline data={ad.daily.map((d) => d.spend)} color={ROSE} /></td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {hookRate > 0 ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-semibold" style={{ color: hookQuality.color }}>
+                            {hookRate.toFixed(0)}%
+                          </span>
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
+                            style={{ background: `${hookQuality.color}22`, color: hookQuality.color }}
+                          >
+                            {hookQuality.label}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {holdRate > 0 ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="font-semibold" style={{ color: holdQuality.color }}>
+                            {holdRate.toFixed(0)}%
+                          </span>
+                          <span
+                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
+                            style={{ background: `${holdQuality.color}22`, color: holdQuality.color }}
+                          >
+                            {holdQuality.label}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: INK }}>{ad.ctr.toFixed(2)}%</td>
+                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: ad.purchases > 0 ? INK : MUTED }}>
+                      {ad.purchases > 0 ? formatInr(ad.cpa) : "—"}
+                    </td>
                     <td className="px-3 py-3 text-right tabular-nums font-semibold" style={{ color: roasColor }}>
                       {ad.roas.toFixed(2)}x
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: INK }}>{ad.purchases}</td>
-                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: freqColor }}>
-                      {ad.avgFrequency.toFixed(1)}x
+                    <td className="px-3 py-3">
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${fatigue.color}22`, color: fatigue.color }}>
+                        {fatigue.label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${statusInfo.color}22`, color: statusInfo.color }}>
+                        {statusInfo.label}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -658,9 +781,118 @@ export function MetaAds() {
         </div>
       </section>
 
+      {/* Side panels: Alerts / Top by ROAS / Spend by Objective */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Alerts — derived from current ads */}
+        <section className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold" style={{ color: INK }}>Alerts</h3>
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${ROSE}22`, color: ROSE }}>
+              {data.ads.filter((a) => (a.status === "ACTIVE" && a.roas < 1 && a.spend > 1000) || a.avgFrequency > 3 || (a.status === "ACTIVE" && a.ctr < 0.5)).length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {(() => {
+              const items: { tone: "rose" | "amber"; text: string }[] = [];
+              for (const a of data.ads) {
+                if (a.status === "ACTIVE" && a.roas < 1 && a.spend > 1000) {
+                  items.push({ tone: "rose", text: `${a.name.slice(0, 40)} CPA ${a.purchases > 0 ? formatInr(a.cpa) : "—"} ROAS ${a.roas.toFixed(2)}× over target` });
+                }
+                if (a.avgFrequency > 3) {
+                  items.push({ tone: "amber", text: `${a.name.slice(0, 40)} frequency ${a.avgFrequency.toFixed(1)}×` });
+                }
+                if (a.status === "ACTIVE" && a.ctr < 0.5 && a.spend > 1000) {
+                  items.push({ tone: "amber", text: `${a.name.slice(0, 40)} CTR ${a.ctr.toFixed(2)}% dropping` });
+                }
+              }
+              if (items.length === 0) {
+                return (
+                  <p className="text-sm italic" style={{ color: MUTED }}>
+                    All ads healthy 🎉
+                  </p>
+                );
+              }
+              return items.slice(0, 4).map((it, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg px-3 py-2 text-xs"
+                  style={{
+                    background: it.tone === "rose" ? `${ROSE}10` : `${AMBER}10`,
+                    color: it.tone === "rose" ? ROSE : AMBER,
+                  }}
+                >
+                  <span className="mr-1">{it.tone === "rose" ? "⊘" : "⚠"}</span>
+                  {it.text}
+                </div>
+              ));
+            })()}
+          </div>
+        </section>
+
+        {/* Top creative by ROAS */}
+        <section className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+          <h3 className="mb-3 text-base font-semibold" style={{ color: INK }}>Top creative by ROAS</h3>
+          <div className="space-y-2">
+            {data.ads.length === 0 ? (
+              <p className="text-sm italic" style={{ color: MUTED }}>No ads with spend</p>
+            ) : (
+              [...data.ads]
+                .filter((a) => a.spend > 0)
+                .sort((a, b) => b.roas - a.roas)
+                .slice(0, 4)
+                .map((a, i) => (
+                  <div key={a.adId} className="flex items-baseline gap-2 text-sm">
+                    <span className="font-mono text-xs" style={{ color: MUTED, width: 18 }}>{i + 1}</span>
+                    <span className="flex-1 truncate" style={{ color: INK }} title={a.name}>
+                      {a.name}
+                    </span>
+                    <span className="font-semibold tabular-nums" style={{ color: a.roas >= 2 ? SAGE : a.roas >= 1 ? AMBER : ROSE }}>
+                      {a.roas.toFixed(1)}×
+                    </span>
+                  </div>
+                ))
+            )}
+          </div>
+        </section>
+
+        {/* Spend by objective — derived from campaign names (best-effort grouping) */}
+        <section className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+          <h3 className="mb-3 text-base font-semibold" style={{ color: INK }}>Spend by campaign</h3>
+          <div className="space-y-3">
+            {(() => {
+              // Group ads by campaign name, sum spend
+              const byCampaign = new Map<string, number>();
+              for (const a of data.ads) {
+                byCampaign.set(a.campaignName, (byCampaign.get(a.campaignName) ?? 0) + a.spend);
+              }
+              const sorted = Array.from(byCampaign.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4);
+              const total = sorted.reduce((s, [, v]) => s + v, 0);
+              const palette = ["#6366f1", SAGE, AMBER, ROSE];
+              if (total === 0) {
+                return <p className="text-sm italic" style={{ color: MUTED }}>No spend in window</p>;
+              }
+              return sorted.map(([name, spend], i) => {
+                const pct = total > 0 ? (spend / total) * 100 : 0;
+                return (
+                  <div key={name}>
+                    <div className="mb-1 flex items-baseline justify-between text-xs">
+                      <span className="truncate" style={{ color: INK }} title={name}>{name.slice(0, 28)}</span>
+                      <span className="font-semibold tabular-nums" style={{ color: INK }}>{pct.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: CREAM }}>
+                      <div className="h-full" style={{ width: `${pct}%`, background: palette[i % palette.length] }} />
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </section>
+      </div>
+
       {/* Drill-down */}
       {selected && (
-        <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
+        <section ref={drillRef} className="rounded-2xl border shadow-sm overflow-hidden scroll-mt-4" style={{ background: "white", borderColor: BORDER }}>
           <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
             <h2 className="text-lg font-semibold" style={{ color: INK }}>Drill-down</h2>
             <span className="text-xs italic" style={{ color: MUTED }}>showing daily breakdown for selected ad</span>

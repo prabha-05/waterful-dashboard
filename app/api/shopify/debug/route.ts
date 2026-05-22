@@ -90,6 +90,29 @@ export async function GET(req: NextRequest) {
     where: { createdAt: { gte: today, lt: tomorrow }, cancelledAt: { not: null } },
   });
 
+  // RTO check across ALL data — what statuses contain rto/return
+  const allStatuses = await prisma.salesOrder.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+    orderBy: { _count: { status: "desc" } },
+  });
+  const rtoSalesOrders = await prisma.salesOrder.count({
+    where: {
+      OR: [
+        { status: { contains: "rto", mode: "insensitive" } },
+        { status: { contains: "return", mode: "insensitive" } },
+      ],
+    },
+  });
+
+  // Sample any orders with non-empty tags (Shopify tags can carry RTO info)
+  const ordersWithTags = await prisma.shopifyOrder.findMany({
+    where: { tags: { not: null } },
+    select: { orderNumber: true, tags: true, financialStatus: true, fulfillmentStatus: true },
+    take: 20,
+    orderBy: { createdAt: "desc" },
+  });
+
   return NextResponse.json({
     nowUtc: now.toISOString(),
     todayUtcStart: today.toISOString(),
@@ -123,6 +146,14 @@ export async function GET(req: NextRequest) {
           count: r._count._all,
         })),
       },
+    },
+    rtoCheck: {
+      salesOrderRowsMatchingRtoOrReturn: rtoSalesOrders,
+      allDistinctStatuses: allStatuses.map((s) => ({
+        status: s.status,
+        count: s._count._all,
+      })),
+      sampleOrdersWithTags: ordersWithTags,
     },
     latestShopifyOrders: latestShopify,
     latestSalesOrders: latestSales,

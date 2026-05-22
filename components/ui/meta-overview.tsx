@@ -73,12 +73,14 @@ type LevelRow = {
   cpc: number;
   cpa: number;
   roas: number;
+  frequency: number;
 };
 
 type AdRow = LevelRow;
 type AdSetRow = LevelRow & { ads: AdRow[] };
 type CampaignRow = LevelRow & {
   metaCampaignId: string;
+  objective: string | null;
   adSets: AdSetRow[];
 };
 

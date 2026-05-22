@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
   // Pull all spend rows for current + previous window
   const spendRows = await prisma.metaAdSpendDaily.findMany({
     where: { date: { gte: prevFrom, lt: globalTo } },
-    include: { campaign: { select: { name: true, status: true } } },
+    include: { campaign: { select: { name: true, status: true, objective: true } } },
   });
 
   // Build per-bucket totals
@@ -158,12 +158,17 @@ export async function GET(req: NextRequest) {
     clicks: number;
     purchases: number;
     purchaseValue: number;
+    // Frequency is a weighted average (sum of frequency*impressions / sum of
+    // impressions). For campaign-level we aggregate from ad-set rows since
+    // MetaAdSpendDaily doesn't carry frequency. Set 0 to start; computed below.
+    frequencyNumerator: number; // sum(freq × impressions)
   };
 
   const campaignMap = new Map<
     number, // MetaCampaign.id (DB pk)
     LevelMetrics & {
       metaCampaignId: string; // Shopify-side string ID
+      objective: string | null;
       reach: number;
     }
   >();
@@ -178,9 +183,9 @@ export async function GET(req: NextRequest) {
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
     } else {
-      // Need metaCampaignId — fetch in bulk after this loop instead of one-by-one
       campaignMap.set(r.campaignId, {
         metaCampaignId: "", // filled below
+        objective: r.campaign.objective,
         name: r.campaign.name,
         status: r.campaign.status,
         spend: r.spend,
@@ -189,6 +194,7 @@ export async function GET(req: NextRequest) {
         clicks: r.clicks,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
+        frequencyNumerator: 0,
       });
     }
   }
@@ -222,6 +228,7 @@ export async function GET(req: NextRequest) {
       existing.clicks += r.clicks;
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
+      existing.frequencyNumerator += r.frequency * r.impressions;
     } else {
       adSetMap.set(r.adSetId, {
         metaCampaignId: r.adSet.metaCampaignId,
@@ -232,6 +239,7 @@ export async function GET(req: NextRequest) {
         clicks: r.clicks,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
+        frequencyNumerator: r.frequency * r.impressions,
       });
     }
   }
@@ -252,6 +260,7 @@ export async function GET(req: NextRequest) {
       existing.clicks += r.clicks;
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
+      existing.frequencyNumerator += r.frequency * r.impressions;
     } else {
       adMap.set(r.adId, {
         adSetId: r.ad.adSetId,
@@ -262,20 +271,35 @@ export async function GET(req: NextRequest) {
         clicks: r.clicks,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
+        frequencyNumerator: r.frequency * r.impressions,
       });
     }
   }
 
+  // Roll ad-set frequency numerators up to their parent campaigns
+  for (const a of adSetMap.values()) {
+    for (const c of campaignMap.values()) {
+      if (c.metaCampaignId === a.metaCampaignId) {
+        c.frequencyNumerator += a.frequencyNumerator;
+        break;
+      }
+    }
+  }
+
   // Compute derived metrics for a single level row
-  const withMetrics = <T extends LevelMetrics>(m: T) => ({
-    ...m,
-    spend: Math.round(m.spend),
-    purchaseValue: Math.round(m.purchaseValue),
-    ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
-    cpc: m.clicks > 0 ? m.spend / m.clicks : 0,
-    cpa: m.purchases > 0 ? m.spend / m.purchases : 0,
-    roas: m.spend > 0 ? m.purchaseValue / m.spend : 0,
-  });
+  const withMetrics = <T extends LevelMetrics>(m: T) => {
+    const { frequencyNumerator, ...rest } = m;
+    return {
+      ...rest,
+      spend: Math.round(m.spend),
+      purchaseValue: Math.round(m.purchaseValue),
+      ctr: m.impressions > 0 ? (m.clicks / m.impressions) * 100 : 0,
+      cpc: m.clicks > 0 ? m.spend / m.clicks : 0,
+      cpa: m.purchases > 0 ? m.spend / m.purchases : 0,
+      roas: m.spend > 0 ? m.purchaseValue / m.spend : 0,
+      frequency: m.impressions > 0 ? frequencyNumerator / m.impressions : 0,
+    };
+  };
 
   // Build the nested campaign → adsets → ads structure
   const campaigns = Array.from(campaignMap.values())
@@ -291,8 +315,8 @@ export async function GET(req: NextRequest) {
           return { ...withMetrics(rest), ads: setAds };
         })
         .sort((a, b) => b.spend - a.spend);
-      const { reach: _reach, ...rest } = c;
-      return { ...withMetrics(rest), adSets: campAdSets };
+      const { reach: _reach, objective, ...rest } = c;
+      return { ...withMetrics(rest), objective, adSets: campAdSets };
     })
     .sort((a, b) => b.spend - a.spend);
 
