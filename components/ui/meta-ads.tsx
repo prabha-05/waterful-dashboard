@@ -1243,65 +1243,6 @@ export function MetaAds() {
                         </div>
                       </div>
 
-                      {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
-                          Conversion funnel — clicks to purchase
-                        </p>
-                        {(() => {
-                          const stages: { label: string; count: number }[] = [
-                            { label: "Clicks", count: ad.clicks },
-                            { label: "Landing Page", count: ad.landingPageViews },
-                            { label: "Add to Cart", count: ad.addToCart },
-                            { label: "Checkout", count: ad.initiateCheckout },
-                            { label: "Purchase", count: ad.purchases },
-                          ];
-                          return (
-                            <div className="flex items-stretch gap-0 overflow-x-auto">
-                              {stages.map((s, i) => {
-                                const prev = i > 0 ? stages[i - 1].count : null;
-                                const dropPct = prev != null && prev > 0
-                                  ? Math.round(((prev - s.count) / prev) * 100)
-                                  : null;
-                                const dropColor = dropPct == null
-                                  ? MUTED
-                                  : dropPct >= 80
-                                  ? ROSE
-                                  : dropPct >= 50
-                                  ? AMBER
-                                  : SAGE;
-                                return (
-                                  <div key={s.label} className="flex items-center flex-1 min-w-0">
-                                    {i > 0 && (
-                                      <div className="flex flex-col items-center px-2 shrink-0">
-                                        <span
-                                          className="text-[10px] font-semibold tabular-nums"
-                                          style={{ color: dropColor }}
-                                        >
-                                          {dropPct == null ? "—" : `-${dropPct}%`}
-                                        </span>
-                                        <span style={{ color: MUTED }}>→</span>
-                                      </div>
-                                    )}
-                                    <div
-                                      className="rounded-xl border px-4 py-3 flex-1 min-w-[100px]"
-                                      style={{ borderColor: BORDER, background: CREAM_BG }}
-                                    >
-                                      <p className="text-xl font-bold tabular-nums" style={{ color: INK }}>
-                                        {s.count.toLocaleString("en-IN")}
-                                      </p>
-                                      <p className="text-[10px]" style={{ color: MUTED }}>
-                                        {s.label}
-                                      </p>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                      </div>
-
                       {/* BOTTOM OF FUNNEL — REVENUE */}
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
@@ -1327,6 +1268,166 @@ export function MetaAds() {
                             noData={ad.purchases === 0}
                           />
                         </div>
+                      </div>
+
+                      {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Conversion funnel — clicks to purchase
+                        </p>
+                        {(() => {
+                          // Each stage has a count and a benchmark for the *transition*
+                          // INTO it (what % of the previous stage should land here).
+                          const stages: {
+                            label: string;
+                            count: number;
+                            benchmark?: { good: number; decent: number; label: string };
+                          }[] = [
+                            { label: "Clicks", count: ad.clicks },
+                            {
+                              label: "Landing Page",
+                              count: ad.landingPageViews,
+                              benchmark: { good: 70, decent: 50, label: "70–80%+ of clicks" },
+                            },
+                            {
+                              label: "Add to Cart",
+                              count: ad.addToCart,
+                              benchmark: { good: 10, decent: 5, label: "5–15% of LP" },
+                            },
+                            {
+                              label: "Checkout",
+                              count: ad.initiateCheckout,
+                              benchmark: { good: 50, decent: 30, label: "40–60% of ATC" },
+                            },
+                            {
+                              label: "Purchase",
+                              count: ad.purchases,
+                              benchmark: { good: 60, decent: 40, label: "50–70% of checkout" },
+                            },
+                          ];
+
+                          // Per-stage quality + identify the weakest transition
+                          type StageQuality = "good" | "decent" | "poor" | "na";
+                          const qualities: StageQuality[] = stages.map((s, i) => {
+                            const prev = i > 0 ? stages[i - 1].count : null;
+                            if (prev == null || prev === 0 || !s.benchmark) return "na";
+                            const pct = (s.count / prev) * 100;
+                            if (pct >= s.benchmark.good) return "good";
+                            if (pct >= s.benchmark.decent) return "decent";
+                            return "poor";
+                          });
+                          const goodCount = qualities.filter((q) => q === "good").length;
+                          const poorCount = qualities.filter((q) => q === "poor").length;
+                          const decentCount = qualities.filter((q) => q === "decent").length;
+                          const evalCount = goodCount + decentCount + poorCount;
+                          // Find weakest transition (lowest ratio of pct to benchmark.good)
+                          let weakestIdx = -1;
+                          let weakestRatio = Infinity;
+                          for (let i = 1; i < stages.length; i++) {
+                            const prev = stages[i - 1].count;
+                            const bm = stages[i].benchmark;
+                            if (!bm || prev === 0) continue;
+                            const pct = (stages[i].count / prev) * 100;
+                            const ratio = pct / bm.good;
+                            if (ratio < weakestRatio) {
+                              weakestRatio = ratio;
+                              weakestIdx = i;
+                            }
+                          }
+                          const verdict =
+                            evalCount === 0
+                              ? { tone: "na" as const, label: "No data", body: "Not enough data to evaluate the funnel." }
+                              : poorCount === 0 && goodCount === evalCount
+                              ? { tone: "good" as const, label: "Healthy funnel", body: "Every stage is at or above industry benchmark." }
+                              : poorCount === 0
+                              ? { tone: "decent" as const, label: "Decent funnel", body: `${goodCount} stage${goodCount === 1 ? "" : "s"} good, ${decentCount} need attention.` }
+                              : poorCount >= 2
+                              ? { tone: "bad" as const, label: "Funnel broken", body: `${poorCount} stages below benchmark. Bottleneck: ${stages[weakestIdx]?.label ?? "—"}.` }
+                              : { tone: "bad" as const, label: "Leaky funnel", body: `Bottleneck: ${stages[weakestIdx]?.label ?? "—"} (below benchmark).` };
+                          const verdictColor =
+                            verdict.tone === "good" ? SAGE :
+                            verdict.tone === "decent" ? AMBER :
+                            verdict.tone === "bad" ? ROSE : MUTED;
+
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex items-stretch gap-2 overflow-x-auto">
+                                {stages.map((s, i) => {
+                                  const prev = i > 0 ? stages[i - 1].count : null;
+                                  const passPct = prev != null && prev > 0
+                                    ? Math.round((s.count / prev) * 100)
+                                    : null;
+                                  const bm = s.benchmark;
+                                  const q = qualities[i];
+                                  const passColor =
+                                    q === "good" ? SAGE :
+                                    q === "decent" ? AMBER :
+                                    q === "poor" ? ROSE : MUTED;
+                                  return (
+                                    <div key={s.label} className="flex items-stretch flex-1 min-w-0 gap-2">
+                                      {i > 0 && (
+                                        <div className="flex flex-col items-center justify-center shrink-0 min-w-[72px]">
+                                          <span
+                                            className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+                                            style={{ background: `${passColor}22`, color: passColor }}
+                                          >
+                                            {passPct == null ? "—" : `${passPct}%`}
+                                          </span>
+                                          {bm && (
+                                            <span
+                                              className="text-[9px] leading-tight text-center mt-1"
+                                              style={{ color: MUTED }}
+                                            >
+                                              std {bm.label.replace(/^(\d+)–(\d+)%?\+? of .+/, "$1–$2%")}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      <div
+                                        className="rounded-xl border px-4 py-3 flex-1 min-w-[110px]"
+                                        style={{
+                                          borderColor: i === 0 ? BORDER : `${passColor}55`,
+                                          background: i === 0 ? CREAM_BG : `${passColor}10`,
+                                        }}
+                                      >
+                                        <p className="text-2xl font-bold tabular-nums leading-none" style={{ color: INK }}>
+                                          {s.count.toLocaleString("en-IN")}
+                                        </p>
+                                        <p className="text-[10px] mt-1" style={{ color: MUTED }}>
+                                          {s.label}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Overall funnel verdict */}
+                              <div
+                                className="rounded-xl border p-3 flex items-center gap-3"
+                                style={{
+                                  background: `${verdictColor}15`,
+                                  borderColor: `${verdictColor}55`,
+                                }}
+                              >
+                                <span
+                                  className="rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+                                  style={{ background: `${verdictColor}33`, color: verdictColor }}
+                                >
+                                  {verdict.label}
+                                </span>
+                                <span className="text-[12px]" style={{ color: INK }}>
+                                  {verdict.body}
+                                </span>
+                                {evalCount > 0 && (
+                                  <span className="ml-auto text-[10px] whitespace-nowrap" style={{ color: MUTED }}>
+                                    {goodCount} good · {decentCount} decent · {poorCount} poor
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* VERDICT NOTES — ROAS / Creative / Hook */}
