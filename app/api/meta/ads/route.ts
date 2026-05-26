@@ -69,6 +69,9 @@ export async function GET(req: NextRequest) {
     impressions: number;
     reach: number;
     clicks: number;
+    landingPageViews: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     frequency: number;
@@ -120,6 +123,9 @@ export async function GET(req: NextRequest) {
       impressions: r.impressions,
       reach: r.reach,
       clicks: r.clicks,
+      landingPageViews: r.landingPageViews,
+      addToCart: r.addToCart,
+      initiateCheckout: r.initiateCheckout,
       purchases: r.purchases,
       purchaseValue: r.purchaseValue,
       frequency: r.frequency,
@@ -145,6 +151,9 @@ export async function GET(req: NextRequest) {
     impressions: 0,
     reach: 0,
     clicks: 0,
+    landingPageViews: 0,
+    addToCart: 0,
+    initiateCheckout: 0,
     purchases: 0,
     purchaseValue: 0,
     frequency: 0,
@@ -165,13 +174,16 @@ export async function GET(req: NextRequest) {
           impressions: acc.impressions + d.impressions,
           reach: acc.reach + d.reach,
           clicks: acc.clicks + d.clicks,
+          landingPageViews: acc.landingPageViews + d.landingPageViews,
+          addToCart: acc.addToCart + d.addToCart,
+          initiateCheckout: acc.initiateCheckout + d.initiateCheckout,
           purchases: acc.purchases + d.purchases,
           purchaseValue: acc.purchaseValue + d.purchaseValue,
           frequencySum: acc.frequencySum + d.frequency,
           // Count only days the ad actually ran (frequency=0 = padded zero-row)
           days: acc.days + (d.frequency > 0 ? 1 : 0),
         }),
-        { spend: 0, impressions: 0, reach: 0, clicks: 0, purchases: 0, purchaseValue: 0, frequencySum: 0, days: 0 }
+        { spend: 0, impressions: 0, reach: 0, clicks: 0, landingPageViews: 0, addToCart: 0, initiateCheckout: 0, purchases: 0, purchaseValue: 0, frequencySum: 0, days: 0 }
       );
       return {
         adId: a.adId,
@@ -190,6 +202,9 @@ export async function GET(req: NextRequest) {
         impressions: t.impressions,
         reach: t.reach,
         clicks: t.clicks,
+        landingPageViews: t.landingPageViews,
+        addToCart: t.addToCart,
+        initiateCheckout: t.initiateCheckout,
         purchases: t.purchases,
         purchaseValue: Math.round(t.purchaseValue),
         avgFrequency: t.days > 0 ? t.frequencySum / t.days : 0,

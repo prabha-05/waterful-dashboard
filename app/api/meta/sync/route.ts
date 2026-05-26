@@ -98,6 +98,9 @@ async function syncMeta(daysBack: number = 30) {
     ctr: number;
     cpc: number;
     cpm: number;
+    landingPageViews: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     syncedAt: Date;
@@ -117,6 +120,27 @@ async function syncMeta(daysBack: number = 30) {
       ctr: parseFloat(ins.ctr || "0"),
       cpc: parseFloat(ins.cpc || "0"),
       cpm: parseFloat(ins.cpm || "0"),
+      landingPageViews: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_landing_page_view",
+          "landing_page_view",
+          "offsite_conversion.fb_pixel_landing_page_view",
+        ])
+      ),
+      addToCart: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_add_to_cart",
+          "add_to_cart",
+          "offsite_conversion.fb_pixel_add_to_cart",
+        ])
+      ),
+      initiateCheckout: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_initiated_checkout",
+          "initiate_checkout",
+          "offsite_conversion.fb_pixel_initiate_checkout",
+        ])
+      ),
       purchases: Math.round(pickPurchaseValue(ins.actions)),
       purchaseValue: pickPurchaseValue(ins.action_values),
       syncedAt: now,
@@ -200,6 +224,9 @@ async function syncMeta(daysBack: number = 30) {
     cpc: number;
     cpm: number;
     frequency: number;
+    landingPageViews: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     syncedAt: Date;
@@ -220,6 +247,27 @@ async function syncMeta(daysBack: number = 30) {
       cpc: parseFloat(ins.cpc || "0"),
       cpm: parseFloat(ins.cpm || "0"),
       frequency: parseFloat(ins.frequency || "0"),
+      landingPageViews: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_landing_page_view",
+          "landing_page_view",
+          "offsite_conversion.fb_pixel_landing_page_view",
+        ])
+      ),
+      addToCart: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_add_to_cart",
+          "add_to_cart",
+          "offsite_conversion.fb_pixel_add_to_cart",
+        ])
+      ),
+      initiateCheckout: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_initiated_checkout",
+          "initiate_checkout",
+          "offsite_conversion.fb_pixel_initiate_checkout",
+        ])
+      ),
       purchases: Math.round(pickPurchaseValue(ins.actions)),
       purchaseValue: pickPurchaseValue(ins.action_values),
       syncedAt: now,
@@ -333,6 +381,9 @@ async function syncMeta(daysBack: number = 30) {
     frequency: number;
     video3sViews: number;
     videoP75Views: number;
+    landingPageViews: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     qualityRanking: string | null;
@@ -362,6 +413,27 @@ async function syncMeta(daysBack: number = 30) {
       frequency: parseFloat(ins.frequency || "0"),
       video3sViews: Math.round(video3s),
       videoP75Views: Math.round(videoP75),
+      landingPageViews: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_landing_page_view",
+          "landing_page_view",
+          "offsite_conversion.fb_pixel_landing_page_view",
+        ])
+      ),
+      addToCart: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_add_to_cart",
+          "add_to_cart",
+          "offsite_conversion.fb_pixel_add_to_cart",
+        ])
+      ),
+      initiateCheckout: Math.round(
+        pickPurchaseValue(ins.actions, [
+          "omni_initiated_checkout",
+          "initiate_checkout",
+          "offsite_conversion.fb_pixel_initiate_checkout",
+        ])
+      ),
       purchases: Math.round(pickPurchaseValue(ins.actions)),
       purchaseValue: pickPurchaseValue(ins.action_values),
       qualityRanking: ins.quality_ranking ?? null,

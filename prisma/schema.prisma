@@ -124,19 +124,22 @@ model MetaCampaign {
 }
 
 model MetaAdSpendDaily {
-  id            Int      @id @default(autoincrement())
-  campaignId    Int
-  date          DateTime
-  spend         Float    @default(0)
-  impressions   Int      @default(0)
-  reach         Int      @default(0)
-  clicks        Int      @default(0)
-  ctr           Float    @default(0)
-  cpc           Float    @default(0)
-  cpm           Float    @default(0)
-  purchases     Int      @default(0)
-  purchaseValue Float    @default(0)
-  syncedAt      DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  campaignId        Int
+  date              DateTime
+  spend             Float    @default(0)
+  impressions       Int      @default(0)
+  reach             Int      @default(0)
+  clicks            Int      @default(0)
+  ctr               Float    @default(0)
+  cpc               Float    @default(0)
+  cpm               Float    @default(0)
+  landingPageViews  Int      @default(0)
+  addToCart         Int      @default(0)
+  initiateCheckout  Int      @default(0)
+  purchases         Int      @default(0)
+  purchaseValue     Float    @default(0)
+  syncedAt          DateTime @default(now())
 
   campaign      MetaCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -166,20 +169,23 @@ model MetaAdSet {
 }
 
 model MetaAdSetDaily {
-  id            Int      @id @default(autoincrement())
-  adSetId       Int
-  date          DateTime
-  spend         Float    @default(0)
-  impressions   Int      @default(0)
-  reach         Int      @default(0)
-  clicks        Int      @default(0)
-  ctr           Float    @default(0)
-  cpc           Float    @default(0)
-  cpm           Float    @default(0)
-  frequency     Float    @default(0)
-  purchases     Int      @default(0)
-  purchaseValue Float    @default(0)
-  syncedAt      DateTime @default(now())
+  id                Int      @id @default(autoincrement())
+  adSetId           Int
+  date              DateTime
+  spend             Float    @default(0)
+  impressions       Int      @default(0)
+  reach             Int      @default(0)
+  clicks            Int      @default(0)
+  ctr               Float    @default(0)
+  cpc               Float    @default(0)
+  cpm               Float    @default(0)
+  frequency         Float    @default(0)
+  landingPageViews  Int      @default(0)
+  addToCart         Int      @default(0)
+  initiateCheckout  Int      @default(0)
+  purchases         Int      @default(0)
+  purchaseValue     Float    @default(0)
+  syncedAt          DateTime @default(now())
 
   adSet         MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
 
@@ -220,6 +226,9 @@ model MetaAdDaily {
   frequency                Float    @default(0)
   video3sViews             Int      @default(0)
   videoP75Views            Int      @default(0)
+  landingPageViews         Int      @default(0)
+  addToCart                Int      @default(0)
+  initiateCheckout         Int      @default(0)
   purchases                Int      @default(0)
   purchaseValue            Float    @default(0)
   qualityRanking           String?

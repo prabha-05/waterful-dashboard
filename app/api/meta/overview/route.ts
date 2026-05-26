@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
     include: { campaign: { select: { name: true, status: true, objective: true } } },
   });
 
-  // Build per-bucket totals
+  // Build per-bucket totals (across all campaigns)
   const periods: Period[] = buckets.map((bucket) => {
     const inBucket = spendRows.filter(
       (r) => r.date >= bucket.from && r.date < bucket.to
@@ -119,6 +119,40 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  // Per-campaign bucket breakdown so the chart can respect the campaign filter.
+  // Keyed by campaign name (which is what the dropdown uses).
+  const periodsByCampaign: Record<string, Period[]> = {};
+  for (const r of spendRows.filter((r) => r.date >= globalFrom && r.date < globalTo)) {
+    if (!periodsByCampaign[r.campaign.name]) {
+      periodsByCampaign[r.campaign.name] = buckets.map((b) => ({
+        label: b.label,
+        from: formatIstYmd(b.from),
+        to: formatIstYmd(b.to),
+        spend: 0,
+        impressions: 0,
+        reach: 0,
+        clicks: 0,
+        purchases: 0,
+        purchaseValue: 0,
+      }));
+    }
+  }
+  for (const name of Object.keys(periodsByCampaign)) {
+    for (let i = 0; i < buckets.length; i++) {
+      const b = buckets[i];
+      const inBucket = spendRows.filter(
+        (r) => r.campaign.name === name && r.date >= b.from && r.date < b.to
+      );
+      const p = periodsByCampaign[name][i];
+      p.spend = Math.round(inBucket.reduce((s, r) => s + r.spend, 0));
+      p.impressions = inBucket.reduce((s, r) => s + r.impressions, 0);
+      p.reach = inBucket.reduce((s, r) => s + r.reach, 0);
+      p.clicks = inBucket.reduce((s, r) => s + r.clicks, 0);
+      p.purchases = inBucket.reduce((s, r) => s + r.purchases, 0);
+      p.purchaseValue = Math.round(inBucket.reduce((s, r) => s + r.purchaseValue, 0));
+    }
+  }
+
   // Current totals
   const inWindow = spendRows.filter(
     (r) => r.date >= globalFrom && r.date < globalTo
@@ -128,6 +162,8 @@ export async function GET(req: NextRequest) {
     impressions: inWindow.reduce((s, r) => s + r.impressions, 0),
     reach: inWindow.reduce((s, r) => s + r.reach, 0),
     clicks: inWindow.reduce((s, r) => s + r.clicks, 0),
+    addToCart: inWindow.reduce((s, r) => s + r.addToCart, 0),
+    initiateCheckout: inWindow.reduce((s, r) => s + r.initiateCheckout, 0),
     purchases: inWindow.reduce((s, r) => s + r.purchases, 0),
     purchaseValue: Math.round(
       inWindow.reduce((s, r) => s + r.purchaseValue, 0)
@@ -143,11 +179,44 @@ export async function GET(req: NextRequest) {
     impressions: prevInWindow.reduce((s, r) => s + r.impressions, 0),
     reach: prevInWindow.reduce((s, r) => s + r.reach, 0),
     clicks: prevInWindow.reduce((s, r) => s + r.clicks, 0),
+    addToCart: prevInWindow.reduce((s, r) => s + r.addToCart, 0),
+    initiateCheckout: prevInWindow.reduce((s, r) => s + r.initiateCheckout, 0),
     purchases: prevInWindow.reduce((s, r) => s + r.purchases, 0),
     purchaseValue: Math.round(
       prevInWindow.reduce((s, r) => s + r.purchaseValue, 0)
     ),
   };
+
+  // Per-campaign previous-period totals so deltas can be computed when a
+  // specific campaign is selected. Keyed by campaign name (matches dropdown).
+  const previousTotalsByCampaign: Record<string, typeof previousTotals> = {};
+  for (const r of prevInWindow) {
+    if (!previousTotalsByCampaign[r.campaign.name]) {
+      previousTotalsByCampaign[r.campaign.name] = {
+        spend: 0,
+        impressions: 0,
+        reach: 0,
+        clicks: 0,
+        addToCart: 0,
+        initiateCheckout: 0,
+        purchases: 0,
+        purchaseValue: 0,
+      };
+    }
+    const p = previousTotalsByCampaign[r.campaign.name];
+    p.spend += r.spend;
+    p.impressions += r.impressions;
+    p.reach += r.reach;
+    p.clicks += r.clicks;
+    p.addToCart += r.addToCart;
+    p.initiateCheckout += r.initiateCheckout;
+    p.purchases += r.purchases;
+    p.purchaseValue += r.purchaseValue;
+  }
+  for (const name of Object.keys(previousTotalsByCampaign)) {
+    previousTotalsByCampaign[name].spend = Math.round(previousTotalsByCampaign[name].spend);
+    previousTotalsByCampaign[name].purchaseValue = Math.round(previousTotalsByCampaign[name].purchaseValue);
+  }
 
   // Campaign-level breakdown for the current window
   type LevelMetrics = {
@@ -156,6 +225,8 @@ export async function GET(req: NextRequest) {
     spend: number;
     impressions: number;
     clicks: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     // Frequency is a weighted average (sum of frequency*impressions / sum of
@@ -180,6 +251,8 @@ export async function GET(req: NextRequest) {
       existing.impressions += r.impressions;
       existing.reach += r.reach;
       existing.clicks += r.clicks;
+      existing.addToCart += r.addToCart;
+      existing.initiateCheckout += r.initiateCheckout;
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
     } else {
@@ -192,6 +265,8 @@ export async function GET(req: NextRequest) {
         impressions: r.impressions,
         reach: r.reach,
         clicks: r.clicks,
+        addToCart: r.addToCart,
+        initiateCheckout: r.initiateCheckout,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
         frequencyNumerator: 0,
@@ -226,6 +301,8 @@ export async function GET(req: NextRequest) {
       existing.spend += r.spend;
       existing.impressions += r.impressions;
       existing.clicks += r.clicks;
+      existing.addToCart += r.addToCart;
+      existing.initiateCheckout += r.initiateCheckout;
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
       existing.frequencyNumerator += r.frequency * r.impressions;
@@ -237,6 +314,8 @@ export async function GET(req: NextRequest) {
         spend: r.spend,
         impressions: r.impressions,
         clicks: r.clicks,
+        addToCart: r.addToCart,
+        initiateCheckout: r.initiateCheckout,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
         frequencyNumerator: r.frequency * r.impressions,
@@ -258,6 +337,8 @@ export async function GET(req: NextRequest) {
       existing.spend += r.spend;
       existing.impressions += r.impressions;
       existing.clicks += r.clicks;
+      existing.addToCart += r.addToCart;
+      existing.initiateCheckout += r.initiateCheckout;
       existing.purchases += r.purchases;
       existing.purchaseValue += r.purchaseValue;
       existing.frequencyNumerator += r.frequency * r.impressions;
@@ -269,6 +350,8 @@ export async function GET(req: NextRequest) {
         spend: r.spend,
         impressions: r.impressions,
         clicks: r.clicks,
+        addToCart: r.addToCart,
+        initiateCheckout: r.initiateCheckout,
         purchases: r.purchases,
         purchaseValue: r.purchaseValue,
         frequencyNumerator: r.frequency * r.impressions,
@@ -334,7 +417,9 @@ export async function GET(req: NextRequest) {
     count,
     unit,
     periods,
+    periodsByCampaign,
     totals,
+    previousTotalsByCampaign,
     previousTotals,
     previousWindow: {
       from: formatIstYmd(prevFrom),

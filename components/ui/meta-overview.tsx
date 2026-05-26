@@ -19,8 +19,6 @@ import {
   Target,
   Activity,
   Calendar,
-  ChevronRight,
-  ChevronDown,
 } from "lucide-react";
 
 const INK = "#4a3a2e";
@@ -67,6 +65,8 @@ type LevelRow = {
   spend: number;
   impressions: number;
   clicks: number;
+  addToCart: number;
+  initiateCheckout: number;
   purchases: number;
   purchaseValue: number;
   ctr: number;
@@ -88,11 +88,14 @@ type Overview = {
   count: number;
   unit: string;
   periods: Period[];
+  periodsByCampaign: Record<string, Period[]>;
   totals: {
     spend: number;
     impressions: number;
     reach: number;
     clicks: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
   };
@@ -101,9 +104,24 @@ type Overview = {
     impressions: number;
     reach: number;
     clicks: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
   };
+  previousTotalsByCampaign: Record<
+    string,
+    {
+      spend: number;
+      impressions: number;
+      reach: number;
+      clicks: number;
+      addToCart: number;
+      initiateCheckout: number;
+      purchases: number;
+      purchaseValue: number;
+    }
+  >;
   campaigns: CampaignRow[];
   meta: {
     lastSyncedAt: string | null;
@@ -118,7 +136,8 @@ function formatInr(v: number) {
   return `₹${Math.round(v).toLocaleString("en-IN")}`;
 }
 
-function formatNumber(v: number) {
+function formatNumber(v: number | null | undefined) {
+  if (v == null || Number.isNaN(v)) return "0";
   if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
   if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
   return v.toLocaleString("en-IN");
@@ -208,12 +227,24 @@ function FunnelStage({
   count,
   rateFromPrev,
   color,
+  benchmark,
 }: {
   label: string;
   count: number;
   rateFromPrev?: number;
   color: string;
+  // good ≥ good%, decent ≥ decent%, else poor. Industry benchmark for this rate.
+  benchmark?: { good: number; decent: number };
 }) {
+  const quality =
+    rateFromPrev !== undefined && benchmark
+      ? rateFromPrev >= benchmark.good
+        ? { label: "Good", color: SAGE }
+        : rateFromPrev >= benchmark.decent
+        ? { label: "Decent", color: AMBER }
+        : { label: "Poor", color: ROSE }
+      : null;
+
   return (
     <div className="flex-1">
       <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>
@@ -227,6 +258,19 @@ function FunnelStage({
           {rateFromPrev.toFixed(2)}% conversion
         </div>
       )}
+      {quality && benchmark && (
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+          <span
+            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
+            style={{ background: `${quality.color}22`, color: quality.color }}
+          >
+            {quality.label}
+          </span>
+          <span className="text-[9px]" style={{ color: MUTED }}>
+            std: ≥{benchmark.good}% good · ≥{benchmark.decent}% ok
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -238,23 +282,8 @@ export function MetaOverview() {
 
   const [from, setFrom] = useState(sevenAgo);
   const [to, setTo] = useState(yesterday);
-  // "ALL" or a specific campaign name. Filters the campaigns table below.
+  // "ALL" or a specific campaign name. Filters KPIs, chart, and funnel.
   const [selectedCampaign, setSelectedCampaign] = useState<string>("ALL");
-  // Expansion state for the campaign → adset → ad hierarchy
-  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
-  const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
-  const toggleCampaign = (name: string) =>
-    setExpandedCampaigns((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
-  const toggleAdSet = (name: string) =>
-    setExpandedAdSets((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
 
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -378,20 +407,31 @@ export function MetaOverview() {
   }
 
   // Derived metrics for current window.
-  // If a single campaign is selected, use its numbers; else use the aggregate.
-  // Previous-period numbers are aggregate-only — we don't have per-campaign
-  // history yet, so deltas are hidden when a specific campaign is selected.
-  const p = data.previousTotals;
+  // If a single campaign is selected, use its numbers (current + previous).
   const oneCampaign =
     selectedCampaign !== "ALL"
       ? data.campaigns.find((c) => c.name === selectedCampaign)
       : null;
+  const p = oneCampaign
+    ? data.previousTotalsByCampaign[selectedCampaign] ?? {
+        spend: 0,
+        impressions: 0,
+        reach: 0,
+        clicks: 0,
+        addToCart: 0,
+        initiateCheckout: 0,
+        purchases: 0,
+        purchaseValue: 0,
+      }
+    : data.previousTotals;
   const t = oneCampaign
     ? {
         spend: oneCampaign.spend,
         impressions: oneCampaign.impressions,
         reach: 0, // not tracked per-campaign in current API
         clicks: oneCampaign.clicks,
+        addToCart: oneCampaign.addToCart,
+        initiateCheckout: oneCampaign.initiateCheckout,
         purchases: oneCampaign.purchases,
         purchaseValue: oneCampaign.purchaseValue,
       }
@@ -402,12 +442,14 @@ export function MetaOverview() {
   const prevCpa = p.purchases > 0 ? p.spend / p.purchases : 0;
   const roas = t.spend > 0 ? t.purchaseValue / t.spend : 0;
   const prevRoas = p.spend > 0 ? p.purchaseValue / p.spend : 0;
-  // Hide deltas when a specific campaign is selected (no per-campaign history)
-  const showDelta = !oneCampaign;
+  // Always show deltas — API returns per-campaign previous totals too.
+  const showDelta = true;
 
   // Funnel rates
   const clickRate = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
-  const purchaseRate = t.clicks > 0 ? (t.purchases / t.clicks) * 100 : 0;
+  const atcRate = t.clicks > 0 ? (t.addToCart / t.clicks) * 100 : 0;
+  const checkoutRate = t.addToCart > 0 ? (t.initiateCheckout / t.addToCart) * 100 : 0;
+  const purchaseRate = t.initiateCheckout > 0 ? (t.purchases / t.initiateCheckout) * 100 : 0;
 
   return (
     <div className="space-y-8">
@@ -491,7 +533,14 @@ export function MetaOverview() {
           </p>
         </div>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data.periods} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <LineChart
+            data={
+              selectedCampaign === "ALL"
+                ? data.periods
+                : data.periodsByCampaign[selectedCampaign] ?? data.periods
+            }
+            margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke={CREAM} />
             <XAxis
               dataKey="label"
@@ -547,6 +596,27 @@ export function MetaOverview() {
             count={t.clicks}
             rateFromPrev={clickRate}
             color={SAGE}
+            benchmark={{ good: 2, decent: 1 }}
+          />
+          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
+            →
+          </div>
+          <FunnelStage
+            label="Add to Cart"
+            count={t.addToCart}
+            rateFromPrev={atcRate}
+            color={SAGE}
+            benchmark={{ good: 10, decent: 5 }}
+          />
+          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
+            →
+          </div>
+          <FunnelStage
+            label="Checkout"
+            count={t.initiateCheckout}
+            rateFromPrev={checkoutRate}
+            color={SAGE}
+            benchmark={{ good: 70, decent: 50 }}
           />
           <div className="flex items-center text-2xl" style={{ color: MUTED }}>
             →
@@ -556,124 +626,8 @@ export function MetaOverview() {
             count={t.purchases}
             rateFromPrev={purchaseRate}
             color={SAGE}
+            benchmark={{ good: 70, decent: 50 }}
           />
-        </div>
-      </section>
-
-      {/* Campaign Table */}
-      <section
-        className="rounded-2xl border shadow-sm overflow-hidden"
-        style={{ background: "white", borderColor: BORDER }}
-      >
-        <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
-          <h2 className="text-lg font-semibold" style={{ color: INK }}>
-            Campaign Performance
-          </h2>
-          <p className="text-xs italic mt-1" style={{ color: MUTED }}>
-            Sorted by spend (highest first). Empty cells mean no spend in this window.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: "#faf6ef" }}>
-                {[
-                  { label: "Campaign / Ad Set / Ad", align: "left" },
-                  { label: "Status", align: "left" },
-                ].map((h) => (
-                  <th
-                    key={h.label}
-                    className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                    style={{ color: MUTED, textAlign: h.align as "left" | "right" }}
-                  >
-                    {h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCampaigns.length === 0 && (
-                <tr>
-                  <td colSpan={2} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
-                    {data.campaigns.length === 0
-                      ? "No campaigns with spend in this window. Try a wider date range."
-                      : "No campaigns match the current filter."}
-                  </td>
-                </tr>
-              )}
-              {filteredCampaigns.flatMap((c, i) => {
-                const statusPill = (s: string, size: "lg" | "sm" = "lg") => (
-                  <span
-                    className={`rounded-full font-semibold uppercase ${size === "lg" ? "px-2 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-[9px]"}`}
-                    style={{
-                      background: s === "ACTIVE" ? `${SAGE}22` : `${MUTED}22`,
-                      color: s === "ACTIVE" ? SAGE : MUTED,
-                    }}
-                  >
-                    {s}
-                  </span>
-                );
-                const isCampOpen = expandedCampaigns.has(c.name);
-                const rows = [
-                  <tr key={`c-${i}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM }} onClick={() => toggleCampaign(c.name)}>
-                    <td className="px-3 py-2.5 font-medium" style={{ color: INK }} title={c.name}>
-                      <div className="flex items-center gap-1.5">
-                        {c.adSets.length > 0 ? (
-                          isCampOpen ? <ChevronDown size={14} style={{ color: MUTED }} /> : <ChevronRight size={14} style={{ color: MUTED }} />
-                        ) : <span style={{ width: 14, display: "inline-block" }} />}
-                        <span className="truncate">{c.name}</span>
-                        {c.adSets.length > 0 && (
-                          <span className="text-[10px] font-normal" style={{ color: MUTED }}>
-                            · {c.adSets.length} ad set{c.adSets.length === 1 ? "" : "s"}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">{statusPill(c.status, "lg")}</td>
-                  </tr>
-                ];
-
-                if (isCampOpen) {
-                  c.adSets.forEach((as, j) => {
-                    const isSetOpen = expandedAdSets.has(`${c.name}|${as.name}`);
-                    rows.push(
-                      <tr key={`c-${i}-as-${j}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM, background: "#fafaf7" }} onClick={() => toggleAdSet(`${c.name}|${as.name}`)}>
-                        <td className="px-3 py-2 pl-8" style={{ color: INK }} title={as.name}>
-                          <div className="flex items-center gap-1.5">
-                            {as.ads.length > 0 ? (
-                              isSetOpen ? <ChevronDown size={12} style={{ color: MUTED }} /> : <ChevronRight size={12} style={{ color: MUTED }} />
-                            ) : <span style={{ width: 12, display: "inline-block" }} />}
-                            <span className="text-[13px] truncate">{as.name}</span>
-                            {as.ads.length > 0 && (
-                              <span className="text-[10px] font-normal" style={{ color: MUTED }}>
-                                · {as.ads.length} ad{as.ads.length === 1 ? "" : "s"}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">{statusPill(as.status, "sm")}</td>
-                      </tr>
-                    );
-
-                    if (isSetOpen) {
-                      as.ads.forEach((ad, k) => {
-                        rows.push(
-                          <tr key={`c-${i}-as-${j}-ad-${k}`} className="border-t" style={{ borderColor: CREAM, background: "#f5f5f0" }}>
-                            <td className="px-3 py-1.5 pl-16 text-[12px]" style={{ color: INK }} title={ad.name}>
-                              <span className="truncate">{ad.name}</span>
-                            </td>
-                            <td className="px-3 py-1.5">{statusPill(ad.status, "sm")}</td>
-                          </tr>
-                        );
-                      });
-                    }
-                  });
-                }
-
-                return rows;
-              })}
-            </tbody>
-          </table>
         </div>
       </section>
 

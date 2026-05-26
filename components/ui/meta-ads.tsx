@@ -21,6 +21,8 @@ import {
   Calendar,
   Sparkles,
   TrendingUp,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 const INK = "#4a3a2e";
@@ -40,6 +42,9 @@ type DailyPoint = {
   impressions: number;
   reach: number;
   clicks: number;
+  landingPageViews: number;
+  addToCart: number;
+  initiateCheckout: number;
   purchases: number;
   purchaseValue: number;
   frequency: number;
@@ -64,6 +69,9 @@ type Ad = {
   impressions: number;
   reach: number;
   clicks: number;
+  landingPageViews: number;
+  addToCart: number;
+  initiateCheckout: number;
   purchases: number;
   purchaseValue: number;
   avgFrequency: number;
@@ -193,6 +201,98 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 // Chart Card (drill-down grid)
 // ─────────────────────────────────────────────────────────────────
 type ChartType = "area" | "bar" | "line";
+// Verdict card. Big number + caption with quality-colored accent stripe + dot.
+function VerdictCard({
+  title,
+  subtitle,
+  value,
+  formatted,
+  unit,
+  target,
+  caption,
+  lowerIsBetter = false,
+  noData = false,
+}: {
+  title: string;
+  // One-line plain-English explanation of the metric, shown under the title.
+  subtitle?: string;
+  value: number;
+  formatted: string;
+  unit?: string;
+  target: { from: number; to: number };
+  caption: string;
+  lowerIsBetter?: boolean;
+  noData?: boolean;
+}) {
+  // Quality color:
+  //   higher-better: value >= target.from = Good; >= target.from*0.7 = Decent; else Poor
+  //   lower-better:  value <= target.from = Good; <= target.to = Decent; else Poor
+  const quality = noData
+    ? { color: MUTED, label: "no data" }
+    : lowerIsBetter
+    ? value <= target.from
+      ? { color: SAGE, label: "Good" }
+      : value <= target.to
+      ? { color: AMBER, label: "Decent" }
+      : { color: ROSE, label: "Poor" }
+    : value >= target.from
+    ? { color: SAGE, label: "Good" }
+    : value >= target.from * 0.7
+    ? { color: AMBER, label: "Decent" }
+    : { color: ROSE, label: "Poor" };
+
+  return (
+    <div
+      className="rounded-2xl border p-4 shadow-sm relative overflow-hidden"
+      style={{
+        background: noData ? "white" : `${quality.color}33`,
+        borderColor: noData ? BORDER : `${quality.color}88`,
+      }}
+    >
+      {/* top accent stripe — colored by quality */}
+      <div
+        className="absolute top-0 left-0 right-0 h-1"
+        style={{ background: quality.color }}
+      />
+      <div className="mb-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: quality.color }}
+          />
+          <p className="text-[12px] font-semibold" style={{ color: INK }}>
+            {title}
+          </p>
+        </div>
+        {subtitle && (
+          <p className="text-[10px] mt-0.5 leading-snug" style={{ color: MUTED }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      <div className="flex items-baseline gap-2 mb-1">
+        {noData ? (
+          <span className="text-xl" style={{ color: MUTED }}>—  no data</span>
+        ) : (
+          <>
+            <span className="text-3xl font-bold tabular-nums" style={{ color: INK }}>
+              {formatted}
+            </span>
+            {unit && (
+              <span className="text-sm" style={{ color: MUTED }}>
+                {unit}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+      <p className="text-xs mb-3" style={{ color: MUTED }}>
+        {caption}
+      </p>
+    </div>
+  );
+}
+
 function ChartCard({
   title,
   data,
@@ -203,6 +303,7 @@ function ChartCard({
   threshold,
   thresholdLabel,
   warnZone,
+  benchmark,
 }: {
   title: string;
   data: { date: string; value: number }[];
@@ -213,11 +314,36 @@ function ChartCard({
   threshold?: number;
   thresholdLabel?: string;
   warnZone?: { from: number; color: string };
+  // Industry-benchmark pill. `lowerIsBetter` flips comparison (CPA, Frequency).
+  // `unit` is appended in the std caption — e.g. "%", "x", "₹".
+  benchmark?: { good: number; decent: number; unit?: string; lowerIsBetter?: boolean };
 }) {
   const series = data.map((d) => d.value);
   const delta = deltaPct(series);
   const arrowColor = delta > 0 ? SAGE : delta < 0 ? ROSE : MUTED;
   const ArrowIcon = delta > 0 ? ArrowUpRight : delta < 0 ? ArrowDownRight : null;
+
+  // Average of the series, used to evaluate the benchmark.
+  const seriesAvg = series.length > 0 ? series.reduce((s, v) => s + v, 0) / series.length : 0;
+  const quality = benchmark
+    ? benchmark.lowerIsBetter
+      ? seriesAvg <= benchmark.good
+        ? { label: "Good", color: SAGE }
+        : seriesAvg <= benchmark.decent
+        ? { label: "Decent", color: AMBER }
+        : { label: "Poor", color: ROSE }
+      : seriesAvg >= benchmark.good
+      ? { label: "Good", color: SAGE }
+      : seriesAvg >= benchmark.decent
+      ? { label: "Decent", color: AMBER }
+      : { label: "Poor", color: ROSE }
+    : null;
+  const benchmarkUnit = benchmark?.unit ?? "";
+  const benchmarkCaption = benchmark
+    ? benchmark.lowerIsBetter
+      ? `std: ≤${benchmark.good}${benchmarkUnit} good · ≤${benchmark.decent}${benchmarkUnit} ok`
+      : `std: ≥${benchmark.good}${benchmarkUnit} good · ≥${benchmark.decent}${benchmarkUnit} ok`
+    : null;
 
   const fmtY = formatY ?? ((v: number) => `${v}`);
   const fmtTip = formatTip ?? fmtY;
@@ -233,7 +359,7 @@ function ChartCard({
       className="rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md"
       style={{ background: "white", borderColor: BORDER }}
     >
-      <div className="flex items-baseline justify-between gap-2 mb-2">
+      <div className="flex items-baseline justify-between gap-2 mb-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           {title}
         </p>
@@ -248,6 +374,19 @@ function ChartCard({
           </span>
         )}
       </div>
+      {quality && benchmarkCaption && (
+        <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+          <span
+            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
+            style={{ background: `${quality.color}22`, color: quality.color }}
+          >
+            {quality.label}
+          </span>
+          <span className="text-[9px]" style={{ color: MUTED }}>
+            {benchmarkCaption}
+          </span>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={90}>
         {chartType === "bar" ? (
           <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -333,7 +472,23 @@ export function MetaAds() {
   // Format filter: ALL | video | image | carousel
   const [formatFilter, setFormatFilter] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
   // Status filter: ALL | ACTIVE | PAUSED
-  const [activeOnly, setActiveOnly] = useState(false);
+  // Minimum spend filter (in INR). 0 = no filter.
+  const [minSpend, setMinSpend] = useState<number>(0);
+  // Hierarchy expansion state
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
+  const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
+  const toggleCampaign = (name: string) =>
+    setExpandedCampaigns((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  const toggleAdSet = (key: string) =>
+    setExpandedAdSets((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   const drillRef = useRef<HTMLElement | null>(null);
 
   const selectAndScroll = (adId: number) => {
@@ -391,7 +546,7 @@ export function MetaAds() {
     if (!data) return [];
     const filtered = data.ads.filter((a) => {
       if (formatFilter !== "ALL" && normalizeFormat(a.creativeType) !== formatFilter) return false;
-      if (activeOnly && a.status !== "ACTIVE") return false;
+      if (minSpend > 0 && a.spend < minSpend) return false;
       return true;
     });
     const sorted = [...filtered].sort((a, b) => {
@@ -409,7 +564,45 @@ export function MetaAds() {
       }
     });
     return sorted;
-  }, [data, formatFilter, activeOnly, sortBy]);
+  }, [data, formatFilter, minSpend, sortBy]);
+
+  // Build Campaign → Ad Set → Ad hierarchy from the filtered ads.
+  type AdType = (typeof filteredAds)[number];
+  const hierarchy = useMemo(() => {
+    const campaigns = new Map<
+      string,
+      {
+        name: string;
+        status: string;
+        spend: number;
+        adSets: Map<string, { name: string; status: string; spend: number; ads: AdType[] }>;
+      }
+    >();
+    for (const ad of filteredAds) {
+      const cName = ad.campaignName || "(Unknown campaign)";
+      const asName = ad.adSetName || "(Unknown ad set)";
+      let camp = campaigns.get(cName);
+      if (!camp) {
+        camp = { name: cName, status: ad.status, spend: 0, adSets: new Map() };
+        campaigns.set(cName, camp);
+      }
+      camp.spend += ad.spend;
+      let as = camp.adSets.get(asName);
+      if (!as) {
+        as = { name: asName, status: ad.status, spend: 0, ads: [] };
+        camp.adSets.set(asName, as);
+      }
+      as.spend += ad.spend;
+      as.ads.push(ad);
+    }
+    // Sort: campaigns by total spend, ad sets by spend, ads by spend (already sorted in filteredAds — keep order)
+    return Array.from(campaigns.values())
+      .map((c) => ({
+        ...c,
+        adSets: Array.from(c.adSets.values()).sort((a, b) => b.spend - a.spend),
+      }))
+      .sort((a, b) => b.spend - a.spend);
+  }, [filteredAds]);
 
   // If the currently-selected ad gets filtered out, fall back to the top of
   // the filtered list (or clear selection if the list is empty).
@@ -504,41 +697,6 @@ export function MetaAds() {
     <div className={`space-y-6 ${loading ? "opacity-70 transition-opacity" : ""}`}>
       {filterBar}
 
-      {/* Total spend strip */}
-      <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
-        <div className="flex items-baseline justify-between mb-2">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Total spend</p>
-            <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(totalSpend)}</p>
-          </div>
-          <span className="text-xs italic" style={{ color: MUTED }}>across all ads in window</span>
-        </div>
-        {data.totalDailySpend.length > 0 ? (
-          <ResponsiveContainer width="100%" height={70}>
-            <AreaChart
-              data={data.totalDailySpend.map((d) => ({ label: d.date.slice(5), value: d.spend }))}
-              margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="totalspend-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={ROSE} stopOpacity={0.4} />
-                  <stop offset="100%" stopColor={ROSE} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="label" tick={{ fill: MUTED, fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis hide />
-              <Tooltip
-                formatter={(v: any) => [formatInr(Number(v)), "Spend"]}
-                contentStyle={{ fontSize: 11, borderRadius: 6, border: `1px solid ${CREAM}` }}
-              />
-              <Area type="monotone" dataKey="value" stroke={ROSE} strokeWidth={2} fill="url(#totalspend-grad)" dot={{ r: 2, fill: ROSE }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-xs italic py-4 text-center" style={{ color: MUTED }}>No spend in this window.</p>
-        )}
-      </div>
-
       {/* Ads table */}
       <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
         <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
@@ -548,30 +706,28 @@ export function MetaAds() {
               Click any row to drill in below.
             </p>
           </div>
-          <label
-            className="flex items-center gap-2 cursor-pointer select-none rounded-lg border px-3 py-1.5 text-sm"
+          <div
+            className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm"
             style={{
-              borderColor: activeOnly ? SAGE : BORDER,
-              color: activeOnly ? SAGE : INK,
-              background: activeOnly ? `${SAGE}15` : CREAM_BG,
+              borderColor: minSpend > 0 ? SAGE : BORDER,
+              background: minSpend > 0 ? `${SAGE}15` : CREAM_BG,
             }}
           >
+            <label className="text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: MUTED }}>
+              Spend &gt;
+            </label>
+            <span style={{ color: MUTED }}>₹</span>
             <input
-              type="checkbox"
-              checked={activeOnly}
-              onChange={(e) => setActiveOnly(e.target.checked)}
-              className="h-3.5 w-3.5 cursor-pointer accent-emerald-600"
+              type="number"
+              min={0}
+              step={100}
+              value={minSpend || ""}
+              onChange={(e) => setMinSpend(Math.max(0, Number(e.target.value) || 0))}
+              placeholder="0"
+              className="w-24 bg-transparent outline-none text-sm font-semibold tabular-nums"
+              style={{ color: INK }}
             />
-            <span className="font-semibold">Active only</span>
-            {data && (
-              <span
-                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none"
-                style={{ background: `${SAGE}22`, color: SAGE }}
-              >
-                {data.ads.filter((a) => a.status === "ACTIVE").length}
-              </span>
-            )}
-          </label>
+          </div>
           <div className="inline-flex rounded-lg border overflow-hidden" style={{ borderColor: BORDER }}>
             {(["ALL", "video", "image", "carousel"] as const).map((f) => {
               const active = formatFilter === f;
@@ -611,7 +767,7 @@ export function MetaAds() {
             <thead>
               <tr style={{ background: CREAM_BG }}>
                 {[
-                  { label: "Creative", align: "left" },
+                  { label: "Campaign / Ad Set / Ad", align: "left" },
                   { label: "Format", align: "left" },
                   { label: "Spend", align: "right" },
                   { label: "Hook rate", align: "right" },
@@ -642,139 +798,154 @@ export function MetaAds() {
                   </td>
                 </tr>
               )}
-              {filteredAds.map((ad) => {
-                const isSelected = ad.adId === selectedId;
-                const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
-                const hookRate = weightedAvg(ad, "hookRate");
-                const holdRate = weightedAvg(ad, "holdRate");
-                // Hook-rate quality: >=30% Good / 20-30% Decent / <20% Poor
-                const hookQuality =
-                  hookRate >= 30
-                    ? { label: "Good", color: SAGE }
-                    : hookRate >= 20
-                    ? { label: "Decent", color: AMBER }
-                    : { label: "Poor", color: ROSE };
-                // ThruPlay quality: >=15% Good / 10-15% Decent / <10% Poor
-                const holdQuality =
-                  holdRate >= 15
-                    ? { label: "Good", color: SAGE }
-                    : holdRate >= 10
-                    ? { label: "Decent", color: AMBER }
-                    : { label: "Poor", color: ROSE };
-                const fmt = normalizeFormat(ad.creativeType);
-                // Fatigue pill: Fresh (freq < 2) → Tiring (2-3) → Fatigued (>3)
-                const fatigue =
-                  ad.avgFrequency > 3
-                    ? { label: "Fatigued", color: ROSE }
-                    : ad.avgFrequency > 2
-                    ? { label: "Tiring", color: AMBER }
-                    : { label: "Fresh", color: SAGE };
-                // Status: Running (active + healthy) / Pause? (active + bad ROAS) / Paused
-                const statusInfo =
-                  ad.status !== "ACTIVE"
-                    ? { label: "Paused", color: MUTED }
-                    : ad.roas < 1 && ad.spend > 1000
-                    ? { label: "Pause?", color: ROSE }
-                    : { label: "Running", color: SAGE };
-                return (
-                  <tr
-                    key={ad.adId}
-                    onClick={() => selectAndScroll(ad.adId)}
-                    className="border-t cursor-pointer transition-colors"
+              {hierarchy.flatMap((c, ci) => {
+                const statusPill = (s: string, size: "lg" | "sm" = "lg") => (
+                  <span
+                    className={`rounded-full font-semibold uppercase ${size === "lg" ? "px-2 py-0.5 text-[10px]" : "px-1.5 py-0.5 text-[9px]"}`}
                     style={{
-                      borderColor: CREAM,
-                      background: isSelected ? `${AMBER}10` : "white",
+                      background: s === "ACTIVE" ? `${SAGE}22` : `${MUTED}22`,
+                      color: s === "ACTIVE" ? SAGE : MUTED,
                     }}
-                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = CREAM_BG; }}
-                    onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "white"; }}
                   >
-                    <td className="px-3 py-3" style={{ color: INK }}>
-                      <div className="flex items-center gap-2.5">
-                        {ad.thumbnailUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={ad.thumbnailUrl}
-                            alt=""
-                            className="h-9 w-9 rounded-lg object-cover flex-shrink-0"
-                            style={{ background: CREAM }}
-                          />
-                        ) : (
-                          <div
-                            className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-white text-sm"
-                            style={{
-                              background: `linear-gradient(135deg, ${thumbColor(ad.name)}, ${thumbColor(ad.name)}cc)`,
-                            }}
-                          >
-                            {thumbInitial(ad.name)}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate max-w-xs" title={ad.name}>{ad.name}</p>
-                          <p className="text-[10px] truncate" style={{ color: MUTED }} title={`${ad.campaignName} → ${ad.adSetName}`}>
-                            {ad.campaignName} · {ad.adSetName}
-                          </p>
-                        </div>
+                    {s}
+                  </span>
+                );
+                const blank = <td className="px-3 py-2 text-right" style={{ color: MUTED }}>—</td>;
+                const isCampOpen = expandedCampaigns.has(c.name);
+                const rows: React.ReactNode[] = [
+                  <tr key={`c-${ci}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM }} onClick={() => toggleCampaign(c.name)}>
+                    <td className="px-3 py-2.5 font-medium" style={{ color: INK }} title={c.name}>
+                      <div className="flex items-center gap-1.5">
+                        {c.adSets.length > 0 ? (
+                          isCampOpen ? <ChevronDown size={14} style={{ color: MUTED }} /> : <ChevronRight size={14} style={{ color: MUTED }} />
+                        ) : <span style={{ width: 14, display: "inline-block" }} />}
+                        <span className="truncate">{c.name}</span>
+                        <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                          · {c.adSets.length} ad set{c.adSets.length === 1 ? "" : "s"}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-3 py-3">
-                      <span className="rounded-full px-2 py-0.5 text-[10px] capitalize" style={{ background: CREAM_BG, color: INK }}>
-                        {fmt}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold" style={{ color: INK }}>{formatInr(ad.spend)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {hookRate > 0 ? (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold" style={{ color: hookQuality.color }}>
-                            {hookRate.toFixed(0)}%
-                          </span>
-                          <span
-                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
-                            style={{ background: `${hookQuality.color}22`, color: hookQuality.color }}
+                    <td className="px-3 py-2 text-[11px]" style={{ color: MUTED }}>—</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{formatInr(c.spend)}</td>
+                    {blank}{blank}{blank}{blank}{blank}
+                    <td className="px-3 py-2" />
+                    <td className="px-3 py-2.5">{statusPill(c.status, "lg")}</td>
+                  </tr>,
+                ];
+
+                if (isCampOpen) {
+                  c.adSets.forEach((as, asi) => {
+                    const setKey = `${c.name}|${as.name}`;
+                    const isSetOpen = expandedAdSets.has(setKey);
+                    rows.push(
+                      <tr key={`c-${ci}-as-${asi}`} className="border-t cursor-pointer hover:bg-neutral-50" style={{ borderColor: CREAM, background: "#fafaf7" }} onClick={() => toggleAdSet(setKey)}>
+                        <td className="px-3 py-2 pl-8" style={{ color: INK }} title={as.name}>
+                          <div className="flex items-center gap-1.5">
+                            {as.ads.length > 0 ? (
+                              isSetOpen ? <ChevronDown size={12} style={{ color: MUTED }} /> : <ChevronRight size={12} style={{ color: MUTED }} />
+                            ) : <span style={{ width: 12, display: "inline-block" }} />}
+                            <span className="text-[13px] truncate">{as.name}</span>
+                            <span className="text-[10px] font-normal" style={{ color: MUTED }}>
+                              · {as.ads.length} ad{as.ads.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-[11px]" style={{ color: MUTED }}>—</td>
+                        <td className="px-3 py-2 text-right tabular-nums" style={{ color: INK }}>{formatInr(as.spend)}</td>
+                        {blank}{blank}{blank}{blank}{blank}
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2">{statusPill(as.status, "sm")}</td>
+                      </tr>
+                    );
+
+                    if (isSetOpen) {
+                      as.ads.forEach((ad, ai) => {
+                        const isSelected = ad.adId === selectedId;
+                        const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
+                        const hookRate = weightedAvg(ad, "hookRate");
+                        const holdRate = weightedAvg(ad, "holdRate");
+                        const hookQuality =
+                          hookRate >= 30 ? { label: "Good", color: SAGE }
+                          : hookRate >= 20 ? { label: "Decent", color: AMBER }
+                          : { label: "Poor", color: ROSE };
+                        const holdQuality =
+                          holdRate >= 15 ? { label: "Good", color: SAGE }
+                          : holdRate >= 10 ? { label: "Decent", color: AMBER }
+                          : { label: "Poor", color: ROSE };
+                        const fmt = normalizeFormat(ad.creativeType);
+                        const fatigue =
+                          ad.avgFrequency > 3 ? { label: "Fatigued", color: ROSE }
+                          : ad.avgFrequency > 2 ? { label: "Tiring", color: AMBER }
+                          : { label: "Fresh", color: SAGE };
+                        const adStatus =
+                          ad.status !== "ACTIVE" ? { label: "Paused", color: MUTED }
+                          : ad.roas < 1 && ad.spend > 1000 ? { label: "Pause?", color: ROSE }
+                          : { label: "Running", color: SAGE };
+                        rows.push(
+                          <tr
+                            key={`c-${ci}-as-${asi}-ad-${ai}`}
+                            onClick={() => selectAndScroll(ad.adId)}
+                            className="border-t cursor-pointer transition-colors"
+                            style={{
+                              borderColor: CREAM,
+                              background: isSelected ? `${AMBER}18` : "#f5f5f0",
+                            }}
                           >
-                            {hookQuality.label}
-                          </span>
-                        </div>
-                      ) : (
-                        <span style={{ color: MUTED }}>—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {holdRate > 0 ? (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold" style={{ color: holdQuality.color }}>
-                            {holdRate.toFixed(0)}%
-                          </span>
-                          <span
-                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
-                            style={{ background: `${holdQuality.color}22`, color: holdQuality.color }}
-                          >
-                            {holdQuality.label}
-                          </span>
-                        </div>
-                      ) : (
-                        <span style={{ color: MUTED }}>—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: INK }}>{ad.ctr.toFixed(2)}%</td>
-                    <td className="px-3 py-3 text-right tabular-nums" style={{ color: ad.purchases > 0 ? INK : MUTED }}>
-                      {ad.purchases > 0 ? formatInr(ad.cpa) : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold" style={{ color: roasColor }}>
-                      {ad.roas.toFixed(2)}x
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${fatigue.color}22`, color: fatigue.color }}>
-                        {fatigue.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${statusInfo.color}22`, color: statusInfo.color }}>
-                        {statusInfo.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
+                            <td className="px-3 py-1.5 pl-16 text-[12px]" style={{ color: INK }} title={ad.name}>
+                              <div className="flex items-center gap-2">
+                                {ad.thumbnailUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={ad.thumbnailUrl} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" style={{ background: CREAM }} />
+                                ) : (
+                                  <div
+                                    className="h-6 w-6 rounded flex items-center justify-center flex-shrink-0 font-bold text-white text-[10px]"
+                                    style={{ background: `linear-gradient(135deg, ${thumbColor(ad.name)}, ${thumbColor(ad.name)}cc)` }}
+                                  >
+                                    {thumbInitial(ad.name)}
+                                  </div>
+                                )}
+                                <span className="truncate">{ad.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="rounded-full px-2 py-0.5 text-[10px] capitalize" style={{ background: CREAM_BG, color: INK }}>{fmt}</span>
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{formatInr(ad.spend)}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">
+                              {hookRate > 0 ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-semibold" style={{ color: hookQuality.color }}>{hookRate.toFixed(0)}%</span>
+                                  <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${hookQuality.color}22`, color: hookQuality.color }}>{hookQuality.label}</span>
+                                </div>
+                              ) : <span style={{ color: MUTED }}>—</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">
+                              {holdRate > 0 ? (
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="font-semibold" style={{ color: holdQuality.color }}>{holdRate.toFixed(0)}%</span>
+                                  <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${holdQuality.color}22`, color: holdQuality.color }}>{holdQuality.label}</span>
+                                </div>
+                              ) : <span style={{ color: MUTED }}>—</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums" style={{ color: INK }}>{ad.ctr.toFixed(2)}%</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums" style={{ color: ad.purchases > 0 ? INK : MUTED }}>
+                              {ad.purchases > 0 ? formatInr(ad.cpa) : "—"}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums font-semibold" style={{ color: roasColor }}>{ad.roas.toFixed(2)}x</td>
+                            <td className="px-3 py-1.5">
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${fatigue.color}22`, color: fatigue.color }}>{fatigue.label}</span>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: `${adStatus.color}22`, color: adStatus.color }}>{adStatus.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    }
+                  });
+                }
+
+                return rows;
               })}
             </tbody>
           </table>
@@ -967,32 +1138,290 @@ export function MetaAds() {
                   </p>
                 </div>
 
-                {/* Window totals strip */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: MUTED }}>Spend</p>
-                    <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(selected.spend)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: MUTED }}>ROAS</p>
-                    <p
-                      className="text-2xl font-bold tabular-nums"
-                      style={{ color: selected.roas >= 2 ? SAGE : selected.roas >= 1 ? AMBER : ROSE }}
-                    >
-                      {selected.roas.toFixed(2)}x
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: MUTED }}>Purchases</p>
-                    <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{selected.purchases}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: MUTED }}>CPA</p>
-                    <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>
-                      {selected.purchases > 0 ? formatInr(selected.cpa) : "—"}
-                    </p>
-                  </div>
-                </div>
+                {/* Funnel verdict cards — Top → Mid → Bottom */}
+                {(() => {
+                  const ad = selected;
+                  const cpm = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0;
+                  const hookRate = weightedAvg(ad, "hookRate");
+                  const holdRate = weightedAvg(ad, "holdRate");
+                  const purchaseCvr = ad.clicks > 0 ? (ad.purchases / ad.clicks) * 100 : 0;
+                  const cpp = ad.purchases > 0 ? ad.spend / ad.purchases : 0;
+                  const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
+                  return (
+                    <div className="space-y-4">
+                      {/* HEADLINE — Spend / Revenue / ROAS */}
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                          <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Total spent</p>
+                          <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(ad.spend)}</p>
+                        </div>
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                          <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Revenue from this ad</p>
+                          <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(ad.purchaseValue)}</p>
+                        </div>
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                          <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>ROAS</p>
+                          <p className="text-2xl font-bold tabular-nums" style={{ color: roasColor }}>{ad.roas.toFixed(2)}x</p>
+                        </div>
+                      </div>
+
+                      {/* TOP OF FUNNEL — ATTENTION */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Top of funnel — attention
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                          <VerdictCard
+                            title="CPM"
+                            subtitle="Cost to reach 1,000 people"
+                            value={cpm}
+                            formatted={`₹${Math.round(cpm)}`}
+                            target={{ from: 80, to: 150 }}
+                            caption="Benchmark ₹80–₹150"
+                            lowerIsBetter
+                          />
+                          <VerdictCard
+                            title="CTR"
+                            subtitle="% who clicked after seeing the ad"
+                            value={ad.ctr}
+                            formatted={`${ad.ctr.toFixed(2)}%`}
+                            target={{ from: 1.5, to: 2 }}
+                            caption="Benchmark 1.5–2%+"
+                          />
+                          <VerdictCard
+                            title="Hook rate"
+                            subtitle="% who watched the first 3 seconds"
+                            value={hookRate}
+                            formatted={`${hookRate.toFixed(0)}%`}
+                            target={{ from: 25, to: 30 }}
+                            caption="Benchmark 25–30%+"
+                          />
+                          <VerdictCard
+                            title="ThruPlay"
+                            subtitle="% who watched at least a quarter of the video"
+                            value={holdRate}
+                            formatted={`${holdRate.toFixed(0)}%`}
+                            target={{ from: 40, to: 50 }}
+                            caption="Benchmark 40–50%+"
+                          />
+                          <VerdictCard
+                            title="Frequency"
+                            subtitle="Avg. times one person saw your ad"
+                            value={ad.avgFrequency}
+                            formatted={`${ad.avgFrequency.toFixed(2)}×`}
+                            target={{ from: 3, to: 4 }}
+                            caption="Keep below 3–4×/week"
+                            lowerIsBetter
+                          />
+                        </div>
+                      </div>
+
+                      {/* MID FUNNEL — INTENT */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Mid funnel — intent
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <VerdictCard
+                            title="CPC"
+                            subtitle="Cost per click — reflects CPM and CTR combined"
+                            value={ad.cpc}
+                            formatted={`₹${Math.round(ad.cpc)}`}
+                            target={{ from: 10, to: 30 }}
+                            caption="Benchmark ₹10–₹30"
+                            lowerIsBetter
+                          />
+                          <VerdictCard
+                            title="Landing page CTR"
+                            subtitle="% of ad clicks that actually load the landing page"
+                            value={ad.clicks > 0 ? (ad.landingPageViews / ad.clicks) * 100 : 0}
+                            formatted={ad.clicks > 0 ? `${((ad.landingPageViews / ad.clicks) * 100).toFixed(2)}%` : "—"}
+                            target={{ from: 70, to: 80 }}
+                            caption="Benchmark 70–80%+ of clicks"
+                            noData={ad.clicks === 0}
+                          />
+                        </div>
+                      </div>
+
+                      {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Conversion funnel — clicks to purchase
+                        </p>
+                        {(() => {
+                          const stages: { label: string; count: number }[] = [
+                            { label: "Clicks", count: ad.clicks },
+                            { label: "Landing Page", count: ad.landingPageViews },
+                            { label: "Add to Cart", count: ad.addToCart },
+                            { label: "Checkout", count: ad.initiateCheckout },
+                            { label: "Purchase", count: ad.purchases },
+                          ];
+                          return (
+                            <div className="flex items-stretch gap-0 overflow-x-auto">
+                              {stages.map((s, i) => {
+                                const prev = i > 0 ? stages[i - 1].count : null;
+                                const dropPct = prev != null && prev > 0
+                                  ? Math.round(((prev - s.count) / prev) * 100)
+                                  : null;
+                                const dropColor = dropPct == null
+                                  ? MUTED
+                                  : dropPct >= 80
+                                  ? ROSE
+                                  : dropPct >= 50
+                                  ? AMBER
+                                  : SAGE;
+                                return (
+                                  <div key={s.label} className="flex items-center flex-1 min-w-0">
+                                    {i > 0 && (
+                                      <div className="flex flex-col items-center px-2 shrink-0">
+                                        <span
+                                          className="text-[10px] font-semibold tabular-nums"
+                                          style={{ color: dropColor }}
+                                        >
+                                          {dropPct == null ? "—" : `-${dropPct}%`}
+                                        </span>
+                                        <span style={{ color: MUTED }}>→</span>
+                                      </div>
+                                    )}
+                                    <div
+                                      className="rounded-xl border px-4 py-3 flex-1 min-w-[100px]"
+                                      style={{ borderColor: BORDER, background: CREAM_BG }}
+                                    >
+                                      <p className="text-xl font-bold tabular-nums" style={{ color: INK }}>
+                                        {s.count.toLocaleString("en-IN")}
+                                      </p>
+                                      <p className="text-[10px]" style={{ color: MUTED }}>
+                                        {s.label}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* BOTTOM OF FUNNEL — REVENUE */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Bottom of funnel — revenue
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <VerdictCard
+                            title="Purchase CVR"
+                            subtitle="% of landing-page visitors who bought"
+                            value={purchaseCvr}
+                            formatted={`${purchaseCvr.toFixed(1)}%`}
+                            target={{ from: 1.5, to: 3 }}
+                            caption="Benchmark 1.5–3%"
+                          />
+                          <VerdictCard
+                            title="CPP"
+                            subtitle="Total spend ÷ number of purchases"
+                            value={cpp}
+                            formatted={ad.purchases > 0 ? `₹${Math.round(cpp).toLocaleString("en-IN")}` : "—"}
+                            target={{ from: 600, to: 1500 }}
+                            caption="Target ₹600–₹1,500"
+                            lowerIsBetter
+                            noData={ad.purchases === 0}
+                          />
+                        </div>
+                      </div>
+
+                      {/* VERDICT NOTES — ROAS / Creative / Hook */}
+                      {(() => {
+                        const notes: { title: string; body: string; tone: "good" | "warn" | "bad" }[] = [];
+                        if (ad.purchases === 0) {
+                          notes.push({
+                            tone: "bad",
+                            title: "No purchase data",
+                            body: "No purchases attributed this window. Monitor or review audience match.",
+                          });
+                        } else if (ad.roas >= 1.8) {
+                          notes.push({
+                            tone: "good",
+                            title: "ROAS on target",
+                            body: `${ad.roas.toFixed(2)}x ROAS — profitable. Scaling candidate.`,
+                          });
+                        } else if (ad.roas >= 1) {
+                          notes.push({
+                            tone: "warn",
+                            title: "ROAS below target",
+                            body: `${ad.roas.toFixed(2)}x ROAS — breaking even on ad spend. Post-click funnel review recommended.`,
+                          });
+                        } else {
+                          notes.push({
+                            tone: "bad",
+                            title: "ROAS underperforming",
+                            body: `${ad.roas.toFixed(2)}x ROAS — losing money on ad spend. Pause or review immediately.`,
+                          });
+                        }
+                        if (ad.ctr >= 2) {
+                          notes.push({
+                            tone: "good",
+                            title: "Strong creative pull",
+                            body: `CTR at ${ad.ctr.toFixed(2)}% is above the 2% benchmark. Ad is stopping the scroll.`,
+                          });
+                        } else if (ad.ctr >= 1.5) {
+                          notes.push({
+                            tone: "warn",
+                            title: "Decent creative pull",
+                            body: `CTR at ${ad.ctr.toFixed(2)}% is in range but has room to improve.`,
+                          });
+                        } else {
+                          notes.push({
+                            tone: "bad",
+                            title: "Weak creative pull",
+                            body: `CTR at ${ad.ctr.toFixed(2)}% is below 1.5%. Creative needs refresh.`,
+                          });
+                        }
+                        if (hookRate >= 25) {
+                          notes.push({
+                            tone: "good",
+                            title: "Hook rate healthy",
+                            body: `${hookRate.toFixed(1)}% of viewers watched past 3 seconds.`,
+                          });
+                        } else if (hookRate >= 20) {
+                          notes.push({
+                            tone: "warn",
+                            title: "Hook borderline",
+                            body: `${hookRate.toFixed(1)}% hook rate — just under the 25% benchmark.`,
+                          });
+                        } else {
+                          notes.push({
+                            tone: "bad",
+                            title: "Hook needs work",
+                            body: `Only ${hookRate.toFixed(1)}% hook rate. First 3 seconds not grabbing attention.`,
+                          });
+                        }
+                        const toneColor = (t: "good" | "warn" | "bad") =>
+                          t === "good" ? SAGE : t === "warn" ? AMBER : ROSE;
+                        return (
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {notes.map((n) => (
+                              <div
+                                key={n.title}
+                                className="rounded-xl border p-3"
+                                style={{
+                                  background: `${toneColor(n.tone)}10`,
+                                  borderColor: `${toneColor(n.tone)}55`,
+                                }}
+                              >
+                                <p className="text-[12px] font-semibold mb-1" style={{ color: toneColor(n.tone) }}>
+                                  {n.title}
+                                </p>
+                                <p className="text-[11px]" style={{ color: INK }}>
+                                  {n.body}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })()}
 
                 {/* Health badges */}
                 <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1077,6 +1506,7 @@ export function MetaAds() {
                   color={SAGE}
                   threshold={1}
                   thresholdLabel="break-even"
+                  benchmark={{ good: 2, decent: 1, unit: "x" }}
                 />
                 <ChartCard
                   title="Purchases"
@@ -1105,6 +1535,7 @@ export function MetaAds() {
                   formatY={(v) => `${v.toFixed(1)}%`}
                   chartType="line"
                   color="#8b5cf6"
+                  benchmark={{ good: 2, decent: 1, unit: "%" }}
                 />
                 <ChartCard
                   title="Hook rate"
@@ -1112,6 +1543,7 @@ export function MetaAds() {
                   formatY={(v) => `${v.toFixed(0)}%`}
                   chartType="area"
                   color={TEAL}
+                  benchmark={{ good: 30, decent: 20, unit: "%" }}
                 />
                 <ChartCard
                   title="Hold rate"
@@ -1119,6 +1551,7 @@ export function MetaAds() {
                   formatY={(v) => `${v.toFixed(0)}%`}
                   chartType="area"
                   color={SAGE}
+                  benchmark={{ good: 15, decent: 10, unit: "%" }}
                 />
                 <ChartCard
                   title="Frequency"
@@ -1128,9 +1561,11 @@ export function MetaAds() {
                   color={INK}
                   warnZone={{ from: 3, color: ROSE }}
                   thresholdLabel="fatigue"
+                  benchmark={{ good: 2, decent: 3, unit: "x", lowerIsBetter: true }}
                 />
               </div>
             </div>
+
           </div>
         </section>
       )}

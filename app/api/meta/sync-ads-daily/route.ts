@@ -200,6 +200,9 @@ export async function GET(request: Request) {
     frequency: number;
     video3sViews: number;
     videoP75Views: number;
+    landingPageViews: number;
+    addToCart: number;
+    initiateCheckout: number;
     purchases: number;
     purchaseValue: number;
     qualityRanking: string | null;
@@ -230,6 +233,27 @@ export async function GET(request: Request) {
       // Meta v22 removed video_3_sec_watched_actions — derive from actions[video_view].
       video3sViews: Math.round(pickValue(ins.actions, ["video_view"])),
       videoP75Views: Math.round(pickValue(ins.video_p75_watched_actions, ["video_view"])),
+      landingPageViews: Math.round(
+        pickValue(ins.actions, [
+          "omni_landing_page_view",
+          "landing_page_view",
+          "offsite_conversion.fb_pixel_landing_page_view",
+        ])
+      ),
+      addToCart: Math.round(
+        pickValue(ins.actions, [
+          "omni_add_to_cart",
+          "add_to_cart",
+          "offsite_conversion.fb_pixel_add_to_cart",
+        ])
+      ),
+      initiateCheckout: Math.round(
+        pickValue(ins.actions, [
+          "omni_initiated_checkout",
+          "initiate_checkout",
+          "offsite_conversion.fb_pixel_initiate_checkout",
+        ])
+      ),
       purchases: Math.round(pickValue(ins.actions)),
       purchaseValue: pickValue(ins.action_values),
       qualityRanking: ins.quality_ranking ?? null,
@@ -276,6 +300,27 @@ export async function GET(request: Request) {
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
         frequency: parseFloat(ins.frequency || "0"),
+        landingPageViews: Math.round(
+          pickValue(ins.actions, [
+            "omni_landing_page_view",
+            "landing_page_view",
+            "offsite_conversion.fb_pixel_landing_page_view",
+          ])
+        ),
+        addToCart: Math.round(
+          pickValue(ins.actions, [
+            "omni_add_to_cart",
+            "add_to_cart",
+            "offsite_conversion.fb_pixel_add_to_cart",
+          ])
+        ),
+        initiateCheckout: Math.round(
+          pickValue(ins.actions, [
+            "omni_initiated_checkout",
+            "initiate_checkout",
+            "offsite_conversion.fb_pixel_initiate_checkout",
+          ])
+        ),
         purchases: Math.round(pickValue(ins.actions)),
         purchaseValue: pickValue(ins.action_values),
         syncedAt: now,
@@ -320,6 +365,27 @@ export async function GET(request: Request) {
         ctr: parseFloat(ins.ctr || "0"),
         cpc: parseFloat(ins.cpc || "0"),
         cpm: parseFloat(ins.cpm || "0"),
+        landingPageViews: Math.round(
+          pickValue(ins.actions, [
+            "omni_landing_page_view",
+            "landing_page_view",
+            "offsite_conversion.fb_pixel_landing_page_view",
+          ])
+        ),
+        addToCart: Math.round(
+          pickValue(ins.actions, [
+            "omni_add_to_cart",
+            "add_to_cart",
+            "offsite_conversion.fb_pixel_add_to_cart",
+          ])
+        ),
+        initiateCheckout: Math.round(
+          pickValue(ins.actions, [
+            "omni_initiated_checkout",
+            "initiate_checkout",
+            "offsite_conversion.fb_pixel_initiate_checkout",
+          ])
+        ),
         purchases: Math.round(pickValue(ins.actions)),
         purchaseValue: pickValue(ins.action_values),
         syncedAt: now,
