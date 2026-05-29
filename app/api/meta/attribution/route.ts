@@ -218,15 +218,57 @@ export async function GET(req: NextRequest) {
     if (a.phone) e.customers.add(a.phone);
     else if (a.email) e.customers.add(a.email);
   }
+
+  // Enrich each rollup row with Meta's own purchases / revenue / previewLink
+  // for the same date window. Sort by Meta's purchases (descending).
+  const windowStart = where.createdAt
+    ? (where.createdAt as { gte: Date }).gte
+    : new Date(0);
+  const windowEnd = where.createdAt
+    ? (where.createdAt as { lte?: Date; lt?: Date }).lte ?? (where.createdAt as { lt?: Date }).lt ?? new Date()
+    : new Date();
+
+  const rollupAdIds = Array.from(byAd.keys());
+  const metaAds = rollupAdIds.length > 0
+    ? await prisma.metaAd.findMany({
+        where: { metaAdId: { in: rollupAdIds } },
+        select: { id: true, metaAdId: true, previewLink: true },
+      })
+    : [];
+  const metaAdInfo = new Map(metaAds.map((m) => [m.metaAdId, m]));
+  const metaDailyRows = metaAds.length > 0
+    ? await prisma.metaAdDaily.findMany({
+        where: {
+          adId: { in: metaAds.map((m) => m.id) },
+          date: { gte: windowStart, lt: windowEnd },
+        },
+        select: { adId: true, purchases: true, purchaseValue: true },
+      })
+    : [];
+  const metaByDbId = new Map<number, { purchases: number; purchaseValue: number }>();
+  for (const r of metaDailyRows) {
+    const e = metaByDbId.get(r.adId) ?? { purchases: 0, purchaseValue: 0 };
+    e.purchases += r.purchases;
+    e.purchaseValue += r.purchaseValue;
+    metaByDbId.set(r.adId, e);
+  }
+
   const adRollup = Array.from(byAd.values())
-    .map((e) => ({
-      adId: e.adId,
-      adName: e.adName,
-      orders: e.orders,
-      revenue: Math.round(e.revenue),
-      customers: e.customers.size,
-    }))
-    .sort((a, b) => b.revenue - a.revenue);
+    .map((e) => {
+      const info = metaAdInfo.get(e.adId);
+      const metaAgg = info ? metaByDbId.get(info.id) ?? { purchases: 0, purchaseValue: 0 } : { purchases: 0, purchaseValue: 0 };
+      return {
+        adId: e.adId,
+        adName: e.adName,
+        orders: e.orders,
+        revenue: Math.round(e.revenue),
+        customers: e.customers.size,
+        metaPurchases: metaAgg.purchases,
+        metaRevenue: Math.round(metaAgg.purchaseValue),
+        previewLink: info?.previewLink ?? null,
+      };
+    })
+    .sort((a, b) => b.metaPurchases - a.metaPurchases || b.revenue - a.revenue);
 
   return NextResponse.json({
     totalOrders: orders.length,

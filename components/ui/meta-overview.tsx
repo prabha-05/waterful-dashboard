@@ -317,7 +317,16 @@ export function MetaOverview() {
   // Attribution rollup — which ads brought actual Shopify orders (via UTM).
   // Refreshes alongside the date range. Shopify-side ground truth, independent
   // of Meta's Pixel-attributed numbers above.
-  type AttribAd = { adId: string; adName: string | null; orders: number; revenue: number; customers: number };
+  type AttribAd = {
+    adId: string;
+    adName: string | null;
+    orders: number;
+    revenue: number;
+    customers: number;
+    metaPurchases: number;
+    metaRevenue: number;
+    previewLink: string | null;
+  };
   const [attribAds, setAttribAds] = useState<AttribAd[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -682,20 +691,28 @@ export function MetaOverview() {
               Ads with attributed Shopify orders
             </h2>
             <p className="text-xs italic mt-1" style={{ color: MUTED }}>
-              UTM-matched orders for this window. Click any ad to open the drill-down.
+              Sorted by Meta purchases. Click any ad to open the drill-down.
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "#faf6ef" }}>
-                  {["Ad", "Orders", "Customers", "Revenue"].map((h, i) => (
+                  {[
+                    { l: "Ad", a: "left" },
+                    { l: "Meta purchases", a: "right" },
+                    { l: "Meta revenue", a: "right" },
+                    { l: "Shopify orders", a: "right" },
+                    { l: "Customers", a: "right" },
+                    { l: "Shopify revenue", a: "right" },
+                    { l: "Preview", a: "center" },
+                  ].map((h) => (
                     <th
-                      key={h}
+                      key={h.l}
                       className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                      style={{ color: MUTED, textAlign: i === 0 ? "left" : "right" }}
+                      style={{ color: MUTED, textAlign: h.a as "left" | "right" | "center" }}
                     >
-                      {h}
+                      {h.l}
                     </th>
                   ))}
                 </tr>
@@ -703,7 +720,7 @@ export function MetaOverview() {
               <tbody>
                 {attribAds.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-3 py-10 text-center text-sm italic" style={{ color: MUTED }}>
+                    <td colSpan={7} className="px-3 py-10 text-center text-sm italic" style={{ color: MUTED }}>
                       No UTM-attributed orders in this window.
                     </td>
                   </tr>
@@ -720,10 +737,31 @@ export function MetaOverview() {
                     <td className="px-3 py-2.5 font-medium" style={{ color: INK }} title={a.adName ?? a.adId}>
                       {a.adName ?? <span style={{ color: MUTED }}>Ad {a.adId.slice(-6)} (not in MetaAd table)</span>}
                     </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                      {a.metaPurchases}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
+                      {a.metaRevenue > 0 ? formatInr(a.metaRevenue) : "—"}
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{a.orders}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{a.customers}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
                       {formatInr(a.revenue)}
+                    </td>
+                    <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                      {a.previewLink ? (
+                        <a
+                          href={a.previewLink}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-[11px] underline hover:no-underline"
+                          style={{ color: AMBER }}
+                        >
+                          Preview ↗
+                        </a>
+                      ) : (
+                        <span className="text-[11px]" style={{ color: MUTED }}>—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
