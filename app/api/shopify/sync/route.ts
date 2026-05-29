@@ -36,7 +36,7 @@ async function withDbRetry<T>(fn: () => Promise<T>, attempts = 6, baseDelayMs = 
   throw lastErr;
 }
 
-async function syncOrders(force: boolean = false) {
+async function syncOrders(force: boolean = false, sinceOverride?: Date) {
   // Refuse to start if another sync is genuinely in progress (within last 3 min).
   // Window is short because the SyncLog status field is unreliable — Neon drops
   // long connections so the final "completed" update sometimes doesn't persist.
@@ -79,7 +79,11 @@ async function syncOrders(force: boolean = false) {
   });
 
   try {
-    const orders = await fetchAllOrders(sinceDate);
+    // sinceOverride uses created_at_min (cohort backfill); default uses
+    // updated_at_min from last successful sync (incremental).
+    const orders = sinceOverride
+      ? await fetchAllOrders(sinceOverride, 250, true)
+      : await fetchAllOrders(sinceDate);
 
     let added = 0;
     let updated = 0;
@@ -129,6 +133,14 @@ async function syncOrders(force: boolean = false) {
         totalDiscounts: order.total_discounts
           ? parseFloat(order.total_discounts)
           : null,
+        landingSite: order.landing_site ?? null,
+        referringSite: order.referring_site ?? null,
+        sourceName: order.source_name ?? null,
+        sourceIdentifier: order.source_identifier ?? null,
+        noteAttributes:
+          order.note_attributes && order.note_attributes.length > 0
+            ? JSON.stringify(order.note_attributes)
+            : null,
         syncedAt: new Date(),
       };
 
@@ -368,6 +380,10 @@ export async function GET(request: Request) {
   const token = queryToken ?? headerToken;
   const force = searchParams.get("full") === "true";
   const wait = searchParams.get("wait") === "true";
+  // Optional: backfill from a specific date (YYYY-MM-DD). Uses created_at_min
+  // so we only pull orders created after this date, not orders edited after.
+  const sinceParam = searchParams.get("since");
+  const sinceOverride = sinceParam ? new Date(`${sinceParam}T00:00:00Z`) : undefined;
   const cronSecret = process.env.CRON_SECRET;
 
   if (cronSecret && token !== cronSecret) {
@@ -377,7 +393,7 @@ export async function GET(request: Request) {
   if (wait) {
     // Inline mode — block until sync finishes (manual debugging)
     try {
-      const result = await syncOrders(force);
+      const result = await syncOrders(force, sinceOverride);
       return NextResponse.json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
@@ -391,7 +407,7 @@ export async function GET(request: Request) {
   // client (cron-job.org) gets its response.
   after(async () => {
     try {
-      await syncOrders(force);
+      await syncOrders(force, sinceOverride);
     } catch (err) {
       console.error("[shopify/sync] Background sync failed:", err);
     }

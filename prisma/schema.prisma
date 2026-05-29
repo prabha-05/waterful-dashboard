@@ -75,6 +75,16 @@ model ShopifyOrder {
   paymentGatewayNames String?
   discountCodes       String?
   totalDiscounts      Float?
+  // Attribution: where the customer landed + where they came from. Used to
+  // map orders back to specific Meta ads via UTM params or fbclid.
+  landingSite       String?
+  referringSite     String?
+  sourceName        String?
+  sourceIdentifier  String?
+  // GoKwik and other third-party checkouts stash UTMs in note_attributes
+  // instead of landing_site. Stored as JSON string (Prisma has no native JSON
+  // type on Postgres without changing column type). Parsed in attribution API.
+  noteAttributes    String?
   syncedAt        DateTime @default(now())
 
   lineItems       ShopifyLineItem[]

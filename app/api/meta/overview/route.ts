@@ -413,6 +413,23 @@ export async function GET(req: NextRequest) {
     where: { status: "ACTIVE" },
   });
 
+  // Shopify "reality" — actual net orders + revenue in this window. Used by
+  // the Reality Check panel to compare against Meta's Pixel-reported numbers
+  // (which routinely undercount because of iOS 14+ ATT, ad blockers, and
+  // third-party checkouts like GoKwik that break browser Pixel firing).
+  const shopifyNet = await prisma.shopifyOrder.findMany({
+    where: {
+      createdAt: { gte: globalFrom, lt: globalTo },
+      cancelledAt: null,
+      financialStatus: { notIn: ["voided", "refunded"] },
+    },
+    select: { totalPrice: true },
+  });
+  const shopifyReality = {
+    orders: shopifyNet.length,
+    revenue: Math.round(shopifyNet.reduce((s, o) => s + o.totalPrice, 0)),
+  };
+
   return NextResponse.json({
     count,
     unit,
@@ -426,6 +443,7 @@ export async function GET(req: NextRequest) {
       to: formatIstYmd(prevTo),
     },
     campaigns,
+    shopifyReality,
     meta: {
       lastSyncedAt: lastRow?.syncedAt ?? null,
       totalCampaigns,

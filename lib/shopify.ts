@@ -59,6 +59,13 @@ export interface ShopifyOrderRaw {
   tags?: string;
   payment_gateway_names?: string[];
   discount_codes?: ShopifyDiscountCode[];
+  // Attribution — Shopify exposes these on the order REST payload.
+  landing_site?: string;
+  referring_site?: string;
+  source_name?: string;
+  source_identifier?: string;
+  // GoKwik / custom checkouts stash UTMs here as { name, value } pairs.
+  note_attributes?: Array<{ name: string; value: string }>;
 }
 
 interface ShopifyOrdersResponse {
@@ -81,13 +88,17 @@ function shopifyFetch(endpoint: string): Promise<Response> {
  */
 export async function fetchAllOrders(
   sinceDate?: Date,
-  limit = 250
+  limit = 250,
+  // When set, filter by created_at instead of updated_at. Used for backfills
+  // that need a specific historical cohort (e.g. "all orders since May 1").
+  useCreatedAt = false
 ): Promise<ShopifyOrderRaw[]> {
   const allOrders: ShopifyOrderRaw[] = [];
 
   let params = `limit=${limit}&status=any`;
   if (sinceDate) {
-    params += `&updated_at_min=${sinceDate.toISOString()}`;
+    const key = useCreatedAt ? "created_at_min" : "updated_at_min";
+    params += `&${key}=${sinceDate.toISOString()}`;
   }
 
   let nextUrl: string | null = `orders.json?${params}`;

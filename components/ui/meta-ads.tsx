@@ -54,6 +54,7 @@ type DailyPoint = {
 
 type Ad = {
   adId: number;
+  metaAdId: string;
   name: string;
   status: string;
   adSetName: string;
@@ -511,6 +512,21 @@ export function MetaAds() {
         if (cancelled) return;
         setData(d);
         if (d.ads && d.ads.length > 0) {
+          // Deep-link: if the URL has ?metaAdId=…, jump to that ad and scroll
+          // into the drill-down. Used by the Campaigns page "Ads by attributed
+          // orders" rollup to drill in on a specific creative.
+          const url = new URL(window.location.href);
+          const deepMetaAdId = url.searchParams.get("metaAdId");
+          if (deepMetaAdId) {
+            const match = d.ads.find((a) => a.metaAdId === deepMetaAdId);
+            if (match) {
+              setSelectedId(match.adId);
+              requestAnimationFrame(() => {
+                drillRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+              return;
+            }
+          }
           setSelectedId((cur) => (cur && d.ads.some((a) => a.adId === cur) ? cur : d.ads[0].adId));
         } else {
           setSelectedId(null);

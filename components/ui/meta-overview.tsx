@@ -123,6 +123,10 @@ type Overview = {
     }
   >;
   campaigns: CampaignRow[];
+  shopifyReality: {
+    orders: number;
+    revenue: number;
+  };
   meta: {
     lastSyncedAt: string | null;
     totalCampaigns: number;
@@ -304,6 +308,27 @@ export function MetaOverview() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [from, to]);
+
+  // Attribution rollup — which ads brought actual Shopify orders (via UTM).
+  // Refreshes alongside the date range. Shopify-side ground truth, independent
+  // of Meta's Pixel-attributed numbers above.
+  type AttribAd = { adId: string; adName: string | null; orders: number; revenue: number; customers: number };
+  const [attribAds, setAttribAds] = useState<AttribAd[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/meta/attribution?from=${from}&to=${to}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        setAttribAds(d.adRollup ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setAttribAds([]);
       });
     return () => {
       cancelled = true;
@@ -572,6 +597,141 @@ export function MetaOverview() {
           </LineChart>
         </ResponsiveContainer>
       </section>
+
+      {/* Reality Check — Meta vs Shopify */}
+      {(() => {
+        // Only show when "All campaigns" is selected — Shopify reality is
+        // account-wide, not splittable by campaign.
+        if (selectedCampaign !== "ALL") return null;
+        const metaRev = data.totals.purchaseValue;
+        const realRev = data.shopifyReality.revenue;
+        const metaRoas = data.totals.spend > 0 ? metaRev / data.totals.spend : 0;
+        const blendedRoas = data.totals.spend > 0 ? realRev / data.totals.spend : 0;
+        const gap = realRev - metaRev;
+        const gapPct = realRev > 0 ? ((realRev - metaRev) / realRev) * 100 : 0;
+        const metaShare = realRev > 0 ? (metaRev / realRev) * 100 : 0;
+        return (
+          <section
+            className="rounded-2xl border p-5 shadow-sm"
+            style={{ background: "white", borderColor: BORDER }}
+          >
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold" style={{ color: INK }}>
+                Reality check — Meta vs Shopify
+              </h2>
+              <p className="text-xs italic" style={{ color: MUTED }}>
+                Meta&apos;s Pixel undercounts; Shopify is ground truth.
+              </p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: "#fafaf7" }}>
+                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Meta-reported revenue</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(metaRev)}</p>
+                <p className="text-[11px] mt-1" style={{ color: MUTED }}>from {data.totals.purchases} Pixel-attributed purchases</p>
+              </div>
+              <div className="rounded-xl border p-4" style={{ borderColor: `${SAGE}55`, background: `${SAGE}10` }}>
+                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Shopify actual revenue</p>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(realRev)}</p>
+                <p className="text-[11px] mt-1" style={{ color: MUTED }}>from {data.shopifyReality.orders} net orders</p>
+              </div>
+              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: "#fafaf7" }}>
+                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Meta ROAS (reported)</p>
+                <p
+                  className="text-2xl font-bold tabular-nums"
+                  style={{ color: metaRoas >= 2 ? SAGE : metaRoas >= 1 ? AMBER : ROSE }}
+                >
+                  {metaRoas.toFixed(2)}x
+                </p>
+                <p className="text-[11px] mt-1" style={{ color: MUTED }}>Meta&apos;s view — undercount</p>
+              </div>
+              <div className="rounded-xl border p-4" style={{ borderColor: `${SAGE}55`, background: `${SAGE}10` }}>
+                <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Blended ROAS (Shopify)</p>
+                <p
+                  className="text-2xl font-bold tabular-nums"
+                  style={{ color: blendedRoas >= 2 ? SAGE : blendedRoas >= 1 ? AMBER : ROSE }}
+                >
+                  {blendedRoas.toFixed(2)}x
+                </p>
+                <p className="text-[11px] mt-1" style={{ color: MUTED }}>all Shopify revenue ÷ Meta spend</p>
+              </div>
+            </div>
+            <div
+              className="mt-4 rounded-xl border p-3 flex flex-wrap items-center gap-3 text-[12px]"
+              style={{ background: `${AMBER}10`, borderColor: `${AMBER}55`, color: INK }}
+            >
+              <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap" style={{ background: `${AMBER}33`, color: AMBER }}>
+                Pixel undercount: {formatInr(gap)} ({gapPct.toFixed(0)}%)
+              </span>
+              <span style={{ color: MUTED }}>
+                Meta sees <span className="font-semibold" style={{ color: INK }}>{metaShare.toFixed(0)}%</span> of Shopify revenue.
+                The other <span className="font-semibold" style={{ color: INK }}>{(100 - metaShare).toFixed(0)}%</span> is direct, retention, or Pixel-missed conversions.
+              </span>
+              <span className="ml-auto text-[10px]" style={{ color: MUTED }}>
+                Enable CAPI to close this gap.
+              </span>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Ads by attributed orders — clickable rollup that deep-links to drill-down */}
+      {selectedCampaign === "ALL" && (
+        <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
+          <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
+            <h2 className="text-lg font-semibold" style={{ color: INK }}>
+              Ads with attributed Shopify orders
+            </h2>
+            <p className="text-xs italic mt-1" style={{ color: MUTED }}>
+              UTM-matched orders for this window. Click any ad to open the drill-down.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: "#faf6ef" }}>
+                  {["Ad", "Orders", "Customers", "Revenue"].map((h, i) => (
+                    <th
+                      key={h}
+                      className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+                      style={{ color: MUTED, textAlign: i === 0 ? "left" : "right" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {attribAds.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-10 text-center text-sm italic" style={{ color: MUTED }}>
+                      No UTM-attributed orders in this window.
+                    </td>
+                  </tr>
+                )}
+                {attribAds.map((a) => (
+                  <tr
+                    key={a.adId}
+                    onClick={() => {
+                      window.location.href = `/dashboard/final/meta/ads?metaAdId=${encodeURIComponent(a.adId)}`;
+                    }}
+                    className="border-t cursor-pointer hover:bg-neutral-50"
+                    style={{ borderColor: CREAM }}
+                  >
+                    <td className="px-3 py-2.5 font-medium" style={{ color: INK }} title={a.adName ?? a.adId}>
+                      {a.adName ?? <span style={{ color: MUTED }}>Ad {a.adId.slice(-6)} (not in MetaAd table)</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{a.orders}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{a.customers}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                      {formatInr(a.revenue)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Funnel */}
       <section

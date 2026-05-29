@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
     include: {
       ad: {
         select: {
+          metaAdId: true,
           name: true,
           status: true,
           creativeType: true,
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
 
   type AdAgg = {
     adId: number;
+    metaAdId: string;
     name: string;
     status: string;
     adSetName: string;
@@ -102,6 +104,7 @@ export async function GET(req: NextRequest) {
     if (!agg) {
       agg = {
         adId: r.adId,
+        metaAdId: r.ad.metaAdId,
         name: r.ad.name,
         status: r.ad.status,
         adSetName: r.ad.adSet.name,
@@ -187,6 +190,7 @@ export async function GET(req: NextRequest) {
       );
       return {
         adId: a.adId,
+        metaAdId: a.metaAdId,
         name: a.name,
         status: a.status,
         adSetName: a.adSetName,
