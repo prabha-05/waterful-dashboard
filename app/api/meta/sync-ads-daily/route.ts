@@ -199,7 +199,10 @@ export async function GET(request: Request) {
     cpm: number;
     frequency: number;
     video3sViews: number;
+    video25pViews: number;
+    video50pViews: number;
     videoP75Views: number;
+    video100pViews: number;
     landingPageViews: number;
     addToCart: number;
     initiateCheckout: number;
@@ -232,7 +235,10 @@ export async function GET(request: Request) {
       frequency: parseFloat(ins.frequency || "0"),
       // Meta v22 removed video_3_sec_watched_actions — derive from actions[video_view].
       video3sViews: Math.round(pickValue(ins.actions, ["video_view"])),
+      video25pViews: Math.round(pickValue(ins.video_p25_watched_actions, ["video_view"])),
+      video50pViews: Math.round(pickValue(ins.video_p50_watched_actions, ["video_view"])),
       videoP75Views: Math.round(pickValue(ins.video_p75_watched_actions, ["video_view"])),
+      video100pViews: Math.round(pickValue(ins.video_p100_watched_actions, ["video_view"])),
       landingPageViews: Math.round(
         pickValue(ins.actions, [
           "omni_landing_page_view",

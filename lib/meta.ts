@@ -283,7 +283,10 @@ export interface MetaAdInsightRaw extends MetaInsightRaw {
   adset_id: string;
   frequency?: string;
   video_3_sec_watched_actions?: Array<{ action_type: string; value: string }>;
+  video_p25_watched_actions?: Array<{ action_type: string; value: string }>;
+  video_p50_watched_actions?: Array<{ action_type: string; value: string }>;
   video_p75_watched_actions?: Array<{ action_type: string; value: string }>;
+  video_p100_watched_actions?: Array<{ action_type: string; value: string }>;
   quality_ranking?: string;
   engagement_rate_ranking?: string;
   conversion_rate_ranking?: string;
@@ -315,7 +318,10 @@ export async function fetchAdDailyInsights(
     "frequency",
     "actions",
     "action_values",
+    "video_p25_watched_actions",
+    "video_p50_watched_actions",
     "video_p75_watched_actions",
+    "video_p100_watched_actions",
     "quality_ranking",
     "engagement_rate_ranking",
     "conversion_rate_ranking",

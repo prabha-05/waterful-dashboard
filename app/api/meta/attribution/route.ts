@@ -242,12 +242,13 @@ export async function GET(req: NextRequest) {
           adId: { in: metaAds.map((m) => m.id) },
           date: { gte: windowStart, lt: windowEnd },
         },
-        select: { adId: true, purchases: true, purchaseValue: true },
+        select: { adId: true, spend: true, purchases: true, purchaseValue: true },
       })
     : [];
-  const metaByDbId = new Map<number, { purchases: number; purchaseValue: number }>();
+  const metaByDbId = new Map<number, { spend: number; purchases: number; purchaseValue: number }>();
   for (const r of metaDailyRows) {
-    const e = metaByDbId.get(r.adId) ?? { purchases: 0, purchaseValue: 0 };
+    const e = metaByDbId.get(r.adId) ?? { spend: 0, purchases: 0, purchaseValue: 0 };
+    e.spend += r.spend;
     e.purchases += r.purchases;
     e.purchaseValue += r.purchaseValue;
     metaByDbId.set(r.adId, e);
@@ -256,15 +257,17 @@ export async function GET(req: NextRequest) {
   const adRollup = Array.from(byAd.values())
     .map((e) => {
       const info = metaAdInfo.get(e.adId);
-      const metaAgg = info ? metaByDbId.get(info.id) ?? { purchases: 0, purchaseValue: 0 } : { purchases: 0, purchaseValue: 0 };
+      const metaAgg = info ? metaByDbId.get(info.id) ?? { spend: 0, purchases: 0, purchaseValue: 0 } : { spend: 0, purchases: 0, purchaseValue: 0 };
       return {
         adId: e.adId,
         adName: e.adName,
         orders: e.orders,
         revenue: Math.round(e.revenue),
         customers: e.customers.size,
+        metaSpend: Math.round(metaAgg.spend),
         metaPurchases: metaAgg.purchases,
         metaRevenue: Math.round(metaAgg.purchaseValue),
+        metaRoas: metaAgg.spend > 0 ? metaAgg.purchaseValue / metaAgg.spend : 0,
         previewLink: info?.previewLink ?? null,
       };
     })

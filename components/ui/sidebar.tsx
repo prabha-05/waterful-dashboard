@@ -15,9 +15,13 @@ import {
   X,
 } from "lucide-react";
 
+type NavLeaf = { label: string; href: string };
+type NavSubGroup = { label: string; href?: never; children: NavLeaf[] };
+type NavChild = NavLeaf | NavSubGroup;
+
 type NavItem =
   | { label: string; href: string; icon: typeof Home | null; children?: never }
-  | { label: string; href?: never; icon: typeof Home | null; children: { label: string; href: string }[] };
+  | { label: string; href?: never; icon: typeof Home | null; children: NavChild[] };
 
 const navItems: NavItem[] = [
   {
@@ -43,6 +47,14 @@ const navItems: NavItem[] = [
     children: [
       { label: "Campaigns", href: "/dashboard/final/meta" },
       { label: "Ads", href: "/dashboard/final/meta/ads" },
+      {
+        label: "Trends",
+        children: [
+          { label: "Campaigns", href: "/dashboard/final/meta/trends/campaigns" },
+          { label: "Ad Sets", href: "/dashboard/final/meta/trends/ad-sets" },
+          { label: "Ads", href: "/dashboard/final/meta/trends/ads" },
+        ],
+      },
     ],
   },
   {
@@ -202,6 +214,51 @@ export function Sidebar({ username }: { username: string }) {
                   {openMenus[item.label] && (
                     <div className={`ml-[30px] mt-1 space-y-1 ${collapsed ? "lg:hidden" : ""}`}>
                       {item.children.map((child) => {
+                        // Nested sub-group (e.g. Meta → Trends → Campaigns/Ad Sets/Ads)
+                        if ("children" in child) {
+                          const subKey = `${item.label}::${child.label}`;
+                          const isSubActive = child.children.some((c) => pathname === c.href);
+                          return (
+                            <div key={child.label}>
+                              <button
+                                onClick={() => toggleMenu(subKey)}
+                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  isSubActive
+                                    ? "bg-neutral-100 text-neutral-900"
+                                    : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+                                }`}
+                              >
+                                <span className="flex-1 text-left">{child.label}</span>
+                                <ChevronDown
+                                  size={12}
+                                  className={`transition-transform ${openMenus[subKey] ? "rotate-180" : ""}`}
+                                />
+                              </button>
+                              {openMenus[subKey] && (
+                                <div className="ml-4 mt-1 space-y-1">
+                                  {child.children.map((leaf) => {
+                                    const isActive = pathname === leaf.href;
+                                    return (
+                                      <Link
+                                        key={leaf.label}
+                                        href={leaf.href}
+                                        className={`block px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
+                                          isActive
+                                            ? "bg-neutral-100 text-neutral-900"
+                                            : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700"
+                                        }`}
+                                      >
+                                        {leaf.label}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Leaf link
                         const isActive = pathname === child.href;
                         return (
                           <Link
