@@ -68,7 +68,20 @@ type Ad = {
     holdRate: number;
   };
   previous: Ad["current"] | null;
+  series: {
+    spend: DailyPoint[];
+    roas: DailyPoint[];
+    cpp: DailyPoint[];
+    purchases: DailyPoint[];
+    purchaseValue: DailyPoint[];
+    ctr: DailyPoint[];
+    cpm: DailyPoint[];
+    cpc: DailyPoint[];
+    frequency: DailyPoint[];
+  };
 };
+
+type DailyPoint = { date: string; label: string; value: number };
 
 type ApiResp = {
   days: number;
@@ -113,16 +126,44 @@ function numericDelta(curr: number, prev: number | undefined, lowerIsBetter = fa
   return { text: `${arrow} ${positive ? "+" : ""}${pct}% vs prior`, color };
 }
 
+// Tiny sparkline used inside each mini-metric card. Bars + value-above +
+// date-below, scaled to fit the narrow card column.
+function MiniSpark({ points, color, formatter }: { points: DailyPoint[]; color: string; formatter: (n: number) => string }) {
+  const max = Math.max(1, ...points.map((p) => p.value));
+  return (
+    <div className="flex items-end gap-1.5 mt-2">
+      {points.map((p) => {
+        const h = max > 0 ? Math.max(6, (p.value / max) * 28) : 6;
+        return (
+          <div key={p.date} className="flex flex-col items-center flex-1 min-w-0">
+            <span className="text-[9px] font-semibold tabular-nums leading-none mb-0.5" style={{ color: INK }}>
+              {formatter(p.value)}
+            </span>
+            <div className="w-full rounded-sm" style={{ height: `${h}px`, background: color }} title={`${p.label}: ${p.value}`} />
+            <span className="text-[8px] mt-0.5" style={{ color: MUTED }}>{p.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function MiniMetric({
   label,
   value,
   caption,
   quality,
+  series,
+  sparkFormatter,
 }: {
   label: string;
   value: string;
   caption: { text: string; color?: string } | null;
   quality: Quality;
+  // Optional 3-bar sparkline series for daily breakdown. Omit to render a
+  // compact card with no chart (used for cards where daily isn't meaningful).
+  series?: DailyPoint[];
+  sparkFormatter?: (n: number) => string;
 }) {
   const color = qualityColor(quality);
   const bg =
@@ -144,6 +185,7 @@ function MiniMetric({
           {caption.text}
         </p>
       )}
+      {series && sparkFormatter && <MiniSpark points={series} color={color} formatter={sparkFormatter} />}
     </div>
   );
 }
@@ -416,7 +458,51 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
 
       <div className="p-4 space-y-4">
         {/* 8 mini metric cards in a 4×2 grid */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        {/* Order: Spend → Purchases → Purchase Value → ROAS → rest */}
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
+          <MiniMetric
+            label="Spend"
+            value={formatInr(ad.current.spend)}
+            caption={{
+              text: isTopSpender ? "top spender" : `#${rank} by spend`,
+              color: isTopSpender ? VIOLET : MUTED,
+            }}
+            quality="neutral"
+            series={ad.series.spend}
+            sparkFormatter={(n) => formatInr(n)}
+          />
+          <MiniMetric
+            label="Purchases"
+            value={`${ad.current.purchases}`}
+            caption={numericDelta(ad.current.purchases, ad.previous?.purchases)}
+            quality={
+              ad.current.purchases === 0 ? "neutral" :
+              ad.previous && ad.previous.purchases > 0 && ad.current.purchases >= ad.previous.purchases ? "good" :
+              "decent"
+            }
+            series={ad.series.purchases}
+            sparkFormatter={(n) => `${n}`}
+          />
+          <MiniMetric
+            label="Purchase Value"
+            value={formatInr(ad.current.purchaseValue)}
+            caption={numericDelta(ad.current.purchaseValue, ad.previous?.purchaseValue)}
+            quality={
+              ad.current.purchaseValue === 0 ? "neutral" :
+              ad.previous && ad.previous.purchaseValue > 0 && ad.current.purchaseValue >= ad.previous.purchaseValue ? "good" :
+              "decent"
+            }
+            series={ad.series.purchaseValue}
+            sparkFormatter={(n) => formatInr(n)}
+          />
+          <MiniMetric
+            label="ROAS"
+            value={`${ad.current.roas.toFixed(2)}x`}
+            caption={numericDelta(ad.current.roas, ad.previous?.roas)}
+            quality={qualityFromThreshold(ad.current.roas, { good: 1.8, decent: 1 })}
+            series={ad.series.roas}
+            sparkFormatter={(n) => `${n.toFixed(2)}`}
+          />
           <MiniMetric
             label="CPM"
             value={`Rs.${Math.round(ad.current.cpm)}`}
@@ -425,12 +511,16 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
               color: ad.current.cpm <= 150 ? SAGE : ad.current.cpm <= 250 ? AMBER : ROSE,
             }}
             quality={qualityFromThreshold(ad.current.cpm, { good: 150, decent: 250 }, true)}
+            series={ad.series.cpm}
+            sparkFormatter={(n) => `Rs.${Math.round(n)}`}
           />
           <MiniMetric
             label="CTR"
             value={`${ad.current.ctr.toFixed(2)}%`}
             caption={numericDelta(ad.current.ctr, ad.previous?.ctr)}
             quality={qualityFromThreshold(ad.current.ctr, { good: 1.5, decent: 1 })}
+            series={ad.series.ctr}
+            sparkFormatter={(n) => `${n.toFixed(1)}%`}
           />
           <MiniMetric
             label="CPC"
@@ -440,18 +530,16 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
               color: ad.current.cpc <= 30 ? SAGE : ad.current.cpc <= 60 ? AMBER : ROSE,
             }}
             quality={qualityFromThreshold(ad.current.cpc, { good: 30, decent: 60 }, true)}
-          />
-          <MiniMetric
-            label="ROAS"
-            value={`${ad.current.roas.toFixed(2)}x`}
-            caption={numericDelta(ad.current.roas, ad.previous?.roas)}
-            quality={qualityFromThreshold(ad.current.roas, { good: 1.8, decent: 1 })}
+            series={ad.series.cpc}
+            sparkFormatter={(n) => `Rs.${Math.round(n)}`}
           />
           <MiniMetric
             label="CPP"
             value={ad.current.cpp > 0 ? `Rs.${Math.round(ad.current.cpp).toLocaleString("en-IN")}` : "—"}
             caption={numericDelta(ad.current.cpp, ad.previous?.cpp, true)}
             quality={qualityFromThreshold(ad.current.cpp, { good: 1500, decent: 2500 }, true)}
+            series={ad.series.cpp}
+            sparkFormatter={(n) => (n > 0 ? `${Math.round(n / 1000)}K` : "—")}
           />
           <MiniMetric
             label="Freq"
@@ -465,25 +553,8 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
               return { text: rising ? "↑ rising" : "↓ falling", color };
             })()}
             quality={qualityFromThreshold(ad.current.frequency, { good: 2, decent: 3 }, true)}
-          />
-          <MiniMetric
-            label="Purchases"
-            value={`${ad.current.purchases}`}
-            caption={numericDelta(ad.current.purchases, ad.previous?.purchases)}
-            quality={
-              ad.current.purchases === 0 ? "neutral" :
-              ad.previous && ad.previous.purchases > 0 && ad.current.purchases >= ad.previous.purchases ? "good" :
-              "decent"
-            }
-          />
-          <MiniMetric
-            label="Spend"
-            value={formatInr(ad.current.spend)}
-            caption={{
-              text: isTopSpender ? "top spender" : `#${rank} by spend`,
-              color: isTopSpender ? VIOLET : MUTED,
-            }}
-            quality="neutral"
+            series={ad.series.frequency}
+            sparkFormatter={(n) => n.toFixed(2)}
           />
         </div>
 

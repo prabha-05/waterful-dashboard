@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { startOfIstDay, addDays, formatIstYmd } from "@/lib/timezone";
+import { startOfIstDay, addDays, formatIstYmd, formatIstShort } from "@/lib/timezone";
 
 // Trends → Ads. Daily aggregate per ad with previous-window comparison +
 // daily series for sparklines. Scoped to a specific ad set (param required)
 // because the page only shows ads within one ad set at a time.
 
-type DailyPoint = { date: string; value: number };
+type DailyPoint = { date: string; label: string; value: number };
 
 type AdTrend = {
   metaAdId: string;
@@ -41,6 +41,17 @@ type AdTrend = {
     holdRate: number;
   };
   previous: AdTrend["current"] | null;
+  series: {
+    spend: DailyPoint[];
+    roas: DailyPoint[];
+    cpp: DailyPoint[];
+    purchases: DailyPoint[];
+    purchaseValue: DailyPoint[];
+    ctr: DailyPoint[];
+    cpm: DailyPoint[];
+    cpc: DailyPoint[];
+    frequency: DailyPoint[];
+  };
 };
 
 export async function GET(req: NextRequest) {
@@ -54,6 +65,13 @@ export async function GET(req: NextRequest) {
   const currentStart = addDays(currentEnd, -days);
   const priorEnd = currentStart;
   const priorStart = addDays(priorEnd, -days);
+
+  // Day buckets for sparklines (current window only)
+  const dayBuckets: { ymd: string; label: string }[] = [];
+  for (let i = 0; i < days; i++) {
+    const from = addDays(currentStart, i);
+    dayBuckets.push({ ymd: formatIstYmd(from), label: formatIstShort(from) });
+  }
 
   // Pull ad-level daily rows for both windows (covers all ads — frontend
   // filters by selected ad set).
@@ -101,8 +119,11 @@ export async function GET(req: NextRequest) {
     metaCampaignId: string;
     cur: { spend: number; impressions: number; clicks: number; purchases: number; purchaseValue: number; addToCart: number; initiateCheckout: number; landingPageViews: number; video3sViews: number; video25pViews: number; video50pViews: number; videoP75Views: number; video100pViews: number; freqNum: number };
     prev: AdAcc["cur"];
+    // Per-day buckets for the current window only — used to build sparklines
+    daily: Map<string, { spend: number; impressions: number; clicks: number; purchases: number; purchaseValue: number; freqNum: number }>;
   };
   const blank = () => ({ spend: 0, impressions: 0, clicks: 0, purchases: 0, purchaseValue: 0, addToCart: 0, initiateCheckout: 0, landingPageViews: 0, video3sViews: 0, video25pViews: 0, video50pViews: 0, videoP75Views: 0, video100pViews: 0, freqNum: 0 });
+  const blankDaily = () => ({ spend: 0, impressions: 0, clicks: 0, purchases: 0, purchaseValue: 0, freqNum: 0 });
 
   const ads = new Map<string, AdAcc>();
   for (const r of rows) {
@@ -120,6 +141,7 @@ export async function GET(req: NextRequest) {
         metaCampaignId: r.ad.adSet.metaCampaignId,
         cur: blank(),
         prev: blank(),
+        daily: new Map(),
       });
     }
     const a = ads.get(id)!;
@@ -140,6 +162,19 @@ export async function GET(req: NextRequest) {
     bucket.video100pViews += r.video100pViews;
     // Weighted-average frequency: sum(freq × impressions) / sum(impressions)
     bucket.freqNum += r.frequency * r.impressions;
+
+    // Per-day accumulator for sparklines — only for current window
+    if (inCurrent) {
+      const ymd = formatIstYmd(r.date);
+      const d = a.daily.get(ymd) ?? blankDaily();
+      d.spend += r.spend;
+      d.impressions += r.impressions;
+      d.clicks += r.clicks;
+      d.purchases += r.purchases;
+      d.purchaseValue += r.purchaseValue;
+      d.freqNum += r.frequency * r.impressions;
+      a.daily.set(ymd, d);
+    }
   }
 
   const derive = (b: AdAcc["cur"]) => ({
@@ -166,6 +201,40 @@ export async function GET(req: NextRequest) {
     holdRate: b.video3sViews > 0 ? (b.videoP75Views / b.video3sViews) * 100 : 0,
   });
 
+  const buildSeries = (a: AdAcc) => {
+    const seriesFor = (k: "spend" | "purchases" | "purchaseValue" | "impressions" | "clicks"): DailyPoint[] =>
+      dayBuckets.map((b) => ({ date: b.ymd, label: b.label, value: a.daily.get(b.ymd)?.[k] ?? 0 }));
+    return {
+      spend: seriesFor("spend"),
+      purchases: seriesFor("purchases"),
+      purchaseValue: seriesFor("purchaseValue"),
+      roas: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.spend > 0 ? d.purchaseValue / d.spend : 0 };
+      }),
+      cpp: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.purchases > 0 ? d.spend / d.purchases : 0 };
+      }),
+      ctr: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0 };
+      }),
+      cpm: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0 };
+      }),
+      cpc: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.clicks > 0 ? d.spend / d.clicks : 0 };
+      }),
+      frequency: dayBuckets.map((b) => {
+        const d = a.daily.get(b.ymd);
+        return { date: b.ymd, label: b.label, value: d && d.impressions > 0 ? d.freqNum / d.impressions : 0 };
+      }),
+    };
+  };
+
   const adTrends: (AdTrend & { metaAdSetId: string; metaCampaignId: string })[] = Array.from(ads.values()).map((a) => ({
     metaAdId: a.metaAdId,
     name: a.name,
@@ -179,6 +248,7 @@ export async function GET(req: NextRequest) {
     metaCampaignId: a.metaCampaignId,
     current: derive(a.cur),
     previous: a.prev.spend === 0 && a.prev.impressions === 0 ? null : derive(a.prev),
+    series: buildSeries(a),
   }));
 
   adTrends.sort((a, b) => b.current.spend - a.current.spend);

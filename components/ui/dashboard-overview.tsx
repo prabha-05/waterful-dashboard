@@ -547,13 +547,19 @@ export function DashboardOverview() {
     : 0;
 
   /* Which metric drives the Period Breakdown table. Revenue-based AOV/Products
-     get the default Revenue view since Orders/Customers splits aren't the right
-     lens for AOV (ratio) or Products (composition). */
-  type TableMode = "revenue" | "orders" | "customers";
+     For AOV (a ratio) the last column shows "Premium %" — how much more a
+     repeat customer spends per order vs. a first-time one — because Repeat %
+     is meaningless for ratios. Products still falls back to Revenue. */
+  type TableMode = "revenue" | "orders" | "customers" | "aov";
   const tableMode: TableMode =
     chartMode === "orders" ? "orders"
     : chartMode === "customers" ? "customers"
+    : chartMode === "aov" ? "aov"
     : "revenue";
+
+  const grandFtAov = splits && splits.ftOrders > 0 ? splits.ftRevenue / splits.ftOrders : 0;
+  const grandRepAov = splits && splits.repeatOrders > 0 ? splits.repeatRevenue / splits.repeatOrders : 0;
+
   const tableCfg = data && splits
     ? ({
         revenue: {
@@ -566,6 +572,9 @@ export function DashboardOverview() {
           grandFt: splits.ftRevenue,
           grandRep: splits.repeatRevenue,
           csvLabel: "Revenue",
+          pctColumnLabel: "Repeat %",
+          formatPct: (rep: number, tot: number, _ft: number) =>
+            tot > 0 ? `${((rep / tot) * 100).toFixed(1)}%` : "0.0%",
         },
         orders: {
           title: "Orders",
@@ -577,6 +586,9 @@ export function DashboardOverview() {
           grandFt: splits.ftOrders,
           grandRep: splits.repeatOrders,
           csvLabel: "Orders",
+          pctColumnLabel: "Repeat %",
+          formatPct: (rep: number, tot: number, _ft: number) =>
+            tot > 0 ? `${((rep / tot) * 100).toFixed(1)}%` : "0.0%",
         },
         customers: {
           title: "Customers",
@@ -588,6 +600,29 @@ export function DashboardOverview() {
           grandFt: splits.ftCustomers,
           grandRep: splits.repeatCustomers,
           csvLabel: "Customers",
+          pctColumnLabel: "Repeat %",
+          formatPct: (rep: number, tot: number, _ft: number) =>
+            tot > 0 ? `${((rep / tot) * 100).toFixed(1)}%` : "0.0%",
+        },
+        // AOV table — values are per-period ratios. Last column is Premium %:
+        // how much higher the repeat-customer AOV is vs. first-time AOV.
+        aov: {
+          title: "Overall AOV",
+          format: formatCurrency,
+          getTotal: (p: Period) => (p.orders > 0 ? Math.round(p.revenue / p.orders) : 0),
+          getFt: (p: Period) => (p.ftOrders > 0 ? Math.round(p.ftRevenue / p.ftOrders) : 0),
+          getRep: (p: Period) => (p.repeatOrders > 0 ? Math.round(p.repeatRevenue / p.repeatOrders) : 0),
+          grandTotal: data.totals.aov,
+          grandFt: Math.round(grandFtAov),
+          grandRep: Math.round(grandRepAov),
+          csvLabel: "AOV",
+          pctColumnLabel: "Repeat premium",
+          formatPct: (rep: number, _tot: number, ft: number) => {
+            if (ft <= 0 || rep <= 0) return "—";
+            const pct = ((rep - ft) / ft) * 100;
+            const sign = pct >= 0 ? "+" : "";
+            return `${sign}${pct.toFixed(1)}%`;
+          },
         },
       } as const)[tableMode]
     : null;
@@ -1332,17 +1367,19 @@ export function DashboardOverview() {
                     tableCfg.csvLabel,
                     `First Time ${tableCfg.csvLabel}`,
                     `Repeat ${tableCfg.csvLabel}`,
-                    "Repeat %",
+                    tableCfg.pctColumnLabel,
                   ];
-                  const rows = data.periods.map((p) => {
+                  const rows: (string | number)[][] = data.periods.map((p) => {
                     const tot = tableCfg.getTotal(p);
-                    const repPct = tot > 0 ? (tableCfg.getRep(p) / tot) * 100 : 0;
-                    return [p.label, p.from, p.to, tot, tableCfg.getFt(p), tableCfg.getRep(p), `${repPct.toFixed(1)}%`];
+                    const ft = tableCfg.getFt(p);
+                    const rep = tableCfg.getRep(p);
+                    return [p.label, p.from, p.to, tot, ft, rep, tableCfg.formatPct(rep, tot, ft)];
                   });
-                  const overallRep = tableCfg.grandTotal > 0
-                    ? ((tableCfg.grandRep / tableCfg.grandTotal) * 100).toFixed(1)
-                    : "0.0";
-                  rows.push(["Total", "", "", tableCfg.grandTotal, tableCfg.grandFt, tableCfg.grandRep, `${overallRep}%`]);
+                  rows.push([
+                    "Total", "", "",
+                    tableCfg.grandTotal, tableCfg.grandFt, tableCfg.grandRep,
+                    tableCfg.formatPct(tableCfg.grandRep, tableCfg.grandTotal, tableCfg.grandFt),
+                  ]);
                   const csv = [header, ...rows]
                     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
                     .join("\r\n");
@@ -1371,7 +1408,7 @@ export function DashboardOverview() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: "#faf6ef" }}>
-                    {tableCfg && ["Period", tableCfg.title, "First Time", "Repeat", "Repeat %"].map((h) => (
+                    {tableCfg && ["Period", tableCfg.title, "First Time", "Repeat", tableCfg.pctColumnLabel].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
@@ -1385,14 +1422,15 @@ export function DashboardOverview() {
                 <tbody>
                   {tableCfg && data.periods.map((p, i) => {
                     const tot = tableCfg.getTotal(p);
-                    const repPct = tot > 0 ? (tableCfg.getRep(p) / tot) * 100 : 0;
+                    const ft = tableCfg.getFt(p);
+                    const rep = tableCfg.getRep(p);
                     return (
                       <tr key={i} className="border-t" style={{ borderColor: "#f1e7d3" }}>
                         <td className="px-4 py-3 font-medium" style={{ color: INK }}>{p.label}</td>
                         <td className="px-4 py-3 tabular-nums" style={{ color: INK }}>{tableCfg.format(tot)}</td>
-                        <td className="px-4 py-3 tabular-nums" style={{ color: NEW_COLOR }}>{tableCfg.format(tableCfg.getFt(p))}</td>
-                        <td className="px-4 py-3 tabular-nums" style={{ color: REPEAT_COLOR }}>{tableCfg.format(tableCfg.getRep(p))}</td>
-                        <td className="px-4 py-3 tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>{repPct.toFixed(1)}%</td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: NEW_COLOR }}>{tableCfg.format(ft)}</td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: REPEAT_COLOR }}>{tableCfg.format(rep)}</td>
+                        <td className="px-4 py-3 tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>{tableCfg.formatPct(rep, tot, ft)}</td>
                       </tr>
                     );
                   })}
@@ -1416,9 +1454,7 @@ export function DashboardOverview() {
                         {tableCfg.format(tableCfg.grandRep)}
                       </td>
                       <td className="px-4 py-3 tabular-nums font-bold" style={{ color: REPEAT_COLOR }}>
-                        {tableCfg.grandTotal > 0
-                          ? ((tableCfg.grandRep / tableCfg.grandTotal) * 100).toFixed(1)
-                          : "0.0"}%
+                        {tableCfg.formatPct(tableCfg.grandRep, tableCfg.grandTotal, tableCfg.grandFt)}
                       </td>
                     </tr>
                   </tfoot>

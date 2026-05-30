@@ -469,7 +469,7 @@ export function MetaOverview() {
         </div>
       </div>
 
-      {/* KPI Strip */}
+      {/* KPI Strip — ordered: Spend → Purchases → Purchase Value → ROAS → CPA → CTR */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <KpiCard
           title="Spend"
@@ -479,6 +479,22 @@ export function MetaOverview() {
           icon={IndianRupee}
           tint={ROSE}
           hint="vs prev"
+        />
+        <KpiCard
+          title="Purchases"
+          value={formatNumber(t.purchases)}
+          delta={showDelta ? deltaPct(t.purchases, p.purchases) : null}
+          icon={Activity}
+          tint={INK}
+          hint="Meta-attributed"
+        />
+        <KpiCard
+          title="Purchase Value"
+          value={formatInr(t.purchaseValue)}
+          delta={showDelta ? deltaPct(t.purchaseValue, p.purchaseValue) : null}
+          icon={IndianRupee}
+          tint={SAGE}
+          hint="revenue from ads"
         />
         <KpiCard
           title="ROAS"
@@ -504,22 +520,6 @@ export function MetaOverview() {
           icon={MousePointerClick}
           tint="#8b5cf6"
           hint="click-through rate"
-        />
-        <KpiCard
-          title="Purchases"
-          value={formatNumber(t.purchases)}
-          delta={showDelta ? deltaPct(t.purchases, p.purchases) : null}
-          icon={Activity}
-          tint={INK}
-          hint="Meta-attributed"
-        />
-        <KpiCard
-          title="Purchase Value"
-          value={formatInr(t.purchaseValue)}
-          delta={showDelta ? deltaPct(t.purchaseValue, p.purchaseValue) : null}
-          icon={IndianRupee}
-          tint={SAGE}
-          hint="revenue from ads"
         />
       </div>
 
