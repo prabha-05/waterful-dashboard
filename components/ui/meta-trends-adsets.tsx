@@ -572,67 +572,80 @@ export function MetaTrendsAdSets() {
                     referenceLine={plannedDaily ? { value: plannedDaily, label: "budget" } : undefined}
                     trendArrow={spendTrend}
                   />
-                  <MetricCard
-                    label="ROAS"
-                    value={`${s.current.roas.toFixed(2)}x`}
-                    caption="Target 1.8–2.5x"
-                    quality={combineQuality(
-                      qualityFromThreshold(s.current.roas, { good: 1.8, decent: 1 }),
-                      roasTrend?.quality ?? null,
-                    )}
-                    series={s.series.roas}
-                    formatter={(n) => n.toFixed(2)}
-                    trendArrow={roasTrend}
-                  />
-                  <MetricCard
-                    label="CPP"
-                    value={s.current.cpp > 0 ? `Rs.${Math.round(s.current.cpp).toLocaleString("en-IN")}` : "—"}
-                    caption="Target Rs.600–1,500"
-                    quality={combineQuality(
-                      qualityFromThreshold(s.current.cpp, { good: 1500, decent: 2500 }, true),
-                      cppTrend?.quality ?? null,
-                    )}
-                    series={s.series.cpp}
-                    formatter={fmtCpp}
-                    trendArrow={cppTrend}
-                  />
-                  <MetricCard
-                    label="Purchases"
-                    value={`${s.current.purchases}`}
-                    caption="No benchmark"
-                    quality={
-                      s.current.purchases === 0
-                        ? "neutral"
-                        : purchasesTrend?.quality ?? "decent"
-                    }
-                    series={s.series.purchases}
-                    formatter={(n) => `${n}`}
-                    trendArrow={purchasesTrend}
-                  />
-                  <MetricCard
-                    label="CTR"
-                    value={`${s.current.ctr.toFixed(2)}%`}
-                    caption="Target 1.5–2%+"
-                    quality={combineQuality(
-                      qualityFromThreshold(s.current.ctr, { good: 1.5, decent: 1 }),
-                      ctrTrend?.quality ?? null,
-                    )}
-                    series={s.series.ctr}
-                    formatter={(n) => `${n.toFixed(2)}`}
-                    trendArrow={ctrTrend}
-                  />
-                  <MetricCard
-                    label="Frequency"
-                    value={s.current.frequency.toFixed(2)}
-                    caption="Sweet spot 3–4x"
-                    quality={combineQuality(
-                      qualityFromFrequency(s.current.frequency),
-                      freqTrend?.quality ?? null,
-                    )}
-                    series={s.series.frequency}
-                    formatter={(n) => n.toFixed(2)}
-                    trendArrow={freqTrend}
-                  />
+                  {(() => {
+                    // All cards show LATEST day's value (matches the last bar).
+                    const lastV = <T extends { value: number }>(arr: T[]) => arr[arr.length - 1]?.value ?? 0;
+                    const latestRoas = lastV(s.series.roas);
+                    const latestCpp = lastV(s.series.cpp);
+                    const latestPurchases = lastV(s.series.purchases);
+                    const latestCtr = lastV(s.series.ctr);
+                    const latestFreq = lastV(s.series.frequency);
+                    return (
+                      <>
+                        <MetricCard
+                          label="ROAS"
+                          value={`${latestRoas.toFixed(2)}x`}
+                          caption="Target 1.8–2.5x"
+                          quality={combineQuality(
+                            qualityFromThreshold(latestRoas, { good: 1.8, decent: 1 }),
+                            roasTrend?.quality ?? null,
+                          )}
+                          series={s.series.roas}
+                          formatter={(n) => n.toFixed(2)}
+                          trendArrow={roasTrend}
+                        />
+                        <MetricCard
+                          label="CPP"
+                          value={latestCpp > 0 ? `Rs.${Math.round(latestCpp).toLocaleString("en-IN")}` : "—"}
+                          caption="Target Rs.600–1,500"
+                          quality={combineQuality(
+                            qualityFromThreshold(latestCpp, { good: 1500, decent: 2500 }, true),
+                            cppTrend?.quality ?? null,
+                          )}
+                          series={s.series.cpp}
+                          formatter={fmtCpp}
+                          trendArrow={cppTrend}
+                        />
+                        <MetricCard
+                          label="Purchases"
+                          value={`${latestPurchases}`}
+                          caption="No benchmark"
+                          quality={
+                            latestPurchases === 0
+                              ? "neutral"
+                              : purchasesTrend?.quality ?? "decent"
+                          }
+                          series={s.series.purchases}
+                          formatter={(n) => `${n}`}
+                          trendArrow={purchasesTrend}
+                        />
+                        <MetricCard
+                          label="CTR"
+                          value={`${latestCtr.toFixed(2)}%`}
+                          caption="Target 1.5–2%+"
+                          quality={combineQuality(
+                            qualityFromThreshold(latestCtr, { good: 1.5, decent: 1 }),
+                            ctrTrend?.quality ?? null,
+                          )}
+                          series={s.series.ctr}
+                          formatter={(n) => `${n.toFixed(2)}`}
+                          trendArrow={ctrTrend}
+                        />
+                        <MetricCard
+                          label="Frequency"
+                          value={latestFreq.toFixed(2)}
+                          caption="Sweet spot 3–4x"
+                          quality={combineQuality(
+                            qualityFromFrequency(latestFreq),
+                            freqTrend?.quality ?? null,
+                          )}
+                          series={s.series.frequency}
+                          formatter={(n) => n.toFixed(2)}
+                          trendArrow={freqTrend}
+                        />
+                      </>
+                    );
+                  })()}
                 </>
               );
             })()}

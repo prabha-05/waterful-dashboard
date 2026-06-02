@@ -655,64 +655,78 @@ function CampaignBlock({ campaign }: { campaign: Campaign }) {
                 referenceLine={{ value: plannedDaily, label: "budget" }}
                 trendArrow={spendTrend}
               />
-              <MetricCard
-                label="ROAS"
-                value={`${c.current.roas.toFixed(2)}x`}
-                caption="Target 1.8–2.5x"
-                quality={combineQuality(
-                  qualityFromThreshold(c.current.roas, { good: 1.8, decent: 1 }),
-                  roasTrend?.quality ?? null,
-                )}
-                series={c.series.roas}
-                formatter={fmtRoas}
-                trendArrow={roasTrend}
-              />
-              <MetricCard
-                label="CPP"
-                value={c.current.cpp > 0 ? `Rs.${Math.round(c.current.cpp).toLocaleString("en-IN")}` : "—"}
-                caption="Target Rs.600–1,500"
-                quality={combineQuality(
-                  qualityFromThreshold(c.current.cpp, { good: 1500, decent: 2500 }, true),
-                  cppTrend?.quality ?? null,
-                )}
-                series={c.series.cpp}
-                formatter={fmtCpp}
-                trendArrow={cppTrend}
-              />
-              <MetricCard
-                label="Purchases"
-                value={`${c.current.purchases}`}
-                caption="No benchmark"
-                quality={
-                  c.current.purchases === 0
-                    ? "neutral"
-                    : purchasesTrend?.quality ?? "decent"
-                }
-                series={c.series.purchases}
-                formatter={(n) => `${n}`}
-                trendArrow={purchasesTrend}
-              />
-              <MetricCard
-                label="Reach"
-                value={formatNum(c.current.reach)}
-                caption="Higher is better"
-                quality={reachTrend?.quality ?? "decent"}
-                series={c.series.reach}
-                formatter={fmtNum}
-                trendArrow={reachTrend}
-              />
-              <MetricCard
-                label="Frequency"
-                value={c.current.frequency.toFixed(2)}
-                caption="Sweet spot 3–4x"
-                quality={combineQuality(
-                  qualityFromFrequency(c.current.frequency),
-                  freqTrend?.quality ?? null,
-                )}
-                series={c.series.frequency}
-                formatter={fmtFreq}
-                trendArrow={freqTrend}
-              />
+              {(() => {
+                // Every card shows the LATEST day's value (matches the last
+                // sparkline bar). Trend arrows already compare the last 2 days.
+                const last = <T extends { value: number }>(arr: T[]) => arr[arr.length - 1]?.value ?? 0;
+                const latestRoas = last(c.series.roas);
+                const latestCpp = last(c.series.cpp);
+                const latestPurchases = last(c.series.purchases);
+                const latestReach = last(c.series.reach);
+                const latestFreq = last(c.series.frequency);
+                return (
+                  <>
+                    <MetricCard
+                      label="ROAS"
+                      value={`${latestRoas.toFixed(2)}x`}
+                      caption="Target 1.8–2.5x"
+                      quality={combineQuality(
+                        qualityFromThreshold(latestRoas, { good: 1.8, decent: 1 }),
+                        roasTrend?.quality ?? null,
+                      )}
+                      series={c.series.roas}
+                      formatter={fmtRoas}
+                      trendArrow={roasTrend}
+                    />
+                    <MetricCard
+                      label="CPP"
+                      value={latestCpp > 0 ? `Rs.${Math.round(latestCpp).toLocaleString("en-IN")}` : "—"}
+                      caption="Target Rs.600–1,500"
+                      quality={combineQuality(
+                        qualityFromThreshold(latestCpp, { good: 1500, decent: 2500 }, true),
+                        cppTrend?.quality ?? null,
+                      )}
+                      series={c.series.cpp}
+                      formatter={fmtCpp}
+                      trendArrow={cppTrend}
+                    />
+                    <MetricCard
+                      label="Purchases"
+                      value={`${latestPurchases}`}
+                      caption="No benchmark"
+                      quality={
+                        latestPurchases === 0
+                          ? "neutral"
+                          : purchasesTrend?.quality ?? "decent"
+                      }
+                      series={c.series.purchases}
+                      formatter={(n) => `${n}`}
+                      trendArrow={purchasesTrend}
+                    />
+                    <MetricCard
+                      label="Reach"
+                      value={formatNum(latestReach)}
+                      caption="Higher is better"
+                      quality={reachTrend?.quality ?? "decent"}
+                      series={c.series.reach}
+                      formatter={fmtNum}
+                      trendArrow={reachTrend}
+                    />
+                    <MetricCard
+                      label="Frequency"
+                      value={latestFreq.toFixed(2)}
+                      caption="Sweet spot 3–4x"
+                      quality={combineQuality(
+                        qualityFromFrequency(latestFreq),
+                        freqTrend?.quality ?? null,
+                      )}
+                      series={c.series.frequency}
+                      formatter={fmtFreq}
+                      trendArrow={freqTrend}
+                    />
+                  </>
+                );
+              })()}
             </>
           );
         })()}

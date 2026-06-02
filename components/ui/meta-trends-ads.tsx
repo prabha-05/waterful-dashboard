@@ -642,104 +642,120 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
                   trendArrow={spendTrend}
                   referenceLine={plannedDaily ? { value: plannedDaily, label: "budget" } : undefined}
                 />
-                <MiniMetric
-                  label="Purchases"
-                  value={`${ad.current.purchases}`}
-                  caption={{ text: "No benchmark" }}
-                  quality={
-                    ad.current.purchases === 0
-                      ? "neutral"
-                      : purchasesTrend?.quality ?? "decent"
-                  }
-                  series={ad.series.purchases}
-                  sparkFormatter={(n) => `${n}`}
-                  trendArrow={purchasesTrend}
-                />
-                <MiniMetric
-                  label="Purchase Value"
-                  value={formatInr(ad.current.purchaseValue)}
-                  caption={{ text: "No benchmark" }}
-                  quality={
-                    ad.current.purchaseValue === 0
-                      ? "neutral"
-                      : purchaseValueTrend?.quality ?? "decent"
-                  }
-                  series={ad.series.purchaseValue}
-                  sparkFormatter={(n) => formatInr(n)}
-                  trendArrow={purchaseValueTrend}
-                />
-                <MiniMetric
-                  label="ROAS"
-                  value={`${ad.current.roas.toFixed(2)}x`}
-                  caption={{ text: "Target 1.8–2.5x" }}
-                  quality={combineQuality(
-                    qualityFromThreshold(ad.current.roas, { good: 1.8, decent: 1 }),
-                    roasTrend?.quality ?? null,
-                  )}
-                  series={ad.series.roas}
-                  sparkFormatter={(n) => `${n.toFixed(2)}`}
-                  trendArrow={roasTrend}
-                />
-                <MiniMetric
-                  label="CPM"
-                  value={`Rs.${Math.round(ad.current.cpm)}`}
-                  caption={{ text: "Target Rs.80–150" }}
-                  quality={combineQuality(
-                    qualityFromThreshold(ad.current.cpm, { good: 150, decent: 250 }, true),
-                    cpmTrend?.quality ?? null,
-                  )}
-                  series={ad.series.cpm}
-                  sparkFormatter={(n) => `Rs.${Math.round(n)}`}
-                  trendArrow={cpmTrend}
-                />
-                <MiniMetric
-                  label="CTR"
-                  value={`${ad.current.ctr.toFixed(2)}%`}
-                  caption={{ text: "Target 1.5–2%+" }}
-                  quality={combineQuality(
-                    qualityFromThreshold(ad.current.ctr, { good: 1.5, decent: 1 }),
-                    ctrTrend?.quality ?? null,
-                  )}
-                  series={ad.series.ctr}
-                  sparkFormatter={(n) => `${n.toFixed(1)}%`}
-                  trendArrow={ctrTrend}
-                />
-                <MiniMetric
-                  label="CPC"
-                  value={`Rs.${Math.round(ad.current.cpc)}`}
-                  caption={{ text: "Target Rs.10–30" }}
-                  quality={combineQuality(
-                    qualityFromThreshold(ad.current.cpc, { good: 30, decent: 60 }, true),
-                    cpcTrend?.quality ?? null,
-                  )}
-                  series={ad.series.cpc}
-                  sparkFormatter={(n) => `Rs.${Math.round(n)}`}
-                  trendArrow={cpcTrend}
-                />
-                <MiniMetric
-                  label="CPP"
-                  value={ad.current.cpp > 0 ? `Rs.${Math.round(ad.current.cpp).toLocaleString("en-IN")}` : "—"}
-                  caption={{ text: "Target Rs.600–1,500" }}
-                  quality={combineQuality(
-                    qualityFromThreshold(ad.current.cpp, { good: 1500, decent: 2500 }, true),
-                    cppTrend?.quality ?? null,
-                  )}
-                  series={ad.series.cpp}
-                  sparkFormatter={fmtCpp}
-                  trendArrow={cppTrend}
-                />
-                <MiniMetric
-                  label="Freq"
-                  value={`${ad.current.frequency.toFixed(2)}x`}
-                  caption={{ text: "Sweet spot 3–4x" }}
-                  quality={combineQuality(
-                    qualityFromFrequency(ad.current.frequency),
-                    freqTrend?.quality ?? null,
-                  )}
-                  series={ad.series.frequency}
-                  sparkFormatter={(n) => n.toFixed(2)}
-                  trendArrow={freqTrend}
-                />
+                {(() => {
+                  // All cards = LATEST day's value (matches the last bar).
+                  const lastV = <T extends { value: number }>(arr: T[]) => arr[arr.length - 1]?.value ?? 0;
+                  const latestPurchases = lastV(ad.series.purchases);
+                  const latestPurchaseValue = lastV(ad.series.purchaseValue);
+                  const latestRoas = lastV(ad.series.roas);
+                  const latestCpm = lastV(ad.series.cpm);
+                  const latestCtr = lastV(ad.series.ctr);
+                  const latestCpc = lastV(ad.series.cpc);
+                  const latestCpp = lastV(ad.series.cpp);
+                  const latestFreq = lastV(ad.series.frequency);
+                  return (
+                    <>
+                      <MiniMetric
+                        label="Purchases"
+                        value={`${latestPurchases}`}
+                        caption={{ text: "No benchmark" }}
+                        quality={
+                          latestPurchases === 0
+                            ? "neutral"
+                            : purchasesTrend?.quality ?? "decent"
+                        }
+                        series={ad.series.purchases}
+                        sparkFormatter={(n) => `${n}`}
+                        trendArrow={purchasesTrend}
+                      />
+                      <MiniMetric
+                        label="Purchase Value"
+                        value={formatInr(latestPurchaseValue)}
+                        caption={{ text: "No benchmark" }}
+                        quality={
+                          latestPurchaseValue === 0
+                            ? "neutral"
+                            : purchaseValueTrend?.quality ?? "decent"
+                        }
+                        series={ad.series.purchaseValue}
+                        sparkFormatter={(n) => formatInr(n)}
+                        trendArrow={purchaseValueTrend}
+                      />
+                      <MiniMetric
+                        label="ROAS"
+                        value={`${latestRoas.toFixed(2)}x`}
+                        caption={{ text: "Target 1.8–2.5x" }}
+                        quality={combineQuality(
+                          qualityFromThreshold(latestRoas, { good: 1.8, decent: 1 }),
+                          roasTrend?.quality ?? null,
+                        )}
+                        series={ad.series.roas}
+                        sparkFormatter={(n) => `${n.toFixed(2)}`}
+                        trendArrow={roasTrend}
+                      />
+                      <MiniMetric
+                        label="CPM"
+                        value={`Rs.${Math.round(latestCpm)}`}
+                        caption={{ text: "Target Rs.80–150" }}
+                        quality={combineQuality(
+                          qualityFromThreshold(latestCpm, { good: 150, decent: 250 }, true),
+                          cpmTrend?.quality ?? null,
+                        )}
+                        series={ad.series.cpm}
+                        sparkFormatter={(n) => `Rs.${Math.round(n)}`}
+                        trendArrow={cpmTrend}
+                      />
+                      <MiniMetric
+                        label="CTR"
+                        value={`${latestCtr.toFixed(2)}%`}
+                        caption={{ text: "Target 1.5–2%+" }}
+                        quality={combineQuality(
+                          qualityFromThreshold(latestCtr, { good: 1.5, decent: 1 }),
+                          ctrTrend?.quality ?? null,
+                        )}
+                        series={ad.series.ctr}
+                        sparkFormatter={(n) => `${n.toFixed(1)}%`}
+                        trendArrow={ctrTrend}
+                      />
+                      <MiniMetric
+                        label="CPC"
+                        value={`Rs.${Math.round(latestCpc)}`}
+                        caption={{ text: "Target Rs.10–30" }}
+                        quality={combineQuality(
+                          qualityFromThreshold(latestCpc, { good: 30, decent: 60 }, true),
+                          cpcTrend?.quality ?? null,
+                        )}
+                        series={ad.series.cpc}
+                        sparkFormatter={(n) => `Rs.${Math.round(n)}`}
+                        trendArrow={cpcTrend}
+                      />
+                      <MiniMetric
+                        label="CPP"
+                        value={latestCpp > 0 ? `Rs.${Math.round(latestCpp).toLocaleString("en-IN")}` : "—"}
+                        caption={{ text: "Target Rs.600–1,500" }}
+                        quality={combineQuality(
+                          qualityFromThreshold(latestCpp, { good: 1500, decent: 2500 }, true),
+                          cppTrend?.quality ?? null,
+                        )}
+                        series={ad.series.cpp}
+                        sparkFormatter={fmtCpp}
+                        trendArrow={cppTrend}
+                      />
+                      <MiniMetric
+                        label="Freq"
+                        value={`${latestFreq.toFixed(2)}x`}
+                        caption={{ text: "Sweet spot 3–4x" }}
+                        quality={combineQuality(
+                          qualityFromFrequency(latestFreq),
+                          freqTrend?.quality ?? null,
+                        )}
+                        series={ad.series.frequency}
+                        sparkFormatter={(n) => n.toFixed(2)}
+                        trendArrow={freqTrend}
+                      />
+                    </>
+                  );
+                })()}
               </>
             );
           })()}
