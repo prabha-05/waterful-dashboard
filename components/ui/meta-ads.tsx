@@ -1163,6 +1163,7 @@ export function MetaAds() {
                   const purchaseCvr = ad.clicks > 0 ? (ad.purchases / ad.clicks) * 100 : 0;
                   const cpp = ad.purchases > 0 ? ad.spend / ad.purchases : 0;
                   const roasColor = ad.roas >= 2 ? SAGE : ad.roas >= 1 ? AMBER : ROSE;
+                  const isVideo = normalizeFormat(ad.creativeType) === "video";
                   return (
                     <div className="space-y-4">
                       {/* HEADLINE — Spend / Revenue / ROAS */}
@@ -1204,22 +1205,26 @@ export function MetaAds() {
                             target={{ from: 1.5, to: 2 }}
                             caption="Benchmark 1.5–2%+"
                           />
-                          <VerdictCard
-                            title="Hook rate"
-                            subtitle="% who watched the first 3 seconds"
-                            value={hookRate}
-                            formatted={`${hookRate.toFixed(0)}%`}
-                            target={{ from: 25, to: 30 }}
-                            caption="Benchmark 25–30%+"
-                          />
-                          <VerdictCard
-                            title="ThruPlay"
-                            subtitle="% who watched at least a quarter of the video"
-                            value={holdRate}
-                            formatted={`${holdRate.toFixed(0)}%`}
-                            target={{ from: 40, to: 50 }}
-                            caption="Benchmark 40–50%+"
-                          />
+                          {isVideo && (
+                            <>
+                              <VerdictCard
+                                title="Hook rate"
+                                subtitle="% who watched the first 3 seconds"
+                                value={hookRate}
+                                formatted={`${hookRate.toFixed(0)}%`}
+                                target={{ from: 25, to: 30 }}
+                                caption="Benchmark 25–30%+"
+                              />
+                              <VerdictCard
+                                title="ThruPlay"
+                                subtitle="% who watched at least a quarter of the video"
+                                value={holdRate}
+                                formatted={`${holdRate.toFixed(0)}%`}
+                                target={{ from: 40, to: 50 }}
+                                caption="Benchmark 40–50%+"
+                              />
+                            </>
+                          )}
                           <VerdictCard
                             title="Frequency"
                             subtitle="Avg. times one person saw your ad"
@@ -1493,24 +1498,26 @@ export function MetaAds() {
                             body: `CTR at ${ad.ctr.toFixed(2)}% is below 1.5%. Creative needs refresh.`,
                           });
                         }
-                        if (hookRate >= 25) {
-                          notes.push({
-                            tone: "good",
-                            title: "Hook rate healthy",
-                            body: `${hookRate.toFixed(1)}% of viewers watched past 3 seconds.`,
-                          });
-                        } else if (hookRate >= 20) {
-                          notes.push({
-                            tone: "warn",
-                            title: "Hook borderline",
-                            body: `${hookRate.toFixed(1)}% hook rate — just under the 25% benchmark.`,
-                          });
-                        } else {
-                          notes.push({
-                            tone: "bad",
-                            title: "Hook needs work",
-                            body: `Only ${hookRate.toFixed(1)}% hook rate. First 3 seconds not grabbing attention.`,
-                          });
+                        if (isVideo) {
+                          if (hookRate >= 25) {
+                            notes.push({
+                              tone: "good",
+                              title: "Hook rate healthy",
+                              body: `${hookRate.toFixed(1)}% of viewers watched past 3 seconds.`,
+                            });
+                          } else if (hookRate >= 20) {
+                            notes.push({
+                              tone: "warn",
+                              title: "Hook borderline",
+                              body: `${hookRate.toFixed(1)}% hook rate — just under the 25% benchmark.`,
+                            });
+                          } else {
+                            notes.push({
+                              tone: "bad",
+                              title: "Hook needs work",
+                              body: `Only ${hookRate.toFixed(1)}% hook rate. First 3 seconds not grabbing attention.`,
+                            });
+                          }
                         }
                         const toneColor = (t: "good" | "warn" | "bad") =>
                           t === "good" ? SAGE : t === "warn" ? AMBER : ROSE;
@@ -1654,22 +1661,26 @@ export function MetaAds() {
                   color="#8b5cf6"
                   benchmark={{ good: 2, decent: 1, unit: "%" }}
                 />
-                <ChartCard
-                  title="Hook rate"
-                  data={selected.daily.map((d) => ({ date: d.date, value: d.hookRate }))}
-                  formatY={(v) => `${v.toFixed(0)}%`}
-                  chartType="area"
-                  color={TEAL}
-                  benchmark={{ good: 30, decent: 20, unit: "%" }}
-                />
-                <ChartCard
-                  title="Hold rate"
-                  data={selected.daily.map((d) => ({ date: d.date, value: d.holdRate }))}
-                  formatY={(v) => `${v.toFixed(0)}%`}
-                  chartType="area"
-                  color={SAGE}
-                  benchmark={{ good: 15, decent: 10, unit: "%" }}
-                />
+                {normalizeFormat(selected.creativeType) === "video" && (
+                  <>
+                    <ChartCard
+                      title="Hook rate"
+                      data={selected.daily.map((d) => ({ date: d.date, value: d.hookRate }))}
+                      formatY={(v) => `${v.toFixed(0)}%`}
+                      chartType="area"
+                      color={TEAL}
+                      benchmark={{ good: 30, decent: 20, unit: "%" }}
+                    />
+                    <ChartCard
+                      title="Hold rate"
+                      data={selected.daily.map((d) => ({ date: d.date, value: d.holdRate }))}
+                      formatY={(v) => `${v.toFixed(0)}%`}
+                      chartType="area"
+                      color={SAGE}
+                      benchmark={{ good: 15, decent: 10, unit: "%" }}
+                    />
+                  </>
+                )}
                 <ChartCard
                   title="Frequency"
                   data={selected.daily.map((d) => ({ date: d.date, value: d.frequency }))}

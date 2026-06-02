@@ -17,12 +17,6 @@ function formatInr(v: number) {
   if (v >= 1000) return `Rs.${(v / 1000).toFixed(1)}K`;
   return `Rs.${Math.round(v).toLocaleString("en-IN")}`;
 }
-function formatNum(v: number) {
-  if (v >= 100000) return `${(v / 100000).toFixed(1)}L`;
-  if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
-  return `${v.toLocaleString("en-IN")}`;
-}
-
 // Normalize Meta's free-text creative_type (image, video, share, dco, etc.)
 // into our three buckets used by the format filter.
 function normalizeFormat(t: string | null): "video" | "image" | "carousel" {
@@ -42,6 +36,8 @@ type Ad = {
   previewLink: string | null;
   adSetName: string;
   campaignName: string;
+  adSetDailyBudget: number | null;
+  campaignDailyBudget: number | null;
   metaAdSetId: string;
   metaCampaignId: string;
   current: {
@@ -111,39 +107,123 @@ function qualityFromThreshold(value: number, thresholds: { good: number; decent:
   return "bad";
 }
 
-function pctDelta(curr: number, prev: number | undefined): number | null {
-  if (prev === undefined || prev === 0) return null;
-  return (curr - prev) / prev;
-}
-function numericDelta(curr: number, prev: number | undefined, lowerIsBetter = false): { text: string; color: string } {
-  const d = pctDelta(curr, prev);
-  if (d === null) return { text: "—", color: MUTED };
-  const pct = (d * 100).toFixed(0);
-  const positive = d >= 0;
-  const good = lowerIsBetter ? !positive : positive;
-  const color = Math.abs(d) < 0.01 ? MUTED : good ? SAGE : ROSE;
-  const arrow = Math.abs(d) < 0.01 ? "—" : positive ? "↑" : "↓";
-  return { text: `${arrow} ${positive ? "+" : ""}${pct}% vs prior`, color };
+// Intra-window day-over-day trend (last point vs second-to-last). 2% stable
+// zone; lowerIsBetter flips the color for metrics where falling is good.
+function intraWindowTrend(
+  series: DailyPoint[],
+  lowerIsBetter = false,
+): { arrow: string; color: string; quality: Quality; pctChange: number } | null {
+  if (series.length < 2) return null;
+  const last = series[series.length - 1].value;
+  const prev = series[series.length - 2].value;
+  if (last === 0 && prev === 0) return null;
+  const change = prev > 0 ? (last - prev) / prev : 0;
+  const STABLE = 0.02;
+  if (Math.abs(change) < STABLE) {
+    return { arrow: "—", color: AMBER, quality: "decent", pctChange: change };
+  }
+  const rising = last > prev;
+  const good = lowerIsBetter ? !rising : rising;
+  return {
+    arrow: rising ? "↑" : "↓",
+    color: good ? SAGE : ROSE,
+    quality: good ? "good" : "bad",
+    pctChange: change,
+  };
 }
 
-// Tiny sparkline used inside each mini-metric card. Bars + value-above +
-// date-below, scaled to fit the narrow card column.
-function MiniSpark({ points, color, formatter }: { points: DailyPoint[]; color: string; formatter: (n: number) => string }) {
-  const max = Math.max(1, ...points.map((p) => p.value));
+// Combine absolute quality with a day-over-day trend. The trend direction
+// drives the color when non-flat: bad trend → RED, good trend → GREEN. Flat
+// trend (within ±2%) falls back to the absolute. Same as Campaigns + Ad Sets.
+// Worst-of-two: bad signal in either dimension wins. Neutral = no opinion.
+function combineQuality(absolute: Quality, trend: Quality | null): Quality {
+  if (absolute === "neutral") return trend ?? "neutral";
+  if (trend === null) return absolute;
+  const rank: Record<Quality, number> = { good: 0, decent: 1, bad: 2, neutral: -1 };
+  return rank[absolute] >= rank[trend] ? absolute : trend;
+}
+
+// Inline sparkline matching the Campaigns / Ad Sets style: bordered panel,
+// gradient bars with rounded tops, value above + date below each bar. Spark
+// sits to the RIGHT of the value/caption (horizontal card layout). Optional
+// horizontal dashed reference line — used by the Spend card to overlay the
+// parent ad-set / campaign daily budget so the user can scan per-day pacing.
+function InlineSpark({
+  points,
+  color,
+  formatter,
+  referenceLine,
+}: {
+  points: DailyPoint[];
+  color: string;
+  formatter: (n: number) => string;
+  referenceLine?: { value: number; label?: string };
+}) {
+  const values = points.map((p) => p.value);
+  if (referenceLine) values.push(referenceLine.value);
+  const max = Math.max(1, ...values);
+  const BAR_AREA = 44;
+  const LABEL_BOTTOM = 16;
+  const refBottom = referenceLine ? LABEL_BOTTOM + (referenceLine.value / max) * BAR_AREA : 0;
+  const barColor = (val: number): string => {
+    if (!referenceLine) return color;
+    return val > referenceLine.value ? ROSE : SAGE;
+  };
   return (
-    <div className="flex items-end gap-1.5 mt-2">
-      {points.map((p) => {
-        const h = max > 0 ? Math.max(6, (p.value / max) * 28) : 6;
-        return (
-          <div key={p.date} className="flex flex-col items-center flex-1 min-w-0">
-            <span className="text-[9px] font-semibold tabular-nums leading-none mb-0.5" style={{ color: INK }}>
-              {formatter(p.value)}
-            </span>
-            <div className="w-full rounded-sm" style={{ height: `${h}px`, background: color }} title={`${p.label}: ${p.value}`} />
-            <span className="text-[8px] mt-0.5" style={{ color: MUTED }}>{p.label}</span>
-          </div>
-        );
-      })}
+    <div
+      className="relative rounded-lg px-2 pt-1 pb-1.5"
+      style={{
+        background: "rgba(255, 255, 255, 0.5)",
+        border: `1px solid ${BORDER}`,
+        minWidth: 140,
+      }}
+    >
+      <div className="flex items-end gap-2.5">
+        {points.map((p) => {
+          const h = max > 0 ? Math.max(8, (p.value / max) * BAR_AREA) : 8;
+          const bc = barColor(p.value);
+          return (
+            <div key={p.date} className="flex flex-col items-center min-w-[38px]">
+              <span
+                className="text-[10px] font-semibold tabular-nums leading-none mb-1"
+                style={{ color: INK }}
+              >
+                {formatter(p.value)}
+              </span>
+              <div
+                className="w-9 rounded-t-md"
+                style={{
+                  height: `${h}px`,
+                  background: `linear-gradient(180deg, ${bc} 0%, ${bc}cc 65%, ${bc}99 100%)`,
+                  boxShadow: `inset 0 -1px 0 ${bc}33, 0 1px 1px rgba(0,0,0,0.04)`,
+                }}
+                title={`${p.label}: ${formatter(p.value)}`}
+              />
+              <span className="text-[9px] mt-1.5" style={{ color: MUTED }}>{p.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {referenceLine && (
+        <div
+          className="absolute left-2 right-2 pointer-events-none"
+          style={{ bottom: `${refBottom}px` }}
+        >
+          <div className="border-t border-dashed" style={{ borderColor: INK, opacity: 0.55 }} />
+          <span
+            className="absolute right-0 px-1.5 py-[1px] text-[8px] font-bold rounded-full leading-none whitespace-nowrap shadow-sm"
+            style={{
+              top: -7,
+              background: "white",
+              color: INK,
+              border: `1px solid ${INK}55`,
+            }}
+            title={`Daily budget: ${formatter(referenceLine.value)}`}
+          >
+            ◇ {formatter(referenceLine.value)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -155,37 +235,71 @@ function MiniMetric({
   quality,
   series,
   sparkFormatter,
+  trendArrow,
+  referenceLine,
 }: {
   label: string;
   value: string;
   caption: { text: string; color?: string } | null;
   quality: Quality;
-  // Optional 3-bar sparkline series for daily breakdown. Omit to render a
-  // compact card with no chart (used for cards where daily isn't meaningful).
   series?: DailyPoint[];
   sparkFormatter?: (n: number) => string;
+  trendArrow?: { arrow: string; color: string; pctChange?: number } | null;
+  referenceLine?: { value: number; label?: string };
 }) {
   const color = qualityColor(quality);
   const bg =
-    quality === "good" ? `${SAGE}15` :
-    quality === "decent" ? `${AMBER}18` :
-    quality === "bad" ? `${ROSE}18` :
+    quality === "good" ? `${SAGE}33` :
+    quality === "decent" ? `${AMBER}33` :
+    quality === "bad" ? `${ROSE}33` :
     CREAM_BG;
   return (
     <div
-      className="rounded-xl border px-3 py-2.5"
-      style={{ background: bg, borderColor: quality === "neutral" ? BORDER : `${color}55` }}
+      className="rounded-xl border p-3 flex items-start justify-between gap-3"
+      style={{
+        background: bg,
+        borderColor: quality === "neutral" ? BORDER : `${color}88`,
+      }}
     >
-      <p className="text-[10px] font-semibold" style={{ color: MUTED }}>{label}</p>
-      <p className="text-lg font-bold tabular-nums mt-0.5" style={{ color: quality === "bad" ? ROSE : INK }}>
-        {value}
-      </p>
-      {caption && (
-        <p className="text-[10px] font-semibold mt-0.5" style={{ color: caption.color ?? MUTED }}>
-          {caption.text}
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold" style={{ color: MUTED }}>{label}</p>
+        <p
+          className="text-2xl font-bold tabular-nums mt-0.5 flex items-baseline gap-1.5"
+          style={{ color: quality === "bad" ? ROSE : INK }}
+        >
+          <span>{value}</span>
+          {trendArrow && (
+            <span
+              className="text-sm font-semibold leading-none flex items-baseline gap-0.5"
+              style={{ color: trendArrow.color }}
+              title="day-over-day vs previous day"
+            >
+              <span className="text-base">{trendArrow.arrow}</span>
+              {trendArrow.pctChange !== undefined && (
+                <span className="tabular-nums">
+                  {trendArrow.pctChange > 0 ? "+" : ""}
+                  {(trendArrow.pctChange * 100).toFixed(0)}%
+                </span>
+              )}
+            </span>
+          )}
         </p>
+        {caption && (
+          <p className="text-[11px] font-semibold mt-0.5" style={{ color: caption.color ?? MUTED }}>
+            {caption.text}
+          </p>
+        )}
+      </div>
+      {series && sparkFormatter && (
+        <div className="shrink-0">
+          <InlineSpark
+            points={series}
+            color={color}
+            formatter={sparkFormatter}
+            referenceLine={referenceLine}
+          />
+        </div>
       )}
-      {series && sparkFormatter && <MiniSpark points={series} color={color} formatter={sparkFormatter} />}
     </div>
   );
 }
@@ -264,16 +378,21 @@ export function MetaTrendsAds() {
     return data.ads.filter((a) => a.metaAdSetId === adSetFilter);
   }, [data, adSetFilter]);
 
-  // Counts per format (for tab badges)
+  // Counts per format (for tab badges) — only ads that actually spent so the
+  // badge matches the list count.
   const formatCounts = useMemo(() => {
     const c = { video: 0, image: 0, carousel: 0 };
-    for (const a of adsInAdSet) c[normalizeFormat(a.creativeType)]++;
+    for (const a of adsInAdSet) {
+      if (a.current.spend > 0) c[normalizeFormat(a.creativeType)]++;
+    }
     return c;
   }, [adsInAdSet]);
 
-  // Filtered ads (by format) + sorted by spend desc
+  // Filtered ads — by format, hiding zero-spend ads (paused / pending review
+  // / not delivering). Sorted by spend desc so the top spenders are first.
   const filtered = useMemo(() => {
-    return adsInAdSet.filter((a) => normalizeFormat(a.creativeType) === formatFilter)
+    return adsInAdSet
+      .filter((a) => normalizeFormat(a.creativeType) === formatFilter && a.current.spend > 0)
       .sort((x, y) => y.current.spend - x.current.spend);
   }, [adsInAdSet, formatFilter]);
 
@@ -457,141 +576,215 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
       </div>
 
       <div className="p-4 space-y-4">
-        {/* 8 mini metric cards in a 4×2 grid */}
-        {/* Order: Spend → Purchases → Purchase Value → ROAS → rest */}
+        {/* 9 mini metric cards in a 3-column grid — matches Campaigns / Ad
+            Sets layout: descriptive caption + trend arrow with % next to value */}
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
-          <MiniMetric
-            label="Spend"
-            value={formatInr(ad.current.spend)}
-            caption={{
-              text: isTopSpender ? "top spender" : `#${rank} by spend`,
-              color: isTopSpender ? VIOLET : MUTED,
-            }}
-            quality="neutral"
-            series={ad.series.spend}
-            sparkFormatter={(n) => formatInr(n)}
-          />
-          <MiniMetric
-            label="Purchases"
-            value={`${ad.current.purchases}`}
-            caption={numericDelta(ad.current.purchases, ad.previous?.purchases)}
-            quality={
-              ad.current.purchases === 0 ? "neutral" :
-              ad.previous && ad.previous.purchases > 0 && ad.current.purchases >= ad.previous.purchases ? "good" :
-              "decent"
-            }
-            series={ad.series.purchases}
-            sparkFormatter={(n) => `${n}`}
-          />
-          <MiniMetric
-            label="Purchase Value"
-            value={formatInr(ad.current.purchaseValue)}
-            caption={numericDelta(ad.current.purchaseValue, ad.previous?.purchaseValue)}
-            quality={
-              ad.current.purchaseValue === 0 ? "neutral" :
-              ad.previous && ad.previous.purchaseValue > 0 && ad.current.purchaseValue >= ad.previous.purchaseValue ? "good" :
-              "decent"
-            }
-            series={ad.series.purchaseValue}
-            sparkFormatter={(n) => formatInr(n)}
-          />
-          <MiniMetric
-            label="ROAS"
-            value={`${ad.current.roas.toFixed(2)}x`}
-            caption={numericDelta(ad.current.roas, ad.previous?.roas)}
-            quality={qualityFromThreshold(ad.current.roas, { good: 1.8, decent: 1 })}
-            series={ad.series.roas}
-            sparkFormatter={(n) => `${n.toFixed(2)}`}
-          />
-          <MiniMetric
-            label="CPM"
-            value={`Rs.${Math.round(ad.current.cpm)}`}
-            caption={{
-              text: ad.current.cpm <= 150 ? "in range" : ad.current.cpm <= 250 ? "above target" : "high",
-              color: ad.current.cpm <= 150 ? SAGE : ad.current.cpm <= 250 ? AMBER : ROSE,
-            }}
-            quality={qualityFromThreshold(ad.current.cpm, { good: 150, decent: 250 }, true)}
-            series={ad.series.cpm}
-            sparkFormatter={(n) => `Rs.${Math.round(n)}`}
-          />
-          <MiniMetric
-            label="CTR"
-            value={`${ad.current.ctr.toFixed(2)}%`}
-            caption={numericDelta(ad.current.ctr, ad.previous?.ctr)}
-            quality={qualityFromThreshold(ad.current.ctr, { good: 1.5, decent: 1 })}
-            series={ad.series.ctr}
-            sparkFormatter={(n) => `${n.toFixed(1)}%`}
-          />
-          <MiniMetric
-            label="CPC"
-            value={`Rs.${Math.round(ad.current.cpc)}`}
-            caption={{
-              text: ad.current.cpc <= 30 ? "in range" : ad.current.cpc <= 60 ? "above target" : "high",
-              color: ad.current.cpc <= 30 ? SAGE : ad.current.cpc <= 60 ? AMBER : ROSE,
-            }}
-            quality={qualityFromThreshold(ad.current.cpc, { good: 30, decent: 60 }, true)}
-            series={ad.series.cpc}
-            sparkFormatter={(n) => `Rs.${Math.round(n)}`}
-          />
-          <MiniMetric
-            label="CPP"
-            value={ad.current.cpp > 0 ? `Rs.${Math.round(ad.current.cpp).toLocaleString("en-IN")}` : "—"}
-            caption={numericDelta(ad.current.cpp, ad.previous?.cpp, true)}
-            quality={qualityFromThreshold(ad.current.cpp, { good: 1500, decent: 2500 }, true)}
-            series={ad.series.cpp}
-            sparkFormatter={(n) => (n > 0 ? `${Math.round(n / 1000)}K` : "—")}
-          />
-          <MiniMetric
-            label="Freq"
-            value={`${ad.current.frequency.toFixed(2)}x`}
-            caption={(() => {
-              const d = pctDelta(ad.current.frequency, ad.previous?.frequency);
-              if (d === null) return { text: "—", color: MUTED };
-              if (Math.abs(d) < 0.05) return { text: "stable", color: MUTED };
-              const rising = d > 0;
-              const color = rising ? ROSE : SAGE;
-              return { text: rising ? "↑ rising" : "↓ falling", color };
-            })()}
-            quality={qualityFromThreshold(ad.current.frequency, { good: 2, decent: 3 }, true)}
-            series={ad.series.frequency}
-            sparkFormatter={(n) => n.toFixed(2)}
-          />
+          {(() => {
+            const spendTrend = intraWindowTrend(ad.series.spend, true);
+            const purchasesTrend = intraWindowTrend(ad.series.purchases);
+            const purchaseValueTrend = intraWindowTrend(ad.series.purchaseValue);
+            const roasTrend = intraWindowTrend(ad.series.roas);
+            const cpmTrend = intraWindowTrend(ad.series.cpm, true);
+            const ctrTrend = intraWindowTrend(ad.series.ctr);
+            const cpcTrend = intraWindowTrend(ad.series.cpc, true);
+            const cppTrend = intraWindowTrend(ad.series.cpp, true);
+            const freqTrend = intraWindowTrend(ad.series.frequency, true);
+            const fmtCpp = (n: number) => {
+              if (n <= 0) return "—";
+              if (n < 1000) return `${Math.round(n)}`;
+              return `${(n / 1000).toFixed(1)}K`;
+            };
+            // Spend reference line: parent ad-set's daily budget (ABO) first,
+            // then campaign-level daily budget (CBO fallback). Pulled live from
+            // Meta — no manual overrides.
+            const plannedDaily =
+              ad.adSetDailyBudget && ad.adSetDailyBudget > 0
+                ? ad.adSetDailyBudget
+                : ad.campaignDailyBudget && ad.campaignDailyBudget > 0
+                ? ad.campaignDailyBudget
+                : null;
+            const budgetSource: "adset" | "campaign" | null =
+              ad.adSetDailyBudget && ad.adSetDailyBudget > 0
+                ? "adset"
+                : plannedDaily
+                ? "campaign"
+                : null;
+            const seriesDays = Math.max(1, ad.series.spend.length);
+            const plannedWindow = plannedDaily ? plannedDaily * seriesDays : null;
+            const budgetUtil =
+              plannedWindow && plannedWindow > 0
+                ? Math.round((ad.current.spend / plannedWindow) * 100)
+                : null;
+            const spendCaptionText = plannedDaily && budgetUtil != null
+              ? `${budgetUtil}% of Rs.${Math.round(plannedDaily / 1000)}K/day${budgetSource === "campaign" ? " · CBO" : ""}`
+              : isTopSpender
+              ? "top spender"
+              : `#${rank} by spend`;
+            const spendCaptionColor = isTopSpender && !plannedDaily ? VIOLET : MUTED;
+            return (
+              <>
+                <MiniMetric
+                  label="Spend"
+                  value={formatInr(ad.current.spend)}
+                  caption={{ text: spendCaptionText, color: spendCaptionColor }}
+                  quality={spendTrend?.quality ?? "neutral"}
+                  series={ad.series.spend}
+                  sparkFormatter={(n) => formatInr(n)}
+                  trendArrow={spendTrend}
+                  referenceLine={plannedDaily ? { value: plannedDaily, label: "budget" } : undefined}
+                />
+                <MiniMetric
+                  label="Purchases"
+                  value={`${ad.current.purchases}`}
+                  caption={{ text: "No benchmark" }}
+                  quality={
+                    ad.current.purchases === 0
+                      ? "neutral"
+                      : purchasesTrend?.quality ?? "decent"
+                  }
+                  series={ad.series.purchases}
+                  sparkFormatter={(n) => `${n}`}
+                  trendArrow={purchasesTrend}
+                />
+                <MiniMetric
+                  label="Purchase Value"
+                  value={formatInr(ad.current.purchaseValue)}
+                  caption={{ text: "No benchmark" }}
+                  quality={
+                    ad.current.purchaseValue === 0
+                      ? "neutral"
+                      : purchaseValueTrend?.quality ?? "decent"
+                  }
+                  series={ad.series.purchaseValue}
+                  sparkFormatter={(n) => formatInr(n)}
+                  trendArrow={purchaseValueTrend}
+                />
+                <MiniMetric
+                  label="ROAS"
+                  value={`${ad.current.roas.toFixed(2)}x`}
+                  caption={{ text: "Target 1.8–2.5x" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.roas, { good: 1.8, decent: 1 }),
+                    roasTrend?.quality ?? null,
+                  )}
+                  series={ad.series.roas}
+                  sparkFormatter={(n) => `${n.toFixed(2)}`}
+                  trendArrow={roasTrend}
+                />
+                <MiniMetric
+                  label="CPM"
+                  value={`Rs.${Math.round(ad.current.cpm)}`}
+                  caption={{ text: "Target Rs.80–150" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.cpm, { good: 150, decent: 250 }, true),
+                    cpmTrend?.quality ?? null,
+                  )}
+                  series={ad.series.cpm}
+                  sparkFormatter={(n) => `Rs.${Math.round(n)}`}
+                  trendArrow={cpmTrend}
+                />
+                <MiniMetric
+                  label="CTR"
+                  value={`${ad.current.ctr.toFixed(2)}%`}
+                  caption={{ text: "Target 1.5–2%+" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.ctr, { good: 1.5, decent: 1 }),
+                    ctrTrend?.quality ?? null,
+                  )}
+                  series={ad.series.ctr}
+                  sparkFormatter={(n) => `${n.toFixed(1)}%`}
+                  trendArrow={ctrTrend}
+                />
+                <MiniMetric
+                  label="CPC"
+                  value={`Rs.${Math.round(ad.current.cpc)}`}
+                  caption={{ text: "Target Rs.10–30" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.cpc, { good: 30, decent: 60 }, true),
+                    cpcTrend?.quality ?? null,
+                  )}
+                  series={ad.series.cpc}
+                  sparkFormatter={(n) => `Rs.${Math.round(n)}`}
+                  trendArrow={cpcTrend}
+                />
+                <MiniMetric
+                  label="CPP"
+                  value={ad.current.cpp > 0 ? `Rs.${Math.round(ad.current.cpp).toLocaleString("en-IN")}` : "—"}
+                  caption={{ text: "Target Rs.600–1,500" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.cpp, { good: 1500, decent: 2500 }, true),
+                    cppTrend?.quality ?? null,
+                  )}
+                  series={ad.series.cpp}
+                  sparkFormatter={fmtCpp}
+                  trendArrow={cppTrend}
+                />
+                <MiniMetric
+                  label="Freq"
+                  value={`${ad.current.frequency.toFixed(2)}x`}
+                  caption={{ text: "Keep below 3x" }}
+                  quality={combineQuality(
+                    qualityFromThreshold(ad.current.frequency, { good: 2, decent: 3 }, true),
+                    freqTrend?.quality ?? null,
+                  )}
+                  series={ad.series.frequency}
+                  sparkFormatter={(n) => n.toFixed(2)}
+                  trendArrow={freqTrend}
+                />
+              </>
+            );
+          })()}
         </div>
 
         {/* Video completion strip — only for video format */}
-        {isVideo && (
-          <div
-            className="rounded-xl border px-4 py-3"
-            style={{ background: `${VIOLET}10`, borderColor: `${VIOLET}55` }}
-          >
-            <p className="text-[11px] font-semibold mb-2" style={{ color: VIOLET }}>Video completion</p>
-            {/* All four % are share-of-impressions so they form a clean
-                descending funnel. Using "of 3s viewers" breaks for short
-                videos where 25% completes before 3 seconds. */}
-            <div className="grid grid-cols-4 gap-3">
-              <CompletionCell
-                label="Hook rate (3s)"
-                value={ad.current.impressions > 0 ? `${((ad.current.video3sViews / ad.current.impressions) * 100).toFixed(1)}%` : "—"}
-                sub="of impressions"
-              />
-              <CompletionCell
-                label="25% watched"
-                value={ad.current.impressions > 0 ? `${((ad.current.video25pViews / ad.current.impressions) * 100).toFixed(1)}%` : "—"}
-                sub="of impressions"
-              />
-              <CompletionCell
-                label="50% watched"
-                value={ad.current.impressions > 0 ? `${((ad.current.video50pViews / ad.current.impressions) * 100).toFixed(1)}%` : "—"}
-                sub="of impressions"
-              />
-              <CompletionCell
-                label="ThruPlay"
-                value={ad.current.impressions > 0 ? `${((ad.current.videoP75Views / ad.current.impressions) * 100).toFixed(1)}%` : "—"}
-                sub="75% of impressions"
-              />
+        {isVideo && (() => {
+          const imp = ad.current.impressions;
+          const hookPct = imp > 0 ? (ad.current.video3sViews / imp) * 100 : 0;
+          const q25Pct = imp > 0 ? (ad.current.video25pViews / imp) * 100 : 0;
+          const q50Pct = imp > 0 ? (ad.current.video50pViews / imp) * 100 : 0;
+          const q75Pct = imp > 0 ? (ad.current.videoP75Views / imp) * 100 : 0;
+          return (
+            <div
+              className="rounded-xl border px-4 py-3"
+              style={{ background: `${VIOLET}10`, borderColor: `${VIOLET}55` }}
+            >
+              <p className="text-[11px] font-semibold" style={{ color: VIOLET }}>Video completion</p>
+              <p className="text-[10px] mt-0.5 mb-3" style={{ color: MUTED }}>
+                How far viewers actually watched. Each % is share of impressions — a descending funnel as viewers drop off at each stage.
+              </p>
+              <div className="grid grid-cols-4 gap-3">
+                <CompletionCell
+                  label="Hook rate (3s)"
+                  value={imp > 0 ? `${hookPct.toFixed(1)}%` : "—"}
+                  numericValue={hookPct}
+                  meaning="watched past first 3 seconds"
+                  benchmark={{ good: 30, decent: 20 }}
+                />
+                <CompletionCell
+                  label="25% watched"
+                  value={imp > 0 ? `${q25Pct.toFixed(1)}%` : "—"}
+                  numericValue={q25Pct}
+                  meaning="made it through the first quarter"
+                  benchmark={{ good: 15, decent: 8 }}
+                />
+                <CompletionCell
+                  label="50% watched"
+                  value={imp > 0 ? `${q50Pct.toFixed(1)}%` : "—"}
+                  numericValue={q50Pct}
+                  meaning="reached the midpoint"
+                  benchmark={{ good: 10, decent: 5 }}
+                />
+                <CompletionCell
+                  label="75% watched"
+                  value={imp > 0 ? `${q75Pct.toFixed(1)}%` : "—"}
+                  numericValue={q75Pct}
+                  meaning="watched most of the video"
+                  benchmark={{ good: 6, decent: 3 }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Conversion funnel */}
         <div>
@@ -605,23 +798,73 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
   );
 }
 
-function CompletionCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function CompletionCell({
+  label,
+  value,
+  numericValue,
+  meaning,
+  benchmark,
+}: {
+  label: string;
+  value: string;
+  numericValue: number;
+  meaning: string;
+  benchmark: { good: number; decent: number };
+}) {
+  const tone =
+    numericValue >= benchmark.good ? "good" :
+    numericValue >= benchmark.decent ? "decent" :
+    numericValue > 0 ? "bad" : "neutral";
+  const valueColor = tone === "good" ? SAGE : tone === "decent" ? AMBER : tone === "bad" ? ROSE : MUTED;
+  const toneLabel = tone === "good" ? "Good" : tone === "decent" ? "OK" : tone === "bad" ? "Weak" : "—";
   return (
     <div className="text-center">
       <p className="text-[10px]" style={{ color: MUTED }}>{label}</p>
-      <p className="text-lg font-bold tabular-nums mt-0.5" style={{ color: VIOLET }}>{value}</p>
-      {sub && <p className="text-[9px] mt-0.5 italic" style={{ color: MUTED }}>{sub}</p>}
+      <p className="text-lg font-bold tabular-nums mt-0.5" style={{ color: valueColor }}>{value}</p>
+      <p className="text-[9px] mt-0.5" style={{ color: MUTED }}>{meaning}</p>
+      <span
+        className="inline-block mt-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none"
+        style={{ background: `${valueColor}22`, color: valueColor }}
+      >
+        {toneLabel} · &gt;{benchmark.good}%
+      </span>
     </div>
   );
 }
 
 function FunnelRow({ ad }: { ad: Ad }) {
-  const stages = [
+  // Each stage carries its own drop benchmark for the transition INTO it from
+  // the previous stage. Numbers are typical D2C / e-commerce ranges:
+  //   • Click → LP view: 10–25% drop is normal (page load + early abandonment)
+  //   • LP → Add to cart: 85–95% drop is normal (most LP visitors are browsing)
+  //   • ATC → Checkout: 30–50% drop is normal (cart abandonment)
+  //   • Checkout → Purchase: 30–50% drop (payment / shipping friction)
+  const stages: {
+    label: string;
+    count: number;
+    benchmark?: { good: number; alarm: number; reference: string };
+  }[] = [
     { label: "Clicks", count: ad.current.clicks },
-    { label: "Landing page", count: ad.current.landingPageViews },
-    { label: "Add to cart", count: ad.current.addToCart },
-    { label: "Checkout", count: ad.current.initiateCheckout },
-    { label: "Purchase", count: ad.current.purchases },
+    {
+      label: "Landing page",
+      count: ad.current.landingPageViews,
+      benchmark: { good: 25, alarm: 40, reference: "industry: 10–25%" },
+    },
+    {
+      label: "Add to cart",
+      count: ad.current.addToCart,
+      benchmark: { good: 95, alarm: 97, reference: "industry: 85–95%" },
+    },
+    {
+      label: "Checkout",
+      count: ad.current.initiateCheckout,
+      benchmark: { good: 50, alarm: 65, reference: "industry: 30–50%" },
+    },
+    {
+      label: "Purchase",
+      count: ad.current.purchases,
+      benchmark: { good: 50, alarm: 65, reference: "industry: 30–50%" },
+    },
   ];
   return (
     <div className="flex items-stretch gap-2 overflow-x-auto">
@@ -629,15 +872,26 @@ function FunnelRow({ ad }: { ad: Ad }) {
         const prev = i > 0 ? stages[i - 1].count : null;
         const passPct = prev != null && prev > 0 ? Math.round((s.count / prev) * 100) : null;
         const dropPct = passPct != null ? 100 - passPct : null;
-        const dropColor = dropPct == null ? MUTED : dropPct >= 80 ? ROSE : dropPct >= 50 ? AMBER : SAGE;
+        // Use the stage's own benchmark to color the drop: under "good"
+        // threshold = sage, over "alarm" = rose, in between = amber.
+        const bench = s.benchmark;
+        let dropColor = MUTED;
+        if (dropPct != null && bench) {
+          dropColor = dropPct <= bench.good ? SAGE : dropPct >= bench.alarm ? ROSE : AMBER;
+        }
         return (
           <div key={s.label} className="flex items-stretch flex-1 min-w-0 gap-2">
             {i > 0 && (
-              <div className="flex flex-col items-center justify-center shrink-0 min-w-[44px]">
-                <span className="text-[10px] font-semibold tabular-nums" style={{ color: dropColor }}>
+              <div className="flex flex-col items-center justify-center shrink-0 min-w-[64px]">
+                <span className="text-[11px] font-bold tabular-nums" style={{ color: dropColor }}>
                   {dropPct == null ? "—" : `-${dropPct}%`}
                 </span>
                 <ChevronRight size={14} style={{ color: MUTED }} />
+                {bench && (
+                  <span className="text-[8.5px] mt-0.5 leading-tight text-center" style={{ color: MUTED }}>
+                    {bench.reference}
+                  </span>
+                )}
               </div>
             )}
             <div

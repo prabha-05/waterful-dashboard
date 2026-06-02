@@ -17,6 +17,10 @@ type AdTrend = {
   previewLink: string | null;
   adSetName: string;
   campaignName: string;
+  // Parent budgets — used by the Spend card's reference line. ad-set budget
+  // is the primary; campaign budget is the fallback for CBO setups.
+  adSetDailyBudget: number | null;
+  campaignDailyBudget: number | null;
   current: {
     spend: number;
     impressions: number;
@@ -91,6 +95,7 @@ export async function GET(req: NextRequest) {
               metaAdSetId: true,
               name: true,
               metaCampaignId: true,
+              dailyBudget: true,
             },
           },
         },
@@ -98,13 +103,15 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  // Look up campaign names
+  // Look up campaign names + daily budgets (campaign budget is the CBO fallback
+  // when the parent ad-set has no budget of its own).
   const campaignIds = Array.from(new Set(rows.map((r) => r.ad.adSet.metaCampaignId)));
   const campaigns = await prisma.metaCampaign.findMany({
     where: { metaCampaignId: { in: campaignIds } },
-    select: { metaCampaignId: true, name: true },
+    select: { metaCampaignId: true, name: true, dailyBudget: true },
   });
   const campaignName = new Map(campaigns.map((c) => [c.metaCampaignId, c.name]));
+  const campaignDailyBudget = new Map(campaigns.map((c) => [c.metaCampaignId, c.dailyBudget]));
 
   // Per-ad accumulators
   type AdAcc = {
@@ -117,6 +124,7 @@ export async function GET(req: NextRequest) {
     adSetName: string;
     metaAdSetId: string;
     metaCampaignId: string;
+    adSetDailyBudget: number | null;
     cur: { spend: number; impressions: number; clicks: number; purchases: number; purchaseValue: number; addToCart: number; initiateCheckout: number; landingPageViews: number; video3sViews: number; video25pViews: number; video50pViews: number; videoP75Views: number; video100pViews: number; freqNum: number };
     prev: AdAcc["cur"];
     // Per-day buckets for the current window only — used to build sparklines
@@ -139,6 +147,7 @@ export async function GET(req: NextRequest) {
         adSetName: r.ad.adSet.name,
         metaAdSetId: r.ad.adSet.metaAdSetId,
         metaCampaignId: r.ad.adSet.metaCampaignId,
+        adSetDailyBudget: r.ad.adSet.dailyBudget,
         cur: blank(),
         prev: blank(),
         daily: new Map(),
@@ -244,6 +253,8 @@ export async function GET(req: NextRequest) {
     previewLink: a.previewLink,
     adSetName: a.adSetName,
     campaignName: campaignName.get(a.metaCampaignId) ?? "(unknown campaign)",
+    adSetDailyBudget: a.adSetDailyBudget,
+    campaignDailyBudget: campaignDailyBudget.get(a.metaCampaignId) ?? null,
     metaAdSetId: a.metaAdSetId,
     metaCampaignId: a.metaCampaignId,
     current: derive(a.cur),

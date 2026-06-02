@@ -14,6 +14,9 @@ type AdSetTrend = {
   metaCampaignId: string;
   campaignName: string;
   dailyBudget: number | null;
+  // Parent campaign's daily budget — used as the budget fallback when the
+  // ad-set has none of its own (typical for CBO campaigns).
+  campaignDailyBudget: number | null;
   adsCount: number;
   // Inherited from campaign (same tag scheme as Campaigns page)
   tags: { buyingType: "CBO" | "ABO" | null; advantagePlus: boolean; kind: "Scaling" | "Testing" | null };
@@ -201,6 +204,7 @@ export async function GET(req: NextRequest) {
       metaCampaignId: a.metaCampaignId,
       campaignName: campName,
       dailyBudget: a.dailyBudget,
+      campaignDailyBudget: camp?.dailyBudget ?? null,
       adsCount: adsCountByAdSet.get(a.metaAdSetId) ?? 0,
       tags: { buyingType, advantagePlus: Boolean(advantagePlus), kind },
       current: {

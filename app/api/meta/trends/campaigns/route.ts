@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { startOfIstDay, addDays, formatIstYmd, formatIstShort } from "@/lib/timezone";
-import { targetDailyBudget } from "@/lib/meta-budgets";
 
 // Daily aggregate per campaign for current + prior windows. Powers the
 // Trends → Campaigns page (rolling-window comparison with sparklines).
@@ -77,12 +76,22 @@ export async function GET(req: NextRequest) {
   });
 
   // Counts of ad sets and ads per campaign (live, not just spending in window)
+  // Also sum each campaign's active ad-set daily budgets so that ABO campaigns
+  // (no campaign-level budget on Meta) can still show a reference figure.
   const allAdSets = await prisma.metaAdSet.findMany({
-    select: { metaCampaignId: true },
+    select: { metaCampaignId: true, dailyBudget: true, status: true },
   });
   const adSetsCountByCamp = new Map<string, number>();
+  const adSetBudgetSumByCamp = new Map<string, number>();
   for (const a of allAdSets) {
     adSetsCountByCamp.set(a.metaCampaignId, (adSetsCountByCamp.get(a.metaCampaignId) ?? 0) + 1);
+    // Only count ACTIVE ad-sets — paused ones aren't actually contributing.
+    if (a.status?.toUpperCase() === "ACTIVE" && a.dailyBudget && a.dailyBudget > 0) {
+      adSetBudgetSumByCamp.set(
+        a.metaCampaignId,
+        (adSetBudgetSumByCamp.get(a.metaCampaignId) ?? 0) + a.dailyBudget,
+      );
+    }
   }
   const allAds = await prisma.metaAd.findMany({
     select: { adSet: { select: { metaCampaignId: true } } },
@@ -247,7 +256,11 @@ export async function GET(req: NextRequest) {
       tags: { buyingType, advantagePlus: Boolean(advantagePlus), kind },
       adSetsCount: adSetsCountByCamp.get(c.metaCampaignId) ?? 0,
       adsCount: adsCountByCamp.get(c.metaCampaignId) ?? 0,
-      dailyBudget: c.dailyBudget,
+      // CBO campaigns have a campaign-level dailyBudget; ABO campaigns don't,
+      // so fall back to the sum of their active ad-sets' daily budgets.
+      dailyBudget: c.dailyBudget && c.dailyBudget > 0
+        ? c.dailyBudget
+        : adSetBudgetSumByCamp.get(c.metaCampaignId) ?? null,
       current: {
         spend: Math.round(c.cur.spend),
         purchases: c.cur.purchases,
@@ -311,10 +324,8 @@ export async function GET(req: NextRequest) {
     if (c.current.frequency > 3) {
       alerts.push({ tone: "amber", sortKey: 5, text: `${short} — Frequency ${c.current.frequency.toFixed(1)}x (above threshold)` });
     }
-    // Budget drift — compare daily spend to PLANNED daily budget (from the
-    // shared meta-budgets table). Falls back to Meta's dailyBudget if no
-    // planned override is set.
-    const planned = targetDailyBudget(c.name, c.dailyBudget);
+    // Budget drift — compare daily spend to Meta's actual daily budget.
+    const planned = c.dailyBudget && c.dailyBudget > 0 ? c.dailyBudget : null;
     if (planned && planned > 0) {
       const dailySpend = c.current.spend / days;
       const util = (dailySpend / planned) * 100;

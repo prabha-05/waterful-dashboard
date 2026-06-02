@@ -33,6 +33,7 @@ type AdSet = {
   metaCampaignId: string;
   campaignName: string;
   dailyBudget: number | null;
+  campaignDailyBudget: number | null;
   adsCount: number;
   tags: Tags;
   current: {
@@ -85,14 +86,6 @@ function qualityFromThreshold(value: number, thresholds: { good: number; decent:
   if (value >= thresholds.decent) return "decent";
   return "bad";
 }
-function qualityFromTrend(curr: number, prev: number | undefined, lowerIsBetter = false): Quality {
-  if (prev === undefined || prev === 0) return "neutral";
-  const d = (curr - prev) / prev;
-  if (Math.abs(d) < 0.05) return "decent";
-  const rising = d > 0;
-  const good = lowerIsBetter ? !rising : rising;
-  return good ? "good" : "bad";
-}
 function qualityFromBudgetUtil(util: number | null): Quality {
   if (util == null) return "neutral";
   if (util >= 80 && util <= 110) return "good";
@@ -100,48 +93,127 @@ function qualityFromBudgetUtil(util: number | null): Quality {
   return "bad";
 }
 
-function pctDelta(curr: number, prev: number | undefined): number | null {
-  if (prev === undefined || prev === 0) return null;
-  return (curr - prev) / prev;
-}
-function numericDelta(curr: number, prev: number | undefined, lowerIsBetter = false): { text: string; color: string } {
-  const d = pctDelta(curr, prev);
-  if (d === null) return { text: "—", color: MUTED };
-  const pct = (d * 100).toFixed(0);
-  const positive = d >= 0;
-  const good = lowerIsBetter ? !positive : positive;
-  const color = Math.abs(d) < 0.01 ? MUTED : good ? SAGE : ROSE;
-  const arrow = Math.abs(d) < 0.01 ? "—" : positive ? "↑" : "↓";
-  return { text: `${arrow} ${positive ? "+" : ""}${pct}% vs prior`, color };
-}
-function qualitativeDelta(curr: number, prev: number | undefined, lowerIsBetter = false): { text: string; color: string } {
-  const d = pctDelta(curr, prev);
-  if (d === null) return { text: "—", color: MUTED };
-  if (Math.abs(d) < 0.05) return { text: "— stable", color: MUTED };
-  const rising = d > 0;
+// Intra-window trend — compares the LAST day in the series to the day before
+// it. Three-state color:
+//   • > 2% move in the good direction → green
+//   • > 2% move in the bad direction  → red
+//   • within ±2% (effectively flat)   → amber ("decent")
+// "lowerIsBetter" flips the color (e.g. rising CPP = bad).
+function intraWindowTrend(
+  series: DailyPoint[],
+  lowerIsBetter = false,
+): { arrow: string; color: string; quality: Quality; pctChange: number } | null {
+  if (series.length < 2) return null;
+  const last = series[series.length - 1].value;
+  const prev = series[series.length - 2].value;
+  if (last === 0 && prev === 0) return null;
+  const change = prev > 0 ? (last - prev) / prev : 0;
+  const STABLE = 0.02;
+  if (Math.abs(change) < STABLE) {
+    return { arrow: "—", color: AMBER, quality: "decent", pctChange: change };
+  }
+  const rising = last > prev;
   const good = lowerIsBetter ? !rising : rising;
-  const color = good ? SAGE : ROSE;
-  const word = rising ? "rising" : "falling";
-  const arrow = rising ? "↑" : "↓";
-  return { text: `${arrow} ${word}`, color };
+  return {
+    arrow: rising ? "↑" : "↓",
+    color: good ? SAGE : ROSE,
+    quality: good ? "good" : "bad",
+    pctChange: change,
+  };
 }
 
-function InlineSpark({ points, color, formatter }: { points: DailyPoint[]; color: string; formatter: (n: number) => string }) {
-  const max = Math.max(1, ...points.map((p) => p.value));
+// Combine an absolute-value quality with a day-over-day trend. The trend
+// direction drives the color when it's non-flat: rising in a bad direction
+// → RED, falling in a good direction → GREEN. A flat trend doesn't override.
+// Worst-of-two: bad signal in either dimension wins. Neutral = no opinion.
+function combineQuality(absolute: Quality, trend: Quality | null): Quality {
+  if (absolute === "neutral") return trend ?? "neutral";
+  if (trend === null) return absolute;
+  const rank: Record<Quality, number> = { good: 0, decent: 1, bad: 2, neutral: -1 };
+  return rank[absolute] >= rank[trend] ? absolute : trend;
+}
+
+// Inline sparkline laid out horizontally: bars + values above + dates below.
+// Optionally overlays a dashed horizontal "budget" reference line. Bars get a
+// subtle vertical gradient and rounded tops. When a budget reference is set,
+// each bar is colored by whether it overshot (rose) or stayed under (sage).
+function InlineSpark({
+  points,
+  color,
+  formatter,
+  referenceLine,
+}: {
+  points: DailyPoint[];
+  color: string;
+  formatter: (n: number) => string;
+  referenceLine?: { value: number; label?: string };
+}) {
+  const values = points.map((p) => p.value);
+  if (referenceLine) values.push(referenceLine.value);
+  const max = Math.max(1, ...values);
+  const BAR_AREA = 44;
+  const LABEL_BOTTOM = 16;
+  const refBottom = referenceLine ? LABEL_BOTTOM + (referenceLine.value / max) * BAR_AREA : 0;
+  const barColor = (val: number): string => {
+    if (!referenceLine) return color;
+    if (val > referenceLine.value) return ROSE;
+    return SAGE;
+  };
   return (
-    <div className="flex items-end gap-2">
-      {points.map((p) => {
-        const h = max > 0 ? Math.max(8, (p.value / max) * 36) : 8;
-        return (
-          <div key={p.date} className="flex flex-col items-center min-w-[34px]">
-            <span className="text-[10px] font-semibold tabular-nums leading-none mb-1" style={{ color: INK }}>
-              {formatter(p.value)}
-            </span>
-            <div className="w-7 rounded-sm" style={{ height: `${h}px`, background: color }} title={`${p.label}: ${p.value}`} />
-            <span className="text-[9px] mt-1" style={{ color: MUTED }}>{p.label}</span>
-          </div>
-        );
-      })}
+    <div
+      className="relative rounded-lg px-2 pt-1 pb-1.5"
+      style={{
+        background: "rgba(255, 255, 255, 0.5)",
+        border: `1px solid ${BORDER}`,
+        minWidth: 140,
+      }}
+    >
+      <div className="flex items-end gap-2.5">
+        {points.map((p) => {
+          const h = max > 0 ? Math.max(8, (p.value / max) * BAR_AREA) : 8;
+          const bc = barColor(p.value);
+          return (
+            <div key={p.date} className="flex flex-col items-center min-w-[38px]">
+              <span
+                className="text-[10px] font-semibold tabular-nums leading-none mb-1"
+                style={{ color: INK }}
+              >
+                {formatter(p.value)}
+              </span>
+              <div
+                className="w-9 rounded-t-md"
+                style={{
+                  height: `${h}px`,
+                  background: `linear-gradient(180deg, ${bc} 0%, ${bc}cc 65%, ${bc}99 100%)`,
+                  boxShadow: `inset 0 -1px 0 ${bc}33, 0 1px 1px rgba(0,0,0,0.04)`,
+                }}
+                title={`${p.label}: ${formatter(p.value)}`}
+              />
+              <span className="text-[9px] mt-1.5" style={{ color: MUTED }}>{p.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {referenceLine && (
+        <div
+          className="absolute left-2 right-2 pointer-events-none"
+          style={{ bottom: `${refBottom}px` }}
+        >
+          <div className="border-t border-dashed" style={{ borderColor: INK, opacity: 0.55 }} />
+          <span
+            className="absolute right-0 px-1.5 py-[1px] text-[8px] font-bold rounded-full leading-none whitespace-nowrap shadow-sm"
+            style={{
+              top: -7,
+              background: "white",
+              color: INK,
+              border: `1px solid ${INK}55`,
+            }}
+            title={`Daily budget: ${formatter(referenceLine.value)}`}
+          >
+            ◇ {formatter(referenceLine.value)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -154,30 +226,53 @@ type MetricCardProps = {
   quality: Quality;
   series: DailyPoint[];
   formatter: (n: number) => string;
+  referenceLine?: { value: number; label?: string };
+  trendArrow?: { arrow: string; color: string; pctChange?: number } | null;
 };
 
-function MetricCard({ label, value, caption, delta, quality, series, formatter }: MetricCardProps) {
+function MetricCard({ label, value, caption, delta, quality, series, formatter, referenceLine, trendArrow }: MetricCardProps) {
   const color = qualityColor(quality);
   const bg =
-    quality === "good" ? `${SAGE}15` :
-    quality === "decent" ? `${AMBER}18` :
-    quality === "bad" ? `${ROSE}18` :
+    quality === "good" ? `${SAGE}33` :
+    quality === "decent" ? `${AMBER}33` :
+    quality === "bad" ? `${ROSE}33` :
     CREAM_BG;
   return (
     <div
       className="rounded-xl border p-3 flex items-start justify-between gap-3"
-      style={{ background: bg, borderColor: quality === "neutral" ? BORDER : `${color}55` }}
+      style={{
+        background: bg,
+        borderColor: quality === "neutral" ? BORDER : `${color}88`,
+      }}
     >
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-semibold" style={{ color: MUTED }}>{label}</p>
-        <p className="text-2xl font-bold tabular-nums mt-0.5" style={{ color: quality === "bad" ? ROSE : INK }}>
-          {value}
+        <p
+          className="text-2xl font-bold tabular-nums mt-0.5 flex items-baseline gap-1.5"
+          style={{ color: quality === "bad" ? ROSE : INK }}
+        >
+          <span>{value}</span>
+          {trendArrow && (
+            <span
+              className="text-sm font-semibold leading-none flex items-baseline gap-0.5"
+              style={{ color: trendArrow.color }}
+              title="day-over-day vs previous day"
+            >
+              <span className="text-base">{trendArrow.arrow}</span>
+              {trendArrow.pctChange !== undefined && (
+                <span className="tabular-nums">
+                  {trendArrow.pctChange > 0 ? "+" : ""}
+                  {(trendArrow.pctChange * 100).toFixed(0)}%
+                </span>
+              )}
+            </span>
+          )}
         </p>
         <p className="text-[11px] mt-0.5" style={{ color: MUTED }}>{caption}</p>
         {delta && <p className="text-[11px] font-semibold mt-0.5" style={{ color: delta.color }}>{delta.text}</p>}
       </div>
       <div className="shrink-0">
-        <InlineSpark points={series} color={color} formatter={formatter} />
+        <InlineSpark points={series} color={color} formatter={formatter} referenceLine={referenceLine} />
       </div>
     </div>
   );
@@ -206,11 +301,13 @@ export function MetaTrendsAdSets() {
       .then((d: ApiResp) => {
         if (cancel) return;
         setData(d);
-        // Default to first campaign + its first ad set
+        // Default to first campaign + its first SPENDING ad set
         if (d.adSets.length > 0) {
           const firstCampaign = d.adSets[0].metaCampaignId;
           setCampaignFilter(firstCampaign);
-          const firstAdSetInCampaign = d.adSets.find((s) => s.metaCampaignId === firstCampaign);
+          const firstAdSetInCampaign = d.adSets.find(
+            (s) => s.metaCampaignId === firstCampaign && s.current.spend > 0,
+          );
           if (firstAdSetInCampaign) setAdSetFilter(firstAdSetInCampaign.metaAdSetId);
         }
         setLoading(false);
@@ -233,10 +330,13 @@ export function MetaTrendsAdSets() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
 
-  // Ad sets in the chosen campaign
+  // Ad sets in the chosen campaign — only those that actually spent in the
+  // window. Zero-spend ad-sets are paused/inactive noise and clutter the picker.
   const adSetsInCampaign = useMemo(() => {
     if (!data || !campaignFilter) return [] as AdSet[];
-    return data.adSets.filter((s) => s.metaCampaignId === campaignFilter);
+    return data.adSets.filter(
+      (s) => s.metaCampaignId === campaignFilter && s.current.spend > 0,
+    );
   }, [data, campaignFilter]);
 
   // The selected ad set
@@ -297,13 +397,29 @@ export function MetaTrendsAdSets() {
     MUTED;
 
   const seriesDays = selected ? Math.max(1, selected.series.spend.length) : 1;
-  const plannedDaily = selected?.dailyBudget && selected.dailyBudget > 0 ? selected.dailyBudget : null;
+  // Use Meta's actual budget directly. Prefer the ad-set's own daily budget
+  // (ABO); fall back to the parent campaign's daily budget (CBO). No manual
+  // overrides — single source of truth is Meta's API.
+  const plannedDaily = selected
+    ? selected.dailyBudget && selected.dailyBudget > 0
+      ? selected.dailyBudget
+      : selected.campaignDailyBudget && selected.campaignDailyBudget > 0
+      ? selected.campaignDailyBudget
+      : null
+    : null;
+  const budgetSource: "adset" | "campaign" | null = selected
+    ? selected.dailyBudget && selected.dailyBudget > 0
+      ? "adset"
+      : plannedDaily
+      ? "campaign"
+      : null
+    : null;
   const plannedWindow = plannedDaily ? plannedDaily * seriesDays : null;
   const budgetUtil =
     plannedWindow && plannedWindow > 0 && selected ? Math.round((selected.current.spend / plannedWindow) * 100) : null;
   const spendCaption = plannedWindow && plannedDaily && budgetUtil != null
-    ? `${budgetUtil}% of Rs.${formatNum(plannedWindow)} planned (Rs.${formatNum(plannedDaily)}/day × ${seriesDays}d)`
-    : "No ad-set budget set in Meta";
+    ? `${budgetUtil}% of Rs.${formatNum(plannedWindow)} planned (Rs.${formatNum(plannedDaily)}/day × ${seriesDays}d${budgetSource === "campaign" ? " · CBO cap" : ""})`
+    : "No budget configured";
 
   return (
     <div className="space-y-6">
@@ -417,60 +533,98 @@ export function MetaTrendsAdSets() {
 
           {/* Metric cards — 3 cols × 2 rows = 6 */}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <MetricCard
-              label={`Spend · ${seriesDays}d`}
-              value={formatInr(selected.current.spend)}
-              caption={spendCaption}
-              delta={qualitativeDelta(selected.current.spend, selected.previous?.spend)}
-              quality={qualityFromBudgetUtil(budgetUtil)}
-              series={selected.series.spend}
-              formatter={(n) => formatInr(n)}
-            />
-            <MetricCard
-              label="ROAS"
-              value={`${selected.current.roas.toFixed(2)}x`}
-              caption="Target 1.8–2.5x"
-              delta={numericDelta(selected.current.roas, selected.previous?.roas)}
-              quality={qualityFromThreshold(selected.current.roas, { good: 1.8, decent: 1 })}
-              series={selected.series.roas}
-              formatter={(n) => n.toFixed(2)}
-            />
-            <MetricCard
-              label="CPP"
-              value={selected.current.cpp > 0 ? `Rs.${Math.round(selected.current.cpp).toLocaleString("en-IN")}` : "—"}
-              caption="Target Rs.600–1,500"
-              delta={numericDelta(selected.current.cpp, selected.previous?.cpp, true)}
-              quality={qualityFromThreshold(selected.current.cpp, { good: 1500, decent: 2500 }, true)}
-              series={selected.series.cpp}
-              formatter={(n) => (n > 0 ? `${Math.round(n / 1000)}K` : "—")}
-            />
-            <MetricCard
-              label="Purchases"
-              value={`${selected.current.purchases}`}
-              caption="No benchmark"
-              delta={numericDelta(selected.current.purchases, selected.previous?.purchases)}
-              quality={qualityFromTrend(selected.current.purchases, selected.previous?.purchases)}
-              series={selected.series.purchases}
-              formatter={(n) => `${n}`}
-            />
-            <MetricCard
-              label="CTR"
-              value={`${selected.current.ctr.toFixed(2)}%`}
-              caption="Target 1.5–2%+"
-              delta={numericDelta(selected.current.ctr, selected.previous?.ctr)}
-              quality={qualityFromThreshold(selected.current.ctr, { good: 1.5, decent: 1 })}
-              series={selected.series.ctr}
-              formatter={(n) => `${n.toFixed(2)}`}
-            />
-            <MetricCard
-              label="Frequency"
-              value={selected.current.frequency.toFixed(2)}
-              caption="Keep below 3–4x"
-              delta={qualitativeDelta(selected.current.frequency, selected.previous?.frequency, true)}
-              quality={qualityFromThreshold(selected.current.frequency, { good: 2, decent: 3 }, true)}
-              series={selected.series.frequency}
-              formatter={(n) => n.toFixed(2)}
-            />
+            {(() => {
+              const s = selected;
+              const spendTrend = intraWindowTrend(s.series.spend, true);
+              const roasTrend = intraWindowTrend(s.series.roas);
+              const cppTrend = intraWindowTrend(s.series.cpp, true);
+              const purchasesTrend = intraWindowTrend(s.series.purchases);
+              const ctrTrend = intraWindowTrend(s.series.ctr);
+              const freqTrend = intraWindowTrend(s.series.frequency, true);
+              const fmtCpp = (n: number) => {
+                if (n <= 0) return "—";
+                if (n < 1000) return `${Math.round(n)}`;
+                return `${(n / 1000).toFixed(1)}K`;
+              };
+              return (
+                <>
+                  <MetricCard
+                    label={`Spend · ${seriesDays}d`}
+                    value={formatInr(s.current.spend)}
+                    caption={spendCaption}
+                    quality={combineQuality(
+                      qualityFromBudgetUtil(budgetUtil),
+                      spendTrend?.quality ?? null,
+                    )}
+                    series={s.series.spend}
+                    formatter={(n) => formatInr(n)}
+                    referenceLine={plannedDaily ? { value: plannedDaily, label: "budget" } : undefined}
+                    trendArrow={spendTrend}
+                  />
+                  <MetricCard
+                    label="ROAS"
+                    value={`${s.current.roas.toFixed(2)}x`}
+                    caption="Target 1.8–2.5x"
+                    quality={combineQuality(
+                      qualityFromThreshold(s.current.roas, { good: 1.8, decent: 1 }),
+                      roasTrend?.quality ?? null,
+                    )}
+                    series={s.series.roas}
+                    formatter={(n) => n.toFixed(2)}
+                    trendArrow={roasTrend}
+                  />
+                  <MetricCard
+                    label="CPP"
+                    value={s.current.cpp > 0 ? `Rs.${Math.round(s.current.cpp).toLocaleString("en-IN")}` : "—"}
+                    caption="Target Rs.600–1,500"
+                    quality={combineQuality(
+                      qualityFromThreshold(s.current.cpp, { good: 1500, decent: 2500 }, true),
+                      cppTrend?.quality ?? null,
+                    )}
+                    series={s.series.cpp}
+                    formatter={fmtCpp}
+                    trendArrow={cppTrend}
+                  />
+                  <MetricCard
+                    label="Purchases"
+                    value={`${s.current.purchases}`}
+                    caption="No benchmark"
+                    quality={
+                      s.current.purchases === 0
+                        ? "neutral"
+                        : purchasesTrend?.quality ?? "decent"
+                    }
+                    series={s.series.purchases}
+                    formatter={(n) => `${n}`}
+                    trendArrow={purchasesTrend}
+                  />
+                  <MetricCard
+                    label="CTR"
+                    value={`${s.current.ctr.toFixed(2)}%`}
+                    caption="Target 1.5–2%+"
+                    quality={combineQuality(
+                      qualityFromThreshold(s.current.ctr, { good: 1.5, decent: 1 }),
+                      ctrTrend?.quality ?? null,
+                    )}
+                    series={s.series.ctr}
+                    formatter={(n) => `${n.toFixed(2)}`}
+                    trendArrow={ctrTrend}
+                  />
+                  <MetricCard
+                    label="Frequency"
+                    value={s.current.frequency.toFixed(2)}
+                    caption="Keep below 3x"
+                    quality={combineQuality(
+                      qualityFromThreshold(s.current.frequency, { good: 2, decent: 3 }, true),
+                      freqTrend?.quality ?? null,
+                    )}
+                    series={s.series.frequency}
+                    formatter={(n) => n.toFixed(2)}
+                    trendArrow={freqTrend}
+                  />
+                </>
+              );
+            })()}
           </div>
         </>
       )}
