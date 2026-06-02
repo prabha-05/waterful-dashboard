@@ -868,28 +868,28 @@ function FunnelRow({ ad }: { ad: Ad }) {
   const stages: {
     label: string;
     count: number;
-    benchmark?: { good: number; alarm: number; reference: string };
+    benchmark?: { good: number; reference: string };
   }[] = [
     { label: "Clicks", count: ad.current.clicks },
     {
       label: "Landing page",
       count: ad.current.landingPageViews,
-      benchmark: { good: 75, alarm: 60, reference: "industry: 75–90%" },
+      benchmark: { good: 75, reference: "industry: 75–90%" },
     },
     {
       label: "Add to cart",
       count: ad.current.addToCart,
-      benchmark: { good: 5, alarm: 3, reference: "industry: 5–15%" },
+      benchmark: { good: 5, reference: "industry: 5–15%" },
     },
     {
       label: "Checkout",
       count: ad.current.initiateCheckout,
-      benchmark: { good: 50, alarm: 35, reference: "industry: 50–70%" },
+      benchmark: { good: 50, reference: "industry: 50–70%" },
     },
     {
       label: "Purchase",
       count: ad.current.purchases,
-      benchmark: { good: 50, alarm: 35, reference: "industry: 50–70%" },
+      benchmark: { good: 50, reference: "industry: 50–70%" },
     },
   ];
   return (
@@ -897,12 +897,11 @@ function FunnelRow({ ad }: { ad: Ad }) {
       {stages.map((s, i) => {
         const prev = i > 0 ? stages[i - 1].count : null;
         const passPct = prev != null && prev > 0 ? Math.round((s.count / prev) * 100) : null;
-        // Higher pass-through = better. Above "good" threshold = sage, below
-        // "alarm" = rose, in between = amber.
+        // Strict binary: meets industry minimum = green, below = red.
         const bench = s.benchmark;
         let passColor = MUTED;
         if (passPct != null && bench) {
-          passColor = passPct >= bench.good ? SAGE : passPct <= bench.alarm ? ROSE : AMBER;
+          passColor = passPct >= bench.good ? SAGE : ROSE;
         }
         return (
           <div key={s.label} className="flex items-stretch flex-1 min-w-0 gap-2">
