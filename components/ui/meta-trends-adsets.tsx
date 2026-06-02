@@ -93,6 +93,15 @@ function qualityFromBudgetUtil(util: number | null): Quality {
   return "bad";
 }
 
+// Frequency sweet spot: <3 = under-exposed (decent), 3–4 = ideal (good),
+// >4 = over-saturated (bad).
+function qualityFromFrequency(freq: number): Quality {
+  if (freq === 0) return "neutral";
+  if (freq < 3) return "decent";
+  if (freq <= 4) return "good";
+  return "bad";
+}
+
 // Intra-window trend — compares the LAST day in the series to the day before
 // it. Three-state color:
 //   • > 2% move in the good direction → green
@@ -396,7 +405,6 @@ export function MetaTrendsAdSets() {
     selected?.tags.kind === "Testing" ? SAGE :
     MUTED;
 
-  const seriesDays = selected ? Math.max(1, selected.series.spend.length) : 1;
   // Use Meta's actual budget directly. Prefer the ad-set's own daily budget
   // (ABO); fall back to the parent campaign's daily budget (CBO). No manual
   // overrides — single source of truth is Meta's API.
@@ -414,11 +422,14 @@ export function MetaTrendsAdSets() {
       ? "campaign"
       : null
     : null;
-  const plannedWindow = plannedDaily ? plannedDaily * seriesDays : null;
-  const budgetUtil =
-    plannedWindow && plannedWindow > 0 && selected ? Math.round((selected.current.spend / plannedWindow) * 100) : null;
-  const spendCaption = plannedWindow && plannedDaily && budgetUtil != null
-    ? `${budgetUtil}% of Rs.${formatNum(plannedWindow)} planned (Rs.${formatNum(plannedDaily)}/day × ${seriesDays}d${budgetSource === "campaign" ? " · CBO cap" : ""})`
+  // Headline shows the LATEST day's spend (matches the last sparkline bar).
+  const latestSpend = selected?.series.spend[selected.series.spend.length - 1]?.value ?? 0;
+  const latestLabel = selected?.series.spend[selected.series.spend.length - 1]?.label ?? "";
+  const budgetUtil = plannedDaily && plannedDaily > 0
+    ? Math.round((latestSpend / plannedDaily) * 100)
+    : null;
+  const spendCaption = plannedDaily && budgetUtil != null
+    ? `${budgetUtil}% of Rs.${formatNum(plannedDaily)} daily budget${budgetSource === "campaign" ? " · CBO cap" : ""}`
     : "No budget configured";
 
   return (
@@ -549,8 +560,8 @@ export function MetaTrendsAdSets() {
               return (
                 <>
                   <MetricCard
-                    label={`Spend · ${seriesDays}d`}
-                    value={formatInr(s.current.spend)}
+                    label={`Spend · ${latestLabel}`}
+                    value={formatInr(latestSpend)}
                     caption={spendCaption}
                     quality={combineQuality(
                       qualityFromBudgetUtil(budgetUtil),
@@ -613,9 +624,9 @@ export function MetaTrendsAdSets() {
                   <MetricCard
                     label="Frequency"
                     value={s.current.frequency.toFixed(2)}
-                    caption="Keep below 3x"
+                    caption="Sweet spot 3–4x"
                     quality={combineQuality(
-                      qualityFromThreshold(s.current.frequency, { good: 2, decent: 3 }, true),
+                      qualityFromFrequency(s.current.frequency),
                       freqTrend?.quality ?? null,
                     )}
                     series={s.series.frequency}

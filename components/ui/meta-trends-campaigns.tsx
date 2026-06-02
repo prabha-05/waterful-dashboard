@@ -95,12 +95,13 @@ function qualityFromThreshold(
   return "bad";
 }
 
-// Budget-utilization quality — used for Daily spend (when budget is set).
-// On-plan = good, slight under/over = decent, way off = bad.
-function qualityFromBudgetUtil(util: number | null): Quality {
-  if (util == null) return "neutral";
-  if (util >= 80 && util <= 110) return "good";
-  if ((util >= 60 && util < 80) || (util > 110 && util <= 130)) return "decent";
+// Frequency has a sweet spot at 3–4x: a few exposures helps recall, more than
+// that risks fatigue. Below 3 = under-exposed (decent), 3–4 = ideal (good),
+// above 4 = over-saturated (bad).
+function qualityFromFrequency(freq: number): Quality {
+  if (freq === 0) return "neutral";
+  if (freq < 3) return "decent";
+  if (freq <= 4) return "good";
   return "bad";
 }
 
@@ -582,23 +583,16 @@ function CampaignBlock({ campaign }: { campaign: Campaign }) {
   const fmtFreq = (n: number) => `${n.toFixed(2)}`;
   const fmtNum = (n: number) => formatNum(n);
 
-  // Total spend over the window vs PLANNED budget (daily × days). The
-  // sparkline bars stay daily — only the headline number is cumulative.
-  const seriesDays = Math.max(1, c.series.spend.length);
-  // Use Meta's actual daily budget directly — single source of truth.
-  // For ABO campaigns the API sums the active ad-sets' daily budgets so we
-  // always have a reference figure regardless of CBO/ABO setup.
-  const plannedDaily = c.dailyBudget && c.dailyBudget > 0 ? c.dailyBudget : null;
-  const plannedWindow = plannedDaily ? plannedDaily * seriesDays : null;
-  const budgetUtil = plannedWindow && plannedWindow > 0
-    ? Math.round((c.current.spend / plannedWindow) * 100)
-    : null;
-  const budgetSourceLabel = c.tags.buyingType === "ABO" ? " · sum of ad sets" : "";
-  const spendCaption = plannedWindow && plannedDaily && budgetUtil != null
-    ? `${budgetUtil}% of Rs.${formatNum(plannedWindow)} planned (Rs.${formatNum(plannedDaily)}/day × ${seriesDays}d${budgetSourceLabel})`
-    : c.tags.buyingType === "ABO"
-    ? "ABO · no ad-set budgets set"
-    : "—";
+  // Headline shows the LATEST day's spend (matches the last sparkline bar).
+  const latestSpend = c.series.spend[c.series.spend.length - 1]?.value ?? 0;
+  const latestLabel = c.series.spend[c.series.spend.length - 1]?.label ?? "";
+  // Fixed Rs.15K/day target for all campaigns (manual override per user).
+  // Simple binary rule: over budget = red, within budget = green.
+  const plannedDaily = 15000;
+  const budgetUtil = Math.round((latestSpend / plannedDaily) * 100);
+  const spendCaption = `${budgetUtil}% of Rs.${formatNum(plannedDaily)} daily budget`;
+  const spendAbsoluteQuality: Quality =
+    latestSpend === 0 ? "neutral" : latestSpend > plannedDaily ? "bad" : "good";
 
   return (
     <section className="space-y-3">
@@ -652,16 +646,13 @@ function CampaignBlock({ campaign }: { campaign: Campaign }) {
           return (
             <>
               <MetricCard
-                label={`Spend · ${seriesDays}d`}
-                value={formatInr(c.current.spend)}
+                label={`Spend · ${latestLabel}`}
+                value={formatInr(latestSpend)}
                 caption={spendCaption}
-                quality={combineQuality(
-                  qualityFromBudgetUtil(budgetUtil),
-                  spendTrend?.quality ?? null,
-                )}
+                quality={spendAbsoluteQuality}
                 series={c.series.spend}
                 formatter={fmtInr}
-                referenceLine={plannedDaily ? { value: plannedDaily, label: "budget" } : undefined}
+                referenceLine={{ value: plannedDaily, label: "budget" }}
                 trendArrow={spendTrend}
               />
               <MetricCard
@@ -713,9 +704,9 @@ function CampaignBlock({ campaign }: { campaign: Campaign }) {
               <MetricCard
                 label="Frequency"
                 value={c.current.frequency.toFixed(2)}
-                caption="Keep below 3x"
+                caption="Sweet spot 3–4x"
                 quality={combineQuality(
-                  qualityFromThreshold(c.current.frequency, { good: 2, decent: 3 }, true),
+                  qualityFromFrequency(c.current.frequency),
                   freqTrend?.quality ?? null,
                 )}
                 series={c.series.frequency}

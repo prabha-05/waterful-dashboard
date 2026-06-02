@@ -107,6 +107,15 @@ function qualityFromThreshold(value: number, thresholds: { good: number; decent:
   return "bad";
 }
 
+// Frequency sweet spot: <3 = under-exposed (decent), 3–4 = ideal (good),
+// >4 = over-saturated (bad).
+function qualityFromFrequency(freq: number): Quality {
+  if (freq === 0) return "neutral";
+  if (freq < 3) return "decent";
+  if (freq <= 4) return "good";
+  return "bad";
+}
+
 // Intra-window day-over-day trend (last point vs second-to-last). 2% stable
 // zone; lowerIsBetter flips the color for metrics where falling is good.
 function intraWindowTrend(
@@ -609,12 +618,12 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
                 : plannedDaily
                 ? "campaign"
                 : null;
-            const seriesDays = Math.max(1, ad.series.spend.length);
-            const plannedWindow = plannedDaily ? plannedDaily * seriesDays : null;
-            const budgetUtil =
-              plannedWindow && plannedWindow > 0
-                ? Math.round((ad.current.spend / plannedWindow) * 100)
-                : null;
+            // Headline = latest day's spend (matches the last sparkline bar).
+            const latestSpend = ad.series.spend[ad.series.spend.length - 1]?.value ?? 0;
+            const latestLabel = ad.series.spend[ad.series.spend.length - 1]?.label ?? "";
+            const budgetUtil = plannedDaily && plannedDaily > 0
+              ? Math.round((latestSpend / plannedDaily) * 100)
+              : null;
             const spendCaptionText = plannedDaily && budgetUtil != null
               ? `${budgetUtil}% of Rs.${Math.round(plannedDaily / 1000)}K/day${budgetSource === "campaign" ? " · CBO" : ""}`
               : isTopSpender
@@ -624,8 +633,8 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
             return (
               <>
                 <MiniMetric
-                  label="Spend"
-                  value={formatInr(ad.current.spend)}
+                  label={latestLabel ? `Spend · ${latestLabel}` : "Spend"}
+                  value={formatInr(latestSpend)}
                   caption={{ text: spendCaptionText, color: spendCaptionColor }}
                   quality={spendTrend?.quality ?? "neutral"}
                   series={ad.series.spend}
@@ -722,9 +731,9 @@ function AdCard({ ad, rank, topSpend }: { ad: Ad; rank: number; topSpend: number
                 <MiniMetric
                   label="Freq"
                   value={`${ad.current.frequency.toFixed(2)}x`}
-                  caption={{ text: "Keep below 3x" }}
+                  caption={{ text: "Sweet spot 3–4x" }}
                   quality={combineQuality(
-                    qualityFromThreshold(ad.current.frequency, { good: 2, decent: 3 }, true),
+                    qualityFromFrequency(ad.current.frequency),
                     freqTrend?.quality ?? null,
                   )}
                   series={ad.series.frequency}
