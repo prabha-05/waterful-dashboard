@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     .map(([date, d]) => ({ date, revenue: Math.round(d.revenue), orders: d.orders }));
 
   const dailyBreakdown = await computeDailyBreakdown(start, end);
-  const { productDaily, paymentDaily } = await computeItemDaily(start, end);
+  const { productDaily, paymentDaily, discountDaily } = await computeItemDaily(start, end);
 
-  return NextResponse.json({ from, to, ...metrics, dailyTrend, dailyBreakdown, productDaily, paymentDaily });
+  return NextResponse.json({ from, to, ...metrics, dailyTrend, dailyBreakdown, productDaily, paymentDaily, discountDaily });
 }

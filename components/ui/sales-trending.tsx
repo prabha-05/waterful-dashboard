@@ -30,7 +30,9 @@ import type {
   DailyBreakdownPoint,
   ProductDailyPoint,
   PaymentDailyPoint,
+  DiscountDailyPoint,
 } from "@/lib/sales-aggregations";
+import { shortenProductName } from "@/lib/product-name";
 
 type PeriodData = SalesMetrics & {
   from: string;
@@ -38,6 +40,7 @@ type PeriodData = SalesMetrics & {
   dailyBreakdown: DailyBreakdownPoint[];
   productDaily: ProductDailyPoint[];
   paymentDaily: PaymentDailyPoint[];
+  discountDaily: DiscountDailyPoint[];
 };
 
 const SERIES_PALETTE = [
@@ -503,9 +506,7 @@ export function SalesTrendingExtras({ data }: { data: PeriodData }) {
   );
 }
 
-function shortName(s: string, n = 22) {
-  return s.length > n ? s.slice(0, n) + "…" : s;
-}
+const shortName = (s: string, n = 22) => shortenProductName(s, n);
 
 /* ─────── Multi-series time chart (one line per product / method) ─────── */
 function MultiSeriesChart({
@@ -718,7 +719,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
           <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
             Selected product
           </p>
-          <p className="mt-1 break-words text-base font-bold text-neutral-900">{active}</p>
+          <p className="mt-1 break-words text-base font-bold text-neutral-900" title={active}>{shortName(active, 60)}</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <StatBox label="Total orders" value={totals.total.toLocaleString()} color={LINE_COLORS.total} />
             <StatBox label="Volume (qty)" value={totals.qty.toLocaleString()} color="#f59e0b" />
@@ -815,7 +816,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
 }
 
 /* ─────── Payment time-series: revenue per method per day ─────── */
-function PaymentTrend({ metrics }: { metrics: PeriodData }) {
+export function PaymentTrend({ metrics }: { metrics: PeriodData }) {
   const topMethods = metrics.summaryTable.payment.slice(0, 5).map((p) => p.method);
   if (topMethods.length === 0 || metrics.paymentDaily.length === 0) return null;
 
@@ -855,7 +856,7 @@ function PaymentTrend({ metrics }: { metrics: PeriodData }) {
 }
 
 /* ─────── Discount codes — top codes with FT/repeat split ─────── */
-function DiscountCodes({ metrics }: { metrics: PeriodData }) {
+export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
   const codes = metrics.summaryTable.discountCodes.slice(0, 8);
   if (codes.length === 0) {
     return (

@@ -101,10 +101,23 @@ export type PaymentDailyPoint = {
   orders: number;
 };
 
+export type DiscountDailyPoint = {
+  date: string;
+  code: string;
+  total: number; // revenue attributed to this code on this date
+  new: number;
+  repeat: number;
+  orders: number;
+};
+
 export async function computeItemDaily(
   startDate: Date,
   endDate: Date,
-): Promise<{ productDaily: ProductDailyPoint[]; paymentDaily: PaymentDailyPoint[] }> {
+): Promise<{
+  productDaily: ProductDailyPoint[];
+  paymentDaily: PaymentDailyPoint[];
+  discountDaily: DiscountDailyPoint[];
+}> {
   const rows = await prisma.salesOrder.findMany({
     where: {
       date: { gte: startDate, lt: endDate },
@@ -119,8 +132,25 @@ export async function computeItemDaily(
       paymentMethod: true,
       mobile: true,
       shopifyCustomerId: true,
+      orderId: true,
     },
   });
+
+  // Pull discount codes per order from ShopifyOrder (comma-separated string).
+  // Used to build per-code daily aggregations.
+  const orderIdsForCodes = Array.from(new Set(rows.map((o) => o.orderId)));
+  const codeRows = orderIdsForCodes.length
+    ? await prisma.shopifyOrder.findMany({
+        where: { orderNumber: { in: orderIdsForCodes }, discountCodes: { not: null } },
+        select: { orderNumber: true, discountCodes: true },
+      })
+    : [];
+  const codesByOrder = new Map<number, string[]>();
+  for (const r of codeRows) {
+    if (!r.discountCodes) continue;
+    const codes = r.discountCodes.split(",").map((c) => c.trim()).filter(Boolean);
+    if (codes.length > 0) codesByOrder.set(r.orderNumber, codes);
+  }
 
   // Identity prefers Shopify's customer.id, falls back to mobile.
   const identityOf = (o: { shopifyCustomerId: bigint | null; mobile: string }): string =>
@@ -168,8 +198,10 @@ export async function computeItemDaily(
     qty: number; qtyNew: number; qtyRepeat: number;
   };
   type PayBucket = { total: number; new: number; repeat: number; orders: number };
+  type CodeBucket = { total: number; new: number; repeat: number; orders: number };
   const prodMap = new Map<string, ProdBucket>();
   const payMap = new Map<string, PayBucket>();
+  const codeMap = new Map<string, CodeBucket>();
 
   for (const o of rows) {
     const dk = dateKey(o.date);
@@ -192,6 +224,22 @@ export async function computeItemDaily(
       if (ft) me.new += o.total;
       else me.repeat += o.total;
       payMap.set(mk, me);
+    }
+
+    // Discount codes — an order can carry multiple codes; each code on the
+    // order gets attributed the full row.total (mirrors the existing summary
+    // logic in computeSalesMetrics so per-code numbers stay consistent).
+    const codes = codesByOrder.get(o.orderId);
+    if (codes) {
+      for (const code of codes) {
+        const ck = `${dk}|${code}`;
+        const ce = codeMap.get(ck) || { total: 0, new: 0, repeat: 0, orders: 0 };
+        ce.total += o.total;
+        ce.orders += 1;
+        if (ft) ce.new += o.total;
+        else ce.repeat += o.total;
+        codeMap.set(ck, ce);
+      }
     }
   }
 
@@ -220,7 +268,21 @@ export async function computeItemDaily(
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  return { productDaily, paymentDaily };
+  const discountDaily = Array.from(codeMap.entries())
+    .map(([k, v]) => {
+      const [date, code] = k.split("|");
+      return {
+        date,
+        code,
+        total: Math.round(v.total),
+        new: Math.round(v.new),
+        repeat: Math.round(v.repeat),
+        orders: v.orders,
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return { productDaily, paymentDaily, discountDaily };
 }
 
 export type DailyBreakdownPoint = {

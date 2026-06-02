@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { IndiaHeatmap } from "./india-heatmap";
 import type { BuyerSplit, SalesMetrics } from "@/lib/sales-aggregations";
+import { shortenProductName } from "@/lib/product-name";
 
 function formatCurrency(value: number) {
   if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
@@ -26,6 +27,7 @@ function pct(part: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((part / total) * 100);
 }
+
 
 /* ─────── Split bar: violet = first-time, emerald = repeat ─────── */
 function SplitBar({ split }: { split: BuyerSplit }) {
@@ -308,7 +310,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
               <SplitRow
                 key={p.product}
                 rank={i + 1}
-                label={p.product}
+                label={shortenProductName(p.product)}
                 split={{ total: p.total, firstTime: p.firstTime, repeat: p.repeat }}
                 format={fmtNum}
                 accent="from-violet-500 to-fuchsia-500"

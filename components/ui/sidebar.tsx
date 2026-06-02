@@ -25,10 +25,10 @@ type NavItem =
 
 const navItems: NavItem[] = [
   {
-    label: "Final",
+    label: "Shopify",
     icon: null,
     children: [
-      { label: "Sales", href: "/dashboard/final/sales" },
+      { label: "Sales Summary", href: "/dashboard/final/sales" },
       { label: "Trends", href: "/dashboard/final/trends" },
       { label: "Specific Customer", href: "/dashboard/final/specific-customer" },
     ],

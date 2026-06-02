@@ -26,7 +26,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { SalesTrendingExtras } from "@/components/ui/sales-trending";
+import { PaymentTrend, DiscountCodes } from "@/components/ui/sales-trending";
+import { shortenProductName } from "@/lib/product-name";
 
 const INK = "#4a3a2e";
 const ROSE = "#d97777";
@@ -93,7 +94,7 @@ function formatDateParam(d: Date) {
 
 const UNITS = ["day", "week", "month"] as const;
 type Unit = (typeof UNITS)[number];
-type ChartMode = "revenue" | "orders" | "customers" | "aov" | "products";
+type ChartMode = "revenue" | "orders" | "customers" | "aov" | "products" | "payment" | "discountCodes";
 
 function pct(part: number, total: number) {
   if (total <= 0) return 0;
@@ -510,6 +511,8 @@ export function DashboardOverview() {
     customers: { label: "Customers", keys: { total: "customers", ft: "ftCustomers", repeat: "repeatCustomers" }, isCurrency: false },
     aov: { label: "AOV", keys: { total: "aov", ft: "ftAov", repeat: "repeatAov" }, isCurrency: true },
     products: { label: "Products", keys: { total: "", ft: "", repeat: "" }, isCurrency: false },
+    payment: { label: "Payment", keys: { total: "", ft: "", repeat: "" }, isCurrency: false },
+    discountCodes: { label: "Discount Codes", keys: { total: "", ft: "", repeat: "" }, isCurrency: false },
   };
 
   // Augment periods with ft/repeat AOV per bucket so the AOV chart can render
@@ -680,6 +683,70 @@ export function DashboardOverview() {
       })
     : [];
 
+  /* Payment mode: single pivot table. Rows = periods, columns = top methods
+     (COD, GoKwik, etc.). Cells = revenue. Final column = row total. */
+  const topPaymentMethods: string[] = (salesData?.summaryTable?.payment ?? [])
+    .slice(0, 5)
+    .map((p: { method: string }) => p.method);
+
+  const paymentPivot = data && salesData?.paymentDaily
+    ? data.periods.map((period) => {
+        const byMethod = new Map<string, number>();
+        let rowTotal = 0;
+        for (const row of salesData.paymentDaily as Array<{
+          date: string; method: string; total: number;
+        }>) {
+          if (!topPaymentMethods.includes(row.method)) continue;
+          if (row.date >= period.from && row.date < period.to) {
+            byMethod.set(row.method, (byMethod.get(row.method) ?? 0) + row.total);
+            rowTotal += row.total;
+          }
+        }
+        return { label: period.label, byMethod, total: rowTotal };
+      })
+    : [];
+
+  const paymentColumnTotals = new Map<string, number>();
+  let paymentGrandTotal = 0;
+  for (const row of paymentPivot) {
+    paymentGrandTotal += row.total;
+    for (const m of topPaymentMethods) {
+      paymentColumnTotals.set(m, (paymentColumnTotals.get(m) ?? 0) + (row.byMethod.get(m) ?? 0));
+    }
+  }
+
+  /* Discount-code mode: same pivot shape — rows = periods, columns = top
+     codes. Cells = revenue attributed to that code in that period. */
+  const topDiscountCodes: string[] = (salesData?.summaryTable?.discountCodes ?? [])
+    .slice(0, 5)
+    .map((c: { code: string }) => c.code);
+
+  const discountPivot = data && salesData?.discountDaily
+    ? data.periods.map((period) => {
+        const byCode = new Map<string, number>();
+        let rowTotal = 0;
+        for (const row of salesData.discountDaily as Array<{
+          date: string; code: string; total: number;
+        }>) {
+          if (!topDiscountCodes.includes(row.code)) continue;
+          if (row.date >= period.from && row.date < period.to) {
+            byCode.set(row.code, (byCode.get(row.code) ?? 0) + row.total);
+            rowTotal += row.total;
+          }
+        }
+        return { label: period.label, byCode, total: rowTotal };
+      })
+    : [];
+
+  const discountColumnTotals = new Map<string, number>();
+  let discountGrandTotal = 0;
+  for (const row of discountPivot) {
+    discountGrandTotal += row.total;
+    for (const c of topDiscountCodes) {
+      discountColumnTotals.set(c, (discountColumnTotals.get(c) ?? 0) + (row.byCode.get(c) ?? 0));
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -841,7 +908,7 @@ export function DashboardOverview() {
           {/* Chart mode toggle — horizontal scroll on narrow screens */}
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
             <div className="inline-flex rounded-xl border overflow-hidden whitespace-nowrap" style={{ borderColor: "#e8dfd0" }}>
-              {(["revenue", "orders", "customers", "aov", "products"] as const).map((m) => (
+              {(["revenue", "orders", "customers", "aov", "products", "payment", "discountCodes"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setChartMode(m)}
@@ -857,7 +924,175 @@ export function DashboardOverview() {
             </div>
           </div>
 
-          {chartMode === "products" ? (
+          {chartMode === "payment" ? (
+            salesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div
+                  className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{ borderColor: `${AMBER} transparent ${AMBER} ${AMBER}` }}
+                />
+              </div>
+            ) : !salesData || salesData.totalOrders === 0 ? (
+              <div
+                className="rounded-2xl border p-8 text-center text-sm"
+                style={{ background: "white", borderColor: "#e8dfd0", color: "#9a8571" }}
+              >
+                No payment data for this window.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <PaymentTrend metrics={salesData} />
+                {/* Pivot table: rows = periods, columns = top payment methods */}
+                {topPaymentMethods.length > 0 && (
+                  <div
+                    className="rounded-2xl border overflow-hidden"
+                    style={{ background: "white", borderColor: "#e8dfd0" }}
+                  >
+                    <div
+                      className="px-4 py-3 border-b"
+                      style={{ borderColor: "#f1e7d3", background: "#faf6ef" }}
+                    >
+                      <h3 className="text-sm font-bold" style={{ color: INK }}>Payment Method — Period Breakdown</h3>
+                      <p className="text-[11px] italic mt-0.5" style={{ color: "#9a8571" }}>
+                        Revenue per payment method, by {unit}.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ background: "#faf6ef" }}>
+                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9a8571" }}>Period</th>
+                            {topPaymentMethods.map((m) => (
+                              <th
+                                key={m}
+                                className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+                                style={{ color: "#9a8571" }}
+                              >
+                                {m}
+                              </th>
+                            ))}
+                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9a8571" }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentPivot.map((row, i) => (
+                            <tr key={i} className="border-t" style={{ borderColor: "#f1e7d3" }}>
+                              <td className="px-3 py-2.5 font-medium" style={{ color: INK }}>{row.label}</td>
+                              {topPaymentMethods.map((m) => (
+                                <td key={m} className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
+                                  ₹{Math.round(row.byMethod.get(m) ?? 0).toLocaleString("en-IN")}
+                                </td>
+                              ))}
+                              <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                                ₹{Math.round(row.total).toLocaleString("en-IN")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2" style={{ borderColor: "#e8dfd0", background: "#faf6ef" }}>
+                            <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
+                            {topPaymentMethods.map((m) => (
+                              <td key={m} className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
+                                ₹{Math.round(paymentColumnTotals.get(m) ?? 0).toLocaleString("en-IN")}
+                              </td>
+                            ))}
+                            <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
+                              ₹{Math.round(paymentGrandTotal).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : chartMode === "discountCodes" ? (
+            salesLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div
+                  className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{ borderColor: `${AMBER} transparent ${AMBER} ${AMBER}` }}
+                />
+              </div>
+            ) : !salesData || salesData.totalOrders === 0 ? (
+              <div
+                className="rounded-2xl border p-8 text-center text-sm"
+                style={{ background: "white", borderColor: "#e8dfd0", color: "#9a8571" }}
+              >
+                No discount-code data for this window.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <DiscountCodes metrics={salesData} />
+                {/* Pivot table: rows = periods, columns = top discount codes */}
+                {topDiscountCodes.length > 0 && (
+                  <div
+                    className="rounded-2xl border overflow-hidden"
+                    style={{ background: "white", borderColor: "#e8dfd0" }}
+                  >
+                    <div
+                      className="px-4 py-3 border-b"
+                      style={{ borderColor: "#f1e7d3", background: "#faf6ef" }}
+                    >
+                      <h3 className="text-sm font-bold" style={{ color: INK }}>Discount Codes — Period Breakdown</h3>
+                      <p className="text-[11px] italic mt-0.5" style={{ color: "#9a8571" }}>
+                        Revenue attributed to each code, by {unit}.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ background: "#faf6ef" }}>
+                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9a8571" }}>Period</th>
+                            {topDiscountCodes.map((c) => (
+                              <th
+                                key={c}
+                                className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+                                style={{ color: "#9a8571" }}
+                              >
+                                {c}
+                              </th>
+                            ))}
+                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9a8571" }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {discountPivot.map((row, i) => (
+                            <tr key={i} className="border-t" style={{ borderColor: "#f1e7d3" }}>
+                              <td className="px-3 py-2.5 font-medium" style={{ color: INK }}>{row.label}</td>
+                              {topDiscountCodes.map((c) => (
+                                <td key={c} className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>
+                                  ₹{Math.round(row.byCode.get(c) ?? 0).toLocaleString("en-IN")}
+                                </td>
+                              ))}
+                              <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                                ₹{Math.round(row.total).toLocaleString("en-IN")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2" style={{ borderColor: "#e8dfd0", background: "#faf6ef" }}>
+                            <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
+                            {topDiscountCodes.map((c) => (
+                              <td key={c} className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
+                                ₹{Math.round(discountColumnTotals.get(c) ?? 0).toLocaleString("en-IN")}
+                              </td>
+                            ))}
+                            <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
+                              ₹{Math.round(discountGrandTotal).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          ) : chartMode === "products" ? (
             salesLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div
@@ -889,7 +1124,7 @@ export function DashboardOverview() {
                         >
                           #{idx + 1}
                         </span>
-                        <h3 className="text-lg font-bold" style={{ color: INK }}>{pb.product}</h3>
+                        <h3 className="text-lg font-bold" style={{ color: INK }} title={pb.product}>{shortenProductName(pb.product)}</h3>
                       </div>
                       <div className="flex flex-wrap items-baseline gap-5">
                         <div>
@@ -1099,7 +1334,7 @@ export function DashboardOverview() {
                           title={expandedTables.has(pb.product) ? "Hide period breakdown" : "Show period breakdown"}
                         >
                           {expandedTables.has(pb.product) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          {pb.product} — Period breakdown
+                          {shortenProductName(pb.product)} — Period breakdown
                         </button>
                         <button
                           onClick={() => {
@@ -1346,8 +1581,9 @@ export function DashboardOverview() {
           </>
           )}
 
-          {/* Period Breakdown table — hidden in Products mode (drill-down has its own stats) */}
-          {chartMode !== "products" && (
+          {/* Period Breakdown table — hidden on Products / Payment / Discount Codes
+              tabs because each has its own dedicated table. */}
+          {chartMode !== "products" && chartMode !== "payment" && chartMode !== "discountCodes" && (
           <div
             className="rounded-2xl border shadow-sm overflow-hidden"
             style={{ background: "white", borderColor: "#e8dfd0" }}
@@ -1526,56 +1762,6 @@ export function DashboardOverview() {
             </div>
           )}
 
-          {/* ─── Deep Dive — every trend the trending page showed, now here ─── */}
-          <div className="pt-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px" style={{ background: "#e8dfd0" }} />
-              <div className="flex flex-col items-center text-center">
-                <span
-                  className="text-[10px] font-bold uppercase tracking-[0.2em]"
-                  style={{ color: AMBER }}
-                >
-                  Deep Dive
-                </span>
-                <span className="mt-0.5 text-sm font-semibold" style={{ color: INK }}>
-                  Payment methods & discount codes
-                </span>
-              </div>
-              <div className="flex-1 h-px" style={{ background: "#e8dfd0" }} />
-            </div>
-            {currentRange && (
-              <p
-                className="mt-2 text-center text-[11px] italic"
-                style={{ color: "#9a8571" }}
-              >
-                Zooming in on {currentRange}. Payment methods and discount codes.
-              </p>
-            )}
-          </div>
-
-          {salesLoading && (
-            <div className="flex items-center justify-center py-12">
-              <div
-                className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
-                style={{ borderColor: `${AMBER} transparent ${AMBER} ${AMBER}` }}
-              />
-            </div>
-          )}
-          {!salesLoading &&
-            salesData &&
-            salesData.totalOrders > 0 &&
-            Array.isArray(salesData.dailyBreakdown) &&
-            salesData.dailyBreakdown.length > 0 && (
-              <SalesTrendingExtras data={salesData} />
-            )}
-          {!salesLoading && salesData && salesData.totalOrders === 0 && (
-            <div
-              className="rounded-2xl border p-8 text-center text-sm"
-              style={{ background: "white", borderColor: "#e8dfd0", color: "#9a8571" }}
-            >
-              No order-level detail for this window yet.
-            </div>
-          )}
         </>
       )}
     </div>
