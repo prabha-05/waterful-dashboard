@@ -858,12 +858,13 @@ function CompletionCell({
 }
 
 function FunnelRow({ ad }: { ad: Ad }) {
-  // Each stage carries its own drop benchmark for the transition INTO it from
-  // the previous stage. Numbers are typical D2C / e-commerce ranges:
-  //   • Click → LP view: 10–25% drop is normal (page load + early abandonment)
-  //   • LP → Add to cart: 85–95% drop is normal (most LP visitors are browsing)
-  //   • ATC → Checkout: 30–50% drop is normal (cart abandonment)
-  //   • Checkout → Purchase: 30–50% drop (payment / shipping friction)
+  // Each stage carries the PASS-THROUGH benchmark for the transition INTO it
+  // (positive framing — what proportion of the previous step continued).
+  // Higher pass = better. Typical D2C / e-commerce ranges:
+  //   • Click → LP view: 75–90% pass (rest = slow load / early abandonment)
+  //   • LP → Add to cart: 5–15% pass (most LP visitors are just browsing)
+  //   • ATC → Checkout: 50–70% pass (rest = cart abandonment)
+  //   • Checkout → Purchase: 50–70% pass (rest = payment / shipping friction)
   const stages: {
     label: string;
     count: number;
@@ -873,22 +874,22 @@ function FunnelRow({ ad }: { ad: Ad }) {
     {
       label: "Landing page",
       count: ad.current.landingPageViews,
-      benchmark: { good: 25, alarm: 40, reference: "industry: 10–25%" },
+      benchmark: { good: 75, alarm: 60, reference: "industry: 75–90%" },
     },
     {
       label: "Add to cart",
       count: ad.current.addToCart,
-      benchmark: { good: 95, alarm: 97, reference: "industry: 85–95%" },
+      benchmark: { good: 5, alarm: 3, reference: "industry: 5–15%" },
     },
     {
       label: "Checkout",
       count: ad.current.initiateCheckout,
-      benchmark: { good: 50, alarm: 65, reference: "industry: 30–50%" },
+      benchmark: { good: 50, alarm: 35, reference: "industry: 50–70%" },
     },
     {
       label: "Purchase",
       count: ad.current.purchases,
-      benchmark: { good: 50, alarm: 65, reference: "industry: 30–50%" },
+      benchmark: { good: 50, alarm: 35, reference: "industry: 50–70%" },
     },
   ];
   return (
@@ -896,20 +897,19 @@ function FunnelRow({ ad }: { ad: Ad }) {
       {stages.map((s, i) => {
         const prev = i > 0 ? stages[i - 1].count : null;
         const passPct = prev != null && prev > 0 ? Math.round((s.count / prev) * 100) : null;
-        const dropPct = passPct != null ? 100 - passPct : null;
-        // Use the stage's own benchmark to color the drop: under "good"
-        // threshold = sage, over "alarm" = rose, in between = amber.
+        // Higher pass-through = better. Above "good" threshold = sage, below
+        // "alarm" = rose, in between = amber.
         const bench = s.benchmark;
-        let dropColor = MUTED;
-        if (dropPct != null && bench) {
-          dropColor = dropPct <= bench.good ? SAGE : dropPct >= bench.alarm ? ROSE : AMBER;
+        let passColor = MUTED;
+        if (passPct != null && bench) {
+          passColor = passPct >= bench.good ? SAGE : passPct <= bench.alarm ? ROSE : AMBER;
         }
         return (
           <div key={s.label} className="flex items-stretch flex-1 min-w-0 gap-2">
             {i > 0 && (
               <div className="flex flex-col items-center justify-center shrink-0 min-w-[64px]">
-                <span className="text-[11px] font-bold tabular-nums" style={{ color: dropColor }}>
-                  {dropPct == null ? "—" : `-${dropPct}%`}
+                <span className="text-[11px] font-bold tabular-nums" style={{ color: passColor }}>
+                  {passPct == null ? "—" : `${passPct}%`}
                 </span>
                 <ChevronRight size={14} style={{ color: MUTED }} />
                 {bench && (
