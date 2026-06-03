@@ -132,6 +132,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Overview", href: "/dashboard/final/retention" },
       { label: "Analytics", href: "/dashboard/final/retention-analytics" },
+      { label: "Pivot Cohort", href: "/dashboard/final/retention-pivot" },
     ],
   },
   {
