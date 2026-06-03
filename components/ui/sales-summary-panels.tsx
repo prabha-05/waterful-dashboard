@@ -50,31 +50,6 @@ function SplitBar({ split }: { split: BuyerSplit }) {
   );
 }
 
-function SplitLegend({
-  split,
-  format,
-  size = "base",
-}: {
-  split: BuyerSplit;
-  format: (n: number) => string;
-  size?: "sm" | "base";
-}) {
-  return (
-    <div className={`mt-3 flex items-center justify-between gap-3 ${size === "sm" ? "text-sm" : "text-base"}`}>
-      <span className="flex items-center gap-2 text-violet-700">
-        <span className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" />
-        <span className="font-bold">{format(split.firstTime)}</span>
-        <span className="text-neutral-500">first-timers</span>
-      </span>
-      <span className="flex items-center gap-2 text-emerald-700">
-        <span className="text-neutral-500">repeat</span>
-        <span className="font-bold">{format(split.repeat)}</span>
-        <span className="h-2 w-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" />
-      </span>
-    </div>
-  );
-}
-
 /* ─────── Metric card with personality ─────── */
 function MetricCard({
   label,
@@ -146,40 +121,289 @@ function MetricCard({
   );
 }
 
-/* ─────── Row with split bar (for product / payment lists) ─────── */
-function SplitRow({
-  label,
-  split,
-  format,
-  rank,
-  accent,
+/* ─────── Multi-slice donut chart ───────
+   Pure SVG. One slice per data row, colored from PIE_COLORS palette. Center
+   shows the grand total; legend below shows each slice's value + share %. */
+const PIE_COLORS = [
+  "#8b5cf6", // violet
+  "#06b6d4", // cyan
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#ec4899", // pink
+  "#3b82f6", // blue
+  "#ef4444", // red
+];
+
+function MultiSlicePie({
+  slices,
+  total,
+  totalFormatter = (v: number) => v.toLocaleString(),
+  size = 180,
 }: {
-  label: string;
-  split: BuyerSplit;
-  format: (n: number) => string;
-  rank: number;
-  accent: string;
+  slices: { name: string; value: number }[];
+  total: number;
+  totalFormatter?: (v: number) => string;
+  size?: number;
 }) {
+  if (total === 0 || slices.length === 0) return null;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 4;
+  const innerR = r * 0.55;
+
+  const arc = (startFrac: number, endFrac: number) => {
+    const a0 = startFrac * Math.PI * 2 - Math.PI / 2;
+    const a1 = endFrac * Math.PI * 2 - Math.PI / 2;
+    const x0 = cx + r * Math.cos(a0);
+    const y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1);
+    const y1 = cy + r * Math.sin(a1);
+    const ix0 = cx + innerR * Math.cos(a0);
+    const iy0 = cy + innerR * Math.sin(a0);
+    const ix1 = cx + innerR * Math.cos(a1);
+    const iy1 = cy + innerR * Math.sin(a1);
+    const largeArc = endFrac - startFrac > 0.5 ? 1 : 0;
+    return [
+      `M ${x0} ${y0}`,
+      `A ${r} ${r} 0 ${largeArc} 1 ${x1} ${y1}`,
+      `L ${ix1} ${iy1}`,
+      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix0} ${iy0}`,
+      "Z",
+    ].join(" ");
+  };
+
+  let cursor = 0;
+  const paths = slices.map((sl, i) => {
+    const frac = sl.value / total;
+    const start = cursor;
+    const end = cursor + frac;
+    cursor = end;
+    const color = PIE_COLORS[i % PIE_COLORS.length];
+    return { ...sl, color, start, end };
+  });
+
+  // Edge case: single slice = full circle
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-neutral-100 bg-white p-3 transition-colors hover:border-neutral-200 hover:bg-neutral-50/40">
-      <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${accent} text-xs font-bold text-white`}
-      >
-        {rank}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3">
-          <span className="truncate text-sm font-medium text-neutral-900">{label}</span>
-          <span
-            className={`shrink-0 bg-gradient-to-r ${accent} bg-clip-text text-base font-bold tabular-nums text-transparent`}
-          >
-            {format(split.total)}
-          </span>
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size}>
+          {paths.length === 1 ? (
+            <circle cx={cx} cy={cy} r={r} fill={paths[0].color} />
+          ) : (
+            paths.map((p, i) => (
+              <path key={i} d={arc(p.start, p.end)} fill={p.color} />
+            ))
+          )}
+          <circle cx={cx} cy={cy} r={innerR} fill="white" />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400">Total</span>
+          <span className="text-base font-bold tabular-nums text-neutral-900">{totalFormatter(total)}</span>
         </div>
-        <div className="mt-2">
-          <SplitBar split={split} />
-          <SplitLegend split={split} format={format} />
-        </div>
+      </div>
+      {/* Legend: one row per slice with value + % */}
+      <div className="flex flex-col gap-1.5 text-xs w-full">
+        {paths.map((p, i) => {
+          const pct = Math.round((p.value / total) * 100);
+          return (
+            <div key={i} className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-neutral-700 truncate" title={p.name}>
+                <span className="inline-block h-3 w-3 rounded-sm shrink-0" style={{ background: p.color }} />
+                <span className="truncate">{p.name}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-neutral-600">
+                {totalFormatter(p.value)} <span className="text-neutral-400">· {pct}%</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─────── Data table with CSV download — paired with StackedSplitBars ─────── */
+function SplitDataTable({
+  title,
+  labelHeader,
+  rows,
+  csvFilename,
+}: {
+  title: string;
+  labelHeader: string;
+  rows: { name: string; firstTime: number; repeat: number }[];
+  csvFilename: string;
+}) {
+  const downloadCsv = () => {
+    const header = [labelHeader, "Total", "New customers", "Repeat customers", "Repeat %"];
+    const body = rows.map((r) => {
+      const total = r.firstTime + r.repeat;
+      const repPct = total > 0 ? ((r.repeat / total) * 100).toFixed(1) + "%" : "0%";
+      return [r.name, total, r.firstTime, r.repeat, repPct];
+    });
+    const totalsRow = rows.reduce(
+      (a, r) => ({
+        firstTime: a.firstTime + r.firstTime,
+        repeat: a.repeat + r.repeat,
+      }),
+      { firstTime: 0, repeat: 0 },
+    );
+    const grandTotal = totalsRow.firstTime + totalsRow.repeat;
+    body.push([
+      "Total",
+      grandTotal,
+      totalsRow.firstTime,
+      totalsRow.repeat,
+      grandTotal > 0 ? ((totalsRow.repeat / grandTotal) * 100).toFixed(1) + "%" : "0%",
+    ]);
+    const csv = [header, ...body]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${csvFilename}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const grand = rows.reduce(
+    (a, r) => ({ firstTime: a.firstTime + r.firstTime, repeat: a.repeat + r.repeat }),
+    { firstTime: 0, repeat: 0 },
+  );
+  const grandTotal = grand.firstTime + grand.repeat;
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/60 px-4 py-2.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          {title} — table
+        </p>
+        <button
+          onClick={downloadCsv}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+          title="Download as CSV"
+        >
+          <span aria-hidden="true">⬇</span> Download CSV
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-neutral-50/60">
+              {[labelHeader, "Total", "New customers", "Repeat customers", "Repeat %"].map((h, i) => (
+                <th
+                  key={h}
+                  className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 whitespace-nowrap"
+                  style={{ textAlign: i === 0 ? "left" : "right" }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const total = r.firstTime + r.repeat;
+              const repPct = total > 0 ? (r.repeat / total) * 100 : 0;
+              return (
+                <tr key={r.name} className="border-t border-neutral-100">
+                  <td className="px-3 py-2.5 text-neutral-700">{r.name}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-medium text-neutral-900">{total.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: VIOLET }}>{r.firstTime.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: EMERALD }}>{r.repeat.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: EMERALD }}>{repPct.toFixed(1)}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-neutral-200 bg-neutral-50/60">
+              <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-neutral-700">Total</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-bold text-neutral-900">{grandTotal.toLocaleString()}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: VIOLET }}>{grand.firstTime.toLocaleString()}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: EMERALD }}>{grand.repeat.toLocaleString()}</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: EMERALD }}>
+                {grandTotal > 0 ? ((grand.repeat / grandTotal) * 100).toFixed(1) : "0.0"}%
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─────── Horizontal stacked bars: first-time vs repeat per category ───────
+   Matches the hand-drawn sketch: one row per product, label on the LEFT,
+   horizontal bar on the RIGHT stacked with violet (new) + emerald (repeat).
+   Bar width is proportional to the largest row so visual comparison is easy.
+   Legend at the bottom. */
+const VIOLET = "#8b5cf6";
+const EMERALD = "#10b981";
+
+function StackedSplitBars({
+  data,
+}: {
+  data: { name: string; firstTime: number; repeat: number }[];
+}) {
+  const max = Math.max(...data.map((d) => d.firstTime + d.repeat), 1);
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-5">
+      <div className="space-y-3">
+        {data.map((d) => {
+          const total = d.firstTime + d.repeat;
+          const widthPct = total > 0 ? (total / max) * 100 : 0;
+          const ftPctOfTotal = total > 0 ? (d.firstTime / total) * 100 : 0;
+          const repPctOfTotal = total > 0 ? (d.repeat / total) * 100 : 0;
+          return (
+            <div key={d.name} className="flex items-center gap-3">
+              {/* Label on the left */}
+              <p
+                className="w-64 shrink-0 text-sm text-neutral-700 truncate"
+                title={d.name}
+              >
+                {d.name}
+              </p>
+
+              {/* Horizontal stacked bar */}
+              <div className="flex-1 relative h-7">
+                <div
+                  className="absolute inset-y-0 left-0 flex rounded-md overflow-hidden shadow-sm"
+                  style={{ width: `${widthPct}%` }}
+                  title={`${d.name}: ${d.firstTime} new + ${d.repeat} repeat`}
+                >
+                  {d.firstTime > 0 && (
+                    <div style={{ background: VIOLET, width: `${ftPctOfTotal}%` }} />
+                  )}
+                  {d.repeat > 0 && (
+                    <div style={{ background: EMERALD, width: `${repPctOfTotal}%` }} />
+                  )}
+                </div>
+              </div>
+
+              {/* Total count on the right */}
+              <span className="w-10 shrink-0 text-right text-sm font-bold tabular-nums text-neutral-900">
+                {total.toLocaleString()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-5 flex items-center justify-center gap-5 text-xs">
+        <span className="flex items-center gap-1.5 text-neutral-600">
+          <span className="inline-block h-3 w-3 rounded-sm" style={{ background: VIOLET }} />
+          New customers
+        </span>
+        <span className="flex items-center gap-1.5 text-neutral-600">
+          <span className="inline-block h-3 w-3 rounded-sm" style={{ background: EMERALD }} />
+          Repeat customers
+        </span>
       </div>
     </div>
   );
@@ -293,9 +517,9 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         </div>
       </Section>
 
-      {/* Product Sale */}
+      {/* Product Sales Summary */}
       <Section
-        title="Product Sale"
+        title="Product Sales Summary"
         tagline="what flew off the shelves"
         icon={<Package size={18} />}
         tone="violet"
@@ -304,20 +528,35 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
           <p className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 p-6 text-center text-sm text-neutral-400">
             No products sold yet. Quiet week.
           </p>
-        ) : (
-          <div className="space-y-2">
-            {s.productSale.map((p, i) => (
-              <SplitRow
-                key={p.product}
-                rank={i + 1}
-                label={shortenProductName(p.product)}
-                split={{ total: p.total, firstTime: p.firstTime, repeat: p.repeat }}
-                format={fmtNum}
-                accent="from-violet-500 to-fuchsia-500"
+        ) : (() => {
+          // Merge duplicate-after-shortening rows (see comment in StackedSplitBars
+          // section). Used by both the chart and the table below.
+          const merged = new Map<string, { name: string; firstTime: number; repeat: number }>();
+          for (const p of s.productSale) {
+            const name = shortenProductName(p.product);
+            const existing = merged.get(name);
+            if (existing) {
+              existing.firstTime += p.firstTime;
+              existing.repeat += p.repeat;
+            } else {
+              merged.set(name, { name, firstTime: p.firstTime, repeat: p.repeat });
+            }
+          }
+          const rows = Array.from(merged.values()).sort(
+            (a, b) => b.firstTime + b.repeat - (a.firstTime + a.repeat),
+          );
+          return (
+            <div className="space-y-4">
+              <StackedSplitBars data={rows} />
+              <SplitDataTable
+                title="Products"
+                labelHeader="Product"
+                rows={rows}
+                csvFilename="product-sales-summary"
               />
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </Section>
 
       {/* Payment */}
@@ -331,20 +570,39 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
           <p className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 p-6 text-center text-sm text-neutral-400">
             No payment method data — re-import Shopify orders to populate this.
           </p>
-        ) : (
-          <div className="space-y-2">
-            {s.payment.map((p, i) => (
-              <SplitRow
-                key={p.method}
-                rank={i + 1}
-                label={p.method}
-                split={{ total: p.total, firstTime: p.firstTime, repeat: p.repeat }}
-                format={fmtMoney}
-                accent="from-sky-500 to-indigo-500"
+        ) : (() => {
+          const rows = s.payment.map((p) => ({
+            name: p.method,
+            firstTime: p.firstTime,
+            repeat: p.repeat,
+          }));
+          // Pie slices = one per payment method (total revenue per method)
+          const pieSlices = s.payment.map((p) => ({ name: p.method, value: p.total }));
+          const pieTotal = pieSlices.reduce((a, sl) => a + sl.value, 0);
+          return (
+            <div className="space-y-4">
+              {/* Bar chart on the left, pie on the right */}
+              <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
+                <div className="flex-1 min-w-0">
+                  <StackedSplitBars data={rows} />
+                </div>
+                <div className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white p-5 md:w-72">
+                  <MultiSlicePie
+                    slices={pieSlices}
+                    total={pieTotal}
+                    totalFormatter={formatCurrency}
+                  />
+                </div>
+              </div>
+              <SplitDataTable
+                title="Payment methods"
+                labelHeader="Method"
+                rows={rows}
+                csvFilename="payment-summary"
               />
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </Section>
 
       {/* Discount Codes */}
@@ -358,20 +616,38 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
           <p className="rounded-xl border border-dashed border-neutral-200 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-6 text-center text-sm text-neutral-500">
             No discount codes used in this period.
           </p>
-        ) : (
-          <div className="space-y-2">
-            {s.discountCodes.map((p, i) => (
-              <SplitRow
-                key={p.code}
-                rank={i + 1}
-                label={p.code}
-                split={{ total: p.total, firstTime: p.firstTime, repeat: p.repeat }}
-                format={fmtMoney}
-                accent="from-amber-500 to-orange-500"
+        ) : (() => {
+          const rows = s.discountCodes.map((p) => ({
+            name: p.code,
+            firstTime: p.firstTime,
+            repeat: p.repeat,
+          }));
+          const pieSlices = s.discountCodes.map((p) => ({ name: p.code, value: p.total }));
+          const pieTotal = pieSlices.reduce((a, sl) => a + sl.value, 0);
+          return (
+            <div className="space-y-4">
+              {/* Bar chart left, pie right */}
+              <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
+                <div className="flex-1 min-w-0">
+                  <StackedSplitBars data={rows} />
+                </div>
+                <div className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white p-5 md:w-72">
+                  <MultiSlicePie
+                    slices={pieSlices}
+                    total={pieTotal}
+                    totalFormatter={formatCurrency}
+                  />
+                </div>
+              </div>
+              <SplitDataTable
+                title="Discount codes"
+                labelHeader="Code"
+                rows={rows}
+                csvFilename="discount-codes-summary"
               />
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </Section>
 
       {/* Heat Map */}

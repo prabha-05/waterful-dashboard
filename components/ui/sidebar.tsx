@@ -13,17 +13,110 @@ import {
   ChevronDown,
   Menu,
   X,
+  RefreshCw,
 } from "lucide-react";
 
 type NavLeaf = { label: string; href: string };
 type NavSubGroup = { label: string; href?: never; children: NavLeaf[] };
 type NavChild = NavLeaf | NavSubGroup;
 
+// Human-friendly relative time string. "5m ago" / "2h ago" / "3d ago".
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return "never";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const diff = Math.max(0, Date.now() - then);
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+type SyncStatus = {
+  shopify: { lastSyncAt: string; status: string } | null;
+  meta: { lastSyncAt: string } | null;
+};
+
+// Compact status panel that lives in the sidebar footer. Polls /api/sync-status
+// once on mount and refreshes every 60s so the relative times stay current.
+function SyncStatusPanel({ collapsed }: { collapsed: boolean }) {
+  const [status, setStatus] = useState<SyncStatus | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStatus = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/sync-status");
+      if (res.ok) setStatus(await res.json());
+    } catch {
+      // swallow — the widget just won't update
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatus();
+    const id = setInterval(fetchStatus, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (collapsed) {
+    // When the sidebar is collapsed on desktop, hide details — the user can
+    // expand to see them. Show a tiny status dot.
+    const ok = (status?.shopify || status?.meta) != null;
+    return (
+      <div className="hidden lg:flex justify-center py-2">
+        <span
+          className={`h-2 w-2 rounded-full ${ok ? "bg-green-500" : "bg-neutral-300"}`}
+          title="Sync status"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-neutral-100 px-3 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+          Last sync
+        </span>
+        <button
+          onClick={fetchStatus}
+          className="p-1 rounded hover:bg-neutral-100 text-neutral-400"
+          aria-label="Refresh sync status"
+          title="Refresh"
+        >
+          <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+        </button>
+      </div>
+      <div className="space-y-1.5 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-neutral-600">Shopify</span>
+          <span className="tabular-nums text-neutral-500 truncate" title={status?.shopify?.lastSyncAt ?? "never"}>
+            {timeAgo(status?.shopify?.lastSyncAt)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-neutral-600">Meta</span>
+          <span className="tabular-nums text-neutral-500 truncate" title={status?.meta?.lastSyncAt ?? "never"}>
+            {timeAgo(status?.meta?.lastSyncAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type NavItem =
   | { label: string; href: string; icon: typeof Home | null; children?: never }
   | { label: string; href?: never; icon: typeof Home | null; children: NavChild[] };
 
 const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard/home", icon: Home },
   {
     label: "Shopify",
     icon: null,
@@ -303,6 +396,9 @@ export function Sidebar({ username }: { username: string }) {
             );
           })}
         </nav>
+
+        {/* Last sync status — Shopify + Meta */}
+        <SyncStatusPanel collapsed={collapsed} />
 
         {/* User */}
         <div className="border-t border-neutral-100 px-3 py-3">
