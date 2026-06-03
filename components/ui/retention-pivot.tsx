@@ -17,6 +17,7 @@ type CustomerRow = {
   phone: string;
   email: string | null;
   ordersInRange: number;
+  lifetimeOrders: number;
   firstOrderDate: string;
   lastOrderDate: string;
   firstTag: "pre" | "post";
@@ -74,12 +75,14 @@ export function RetentionPivot() {
     if (!data || data.customers.length === 0) return;
     const header = [
       "Name", "Phone", "Email",
-      "Orders in range", "First order", "First vs pivot",
+      "Orders in window", "Lifetime orders",
+      "First order", "First vs pivot",
       "Last order", "Last vs pivot",
     ];
     const rows = data.customers.map((c) => [
       c.name, c.phone, c.email ?? "",
-      c.ordersInRange, c.firstOrderDate, c.firstTag,
+      c.ordersInRange, c.lifetimeOrders,
+      c.firstOrderDate, c.firstTag,
       c.lastOrderDate, c.lastTag,
     ]);
     const csv = [header, ...rows]
@@ -171,11 +174,21 @@ export function RetentionPivot() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: CREAM_BG }}>
-                  {["Name", "Phone", "Email", "Orders in range", "First order", "First vs pivot", "Last order", "Last vs pivot"].map((h, i) => (
+                  {[
+                    { h: "Name", align: "left" },
+                    { h: "Phone", align: "left" },
+                    { h: "Email", align: "left" },
+                    { h: "In window", align: "right" },
+                    { h: "Lifetime", align: "right" },
+                    { h: "First order", align: "right" },
+                    { h: "vs pivot", align: "left" },
+                    { h: "Last order", align: "right" },
+                    { h: "vs pivot", align: "left" },
+                  ].map(({ h, align }, i) => (
                     <th
-                      key={h}
+                      key={i}
                       className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                      style={{ color: MUTED, textAlign: i === 3 || i === 4 || i === 6 ? "right" : "left" }}
+                      style={{ color: MUTED, textAlign: align as "left" | "right" }}
                     >
                       {h}
                     </th>
@@ -189,6 +202,7 @@ export function RetentionPivot() {
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: INK }}>{c.phone || "—"}</td>
                     <td className="px-3 py-2.5" style={{ color: INK }}>{c.email || "—"}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{c.ordersInRange}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: MUTED }}>{c.lifetimeOrders}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{c.firstOrderDate}</td>
                     <td className="px-3 py-2.5"><PrePostBadge tag={c.firstTag} /></td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{c.lastOrderDate}</td>
