@@ -7,6 +7,7 @@ interface ShopifyAddress {
   province?: string;
   country?: string;
   zip?: string;
+  phone?: string | null;
 }
 
 interface ShopifyLineItem {
@@ -39,6 +40,9 @@ export interface ShopifyOrderRaw {
   id: number;
   order_number: number;
   email?: string;
+  // Top-level order phone — Shopify's canonical aggregator. Often present
+  // even when customer.phone is null. Falls back to shipping address phone.
+  phone?: string | null;
   customer?: ShopifyCustomer;
   total_price: string;
   subtotal_price: string;
@@ -66,6 +70,18 @@ export interface ShopifyOrderRaw {
   source_identifier?: string;
   // GoKwik / custom checkouts stash UTMs here as { name, value } pairs.
   note_attributes?: Array<{ name: string; value: string }>;
+  // Fulfillments — Shopify includes these on the order REST payload by
+  // default. We use the first one's tracking_company + tracking_number to
+  // know which DTDC AWB to track on our side.
+  fulfillments?: Array<{
+    id: number;
+    status?: string;
+    created_at?: string;
+    updated_at?: string;
+    tracking_company?: string | null;
+    tracking_number?: string | null;
+    tracking_numbers?: string[];
+  }>;
 }
 
 interface ShopifyOrdersResponse {

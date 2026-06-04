@@ -136,6 +136,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    label: "DTDC",
+    icon: null,
+    children: [
+      { label: "Overall Health", href: "/dashboard/dtdc/overall-health" },
+      { label: "Needs Attention", href: "/dashboard/dtdc/needs-attention" },
+    ],
+  },
+  {
     label: "Meta",
     icon: null,
     children: [

@@ -16,240 +16,299 @@ model User {
 }
 
 model SalesOrder {
-  id           Int      @id @default(autoincrement())
-  month        String
-  duplicate    Int
-  orderId      Int
-  date         DateTime
-  flavour      String
-  qty          Int
-  customerName String
-  mobile       String
+  id                Int      @id @default(autoincrement())
+  month             String
+  duplicate         Int
+  orderId           Int
+  date              DateTime
+  flavour           String
+  qty               Int
+  customerName      String
+  mobile            String
   // Shopify's stable customer.id — used to dedup customers across orders.
   // Matches Shopify's "First-time vs returning" classification exactly.
   // Nullable because (a) guest checkouts may not have one and (b) old rows
   // synced before this column was added.
   shopifyCustomerId BigInt?
-  billingCity  String
-  pincode      String
-  billingState String
-  total        Float
-  status       String
-  paymentMethod String?
+  billingCity       String
+  pincode           String
+  billingState      String
+  total             Float
+  status            String
+  paymentMethod     String?
 
   @@index([shopifyCustomerId])
 }
 
 model ShopifyOrder {
-  id              Int      @id @default(autoincrement())
-  shopifyId       BigInt   @unique
-  orderNumber     Int
-  email           String?
-  customerName    String
-  phone           String?
+  id                  Int       @id @default(autoincrement())
+  shopifyId           BigInt    @unique
+  orderNumber         Int
+  email               String?
+  customerName        String
+  phone               String?
   // Shopify's stable customer.id — source of truth for "is this a returning customer".
   // Nullable: guest checkouts and old rows pre-sync don't have it.
-  shopifyCustomerId BigInt?
-  totalPrice      Float
-  subtotalPrice   Float
-  totalTax        Float
-  currency        String   @default("INR")
-  financialStatus String
-  fulfillmentStatus String?
-  createdAt       DateTime
-  updatedAt       DateTime
-  processedAt     DateTime?
-  cancelledAt     DateTime?
-  closedAt        DateTime?
-  billingCity     String?
-  billingState    String?
-  billingCountry  String?
-  billingZip      String?
-  shippingCity    String?
-  shippingState   String?
-  shippingCountry String?
-  shippingZip     String?
-  itemCount       Int      @default(0)
-  note            String?
-  tags            String?
+  shopifyCustomerId   BigInt?
+  totalPrice          Float
+  subtotalPrice       Float
+  totalTax            Float
+  currency            String    @default("INR")
+  financialStatus     String
+  fulfillmentStatus   String?
+  createdAt           DateTime
+  updatedAt           DateTime
+  processedAt         DateTime?
+  cancelledAt         DateTime?
+  closedAt            DateTime?
+  billingCity         String?
+  billingState        String?
+  billingCountry      String?
+  billingZip          String?
+  shippingCity        String?
+  shippingState       String?
+  shippingCountry     String?
+  shippingZip         String?
+  itemCount           Int       @default(0)
+  note                String?
+  tags                String?
   paymentGatewayNames String?
   discountCodes       String?
   totalDiscounts      Float?
   // Attribution: where the customer landed + where they came from. Used to
   // map orders back to specific Meta ads via UTM params or fbclid.
-  landingSite       String?
-  referringSite     String?
-  sourceName        String?
-  sourceIdentifier  String?
+  landingSite         String?
+  referringSite       String?
+  sourceName          String?
+  sourceIdentifier    String?
   // GoKwik and other third-party checkouts stash UTMs in note_attributes
   // instead of landing_site. Stored as JSON string (Prisma has no native JSON
   // type on Postgres without changing column type). Parsed in attribution API.
-  noteAttributes    String?
-  syncedAt        DateTime @default(now())
+  noteAttributes      String?
+  // Fulfillment tracking — captured from Shopify's fulfillments[] array. We
+  // use the first fulfillment (most orders are single-parcel D2C). For DTDC
+  // shipments, `dtdcAwb` is what we feed into the DTDC tracking API.
+  carrier             String?
+  dtdcAwb             String?
+  fulfilledAt         DateTime?
+  syncedAt            DateTime  @default(now())
 
-  lineItems       ShopifyLineItem[]
+  lineItems ShopifyLineItem[]
+
+  @@index([dtdcAwb])
 }
 
 model ShopifyLineItem {
-  id          Int      @id @default(autoincrement())
-  shopifyId   BigInt   @unique
-  orderId     Int
-  title       String
-  variantTitle String?
-  sku         String?
-  quantity    Int
-  price       Float
-  totalDiscount Float  @default(0)
-  vendor      String?
-  productId   BigInt?
+  id            Int     @id @default(autoincrement())
+  shopifyId     BigInt  @unique
+  orderId       Int
+  title         String
+  variantTitle  String?
+  sku           String?
+  quantity      Int
+  price         Float
+  totalDiscount Float   @default(0)
+  vendor        String?
+  productId     BigInt?
 
-  order       ShopifyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order ShopifyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model SyncLog {
-  id          Int      @id @default(autoincrement())
-  startedAt   DateTime @default(now())
-  completedAt DateTime?
-  status      String   @default("running")
-  ordersAdded Int      @default(0)
-  ordersUpdated Int    @default(0)
-  error       String?
+  id            Int       @id @default(autoincrement())
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  status        String    @default("running")
+  ordersAdded   Int       @default(0)
+  ordersUpdated Int       @default(0)
+  error         String?
 }
 
 model MetaCampaign {
-  id              Int      @id @default(autoincrement())
-  metaCampaignId  String   @unique
-  name            String
-  status          String
-  objective       String?
-  dailyBudget     Float?
-  lifetimeBudget  Float?
-  startTime       DateTime?
-  stopTime        DateTime?
-  createdTime     DateTime
-  updatedTime     DateTime
-  syncedAt        DateTime @default(now())
+  id             Int       @id @default(autoincrement())
+  metaCampaignId String    @unique
+  name           String
+  status         String
+  objective      String?
+  dailyBudget    Float?
+  lifetimeBudget Float?
+  startTime      DateTime?
+  stopTime       DateTime?
+  createdTime    DateTime
+  updatedTime    DateTime
+  syncedAt       DateTime  @default(now())
 
-  spendDays       MetaAdSpendDaily[]
+  spendDays MetaAdSpendDaily[]
 }
 
 model MetaAdSpendDaily {
-  id                Int      @id @default(autoincrement())
-  campaignId        Int
-  date              DateTime
-  spend             Float    @default(0)
-  impressions       Int      @default(0)
-  reach             Int      @default(0)
-  clicks            Int      @default(0)
-  ctr               Float    @default(0)
-  cpc               Float    @default(0)
-  cpm               Float    @default(0)
-  landingPageViews  Int      @default(0)
-  addToCart         Int      @default(0)
-  initiateCheckout  Int      @default(0)
-  purchases         Int      @default(0)
-  purchaseValue     Float    @default(0)
-  syncedAt          DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  campaignId       Int
+  date             DateTime
+  spend            Float    @default(0)
+  impressions      Int      @default(0)
+  reach            Int      @default(0)
+  clicks           Int      @default(0)
+  ctr              Float    @default(0)
+  cpc              Float    @default(0)
+  cpm              Float    @default(0)
+  landingPageViews Int      @default(0)
+  addToCart        Int      @default(0)
+  initiateCheckout Int      @default(0)
+  purchases        Int      @default(0)
+  purchaseValue    Float    @default(0)
+  syncedAt         DateTime @default(now())
 
-  campaign      MetaCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign MetaCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, date])
 }
 
 model MetaAdSet {
-  id                Int      @id @default(autoincrement())
-  metaAdSetId       String   @unique
-  metaCampaignId    String
-  name              String
-  status            String
-  effectiveStatus   String?
-  optimizationGoal  String?
-  billingEvent      String?
-  dailyBudget       Float?
-  lifetimeBudget    Float?
-  targetingSummary  String?
-  startTime         DateTime?
-  endTime           DateTime?
-  createdTime       DateTime
-  updatedTime       DateTime
-  syncedAt          DateTime @default(now())
+  id               Int       @id @default(autoincrement())
+  metaAdSetId      String    @unique
+  metaCampaignId   String
+  name             String
+  status           String
+  effectiveStatus  String?
+  optimizationGoal String?
+  billingEvent     String?
+  dailyBudget      Float?
+  lifetimeBudget   Float?
+  targetingSummary String?
+  startTime        DateTime?
+  endTime          DateTime?
+  createdTime      DateTime
+  updatedTime      DateTime
+  syncedAt         DateTime  @default(now())
 
-  spendDays         MetaAdSetDaily[]
-  ads               MetaAd[]
+  spendDays MetaAdSetDaily[]
+  ads       MetaAd[]
 }
 
 model MetaAdSetDaily {
-  id                Int      @id @default(autoincrement())
-  adSetId           Int
-  date              DateTime
-  spend             Float    @default(0)
-  impressions       Int      @default(0)
-  reach             Int      @default(0)
-  clicks            Int      @default(0)
-  ctr               Float    @default(0)
-  cpc               Float    @default(0)
-  cpm               Float    @default(0)
-  frequency         Float    @default(0)
-  landingPageViews  Int      @default(0)
-  addToCart         Int      @default(0)
-  initiateCheckout  Int      @default(0)
-  purchases         Int      @default(0)
-  purchaseValue     Float    @default(0)
-  syncedAt          DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  adSetId          Int
+  date             DateTime
+  spend            Float    @default(0)
+  impressions      Int      @default(0)
+  reach            Int      @default(0)
+  clicks           Int      @default(0)
+  ctr              Float    @default(0)
+  cpc              Float    @default(0)
+  cpm              Float    @default(0)
+  frequency        Float    @default(0)
+  landingPageViews Int      @default(0)
+  addToCart        Int      @default(0)
+  initiateCheckout Int      @default(0)
+  purchases        Int      @default(0)
+  purchaseValue    Float    @default(0)
+  syncedAt         DateTime @default(now())
 
-  adSet         MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  adSet MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
 
   @@unique([adSetId, date])
 }
 
 model MetaAd {
-  id                Int      @id @default(autoincrement())
-  metaAdId          String   @unique
-  adSetId           Int
-  name              String
-  status            String
-  effectiveStatus   String?
-  creativeId        String?
-  creativeName      String?
-  creativeType      String?
-  thumbnailUrl      String?
-  previewLink       String?
-  createdTime       DateTime
-  updatedTime       DateTime
-  syncedAt          DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  metaAdId        String   @unique
+  adSetId         Int
+  name            String
+  status          String
+  effectiveStatus String?
+  creativeId      String?
+  creativeName    String?
+  creativeType    String?
+  thumbnailUrl    String?
+  previewLink     String?
+  createdTime     DateTime
+  updatedTime     DateTime
+  syncedAt        DateTime @default(now())
 
-  adSet             MetaAdSet @relation(fields: [adSetId], references: [id], onDelete: Cascade)
-  spendDays         MetaAdDaily[]
+  adSet     MetaAdSet     @relation(fields: [adSetId], references: [id], onDelete: Cascade)
+  spendDays MetaAdDaily[]
 }
 
 model MetaAdDaily {
-  id                       Int      @id @default(autoincrement())
-  adId                     Int
-  date                     DateTime
-  spend                    Float    @default(0)
-  impressions              Int      @default(0)
-  reach                    Int      @default(0)
-  clicks                   Int      @default(0)
-  ctr                      Float    @default(0)
-  cpc                      Float    @default(0)
-  cpm                      Float    @default(0)
-  frequency                Float    @default(0)
-  video3sViews             Int      @default(0)
-  video25pViews            Int      @default(0)
-  video50pViews            Int      @default(0)
-  videoP75Views            Int      @default(0)
-  video100pViews           Int      @default(0)
-  landingPageViews         Int      @default(0)
-  addToCart                Int      @default(0)
-  initiateCheckout         Int      @default(0)
-  purchases                Int      @default(0)
-  purchaseValue            Float    @default(0)
-  qualityRanking           String?
-  engagementRateRanking    String?
-  conversionRateRanking    String?
-  syncedAt                 DateTime @default(now())
+  id                    Int      @id @default(autoincrement())
+  adId                  Int
+  date                  DateTime
+  spend                 Float    @default(0)
+  impressions           Int      @default(0)
+  reach                 Int      @default(0)
+  clicks                Int      @default(0)
+  ctr                   Float    @default(0)
+  cpc                   Float    @default(0)
+  cpm                   Float    @default(0)
+  frequency             Float    @default(0)
+  video3sViews          Int      @default(0)
+  video25pViews         Int      @default(0)
+  video50pViews         Int      @default(0)
+  videoP75Views         Int      @default(0)
+  video100pViews        Int      @default(0)
+  landingPageViews      Int      @default(0)
+  addToCart             Int      @default(0)
+  initiateCheckout      Int      @default(0)
+  purchases             Int      @default(0)
+  purchaseValue         Float    @default(0)
+  qualityRanking        String?
+  engagementRateRanking String?
+  conversionRateRanking String?
+  syncedAt              DateTime @default(now())
 
-  ad                       MetaAd @relation(fields: [adId], references: [id], onDelete: Cascade)
+  ad MetaAd @relation(fields: [adId], references: [id], onDelete: Cascade)
 
   @@unique([adId, date])
+}
+
+// One row per DTDC shipment (AWB). Refreshed by the /api/dtdc/sync job which
+// calls DTDC's tracking API and stores the latest header + status.
+model DtdcShipment {
+  id                 Int       @id @default(autoincrement())
+  awb                String    @unique
+  // Optional pointer back to the Shopify order — set when we can match the
+  // AWB against a row in ShopifyOrder.dtdcAwb.
+  shopifyOrderNumber Int?
+  // The reference number DTDC was booked with (often the Shopify order #).
+  refNo              String?
+  // Latest status from trackHeader.strStatus — DELIVERED / ATTEMPTED / HELDUP / RTO / etc.
+  status             String?
+  // strStatusTransOn + strStatusTransTime parsed into a real Date
+  statusAt           DateTime?
+  noOfAttempts       Int       @default(0)
+  rtoNumber          String?
+  bookedAt           DateTime?
+  origin             String?
+  destination        String?
+  // What the receiver's number / non-delivery reason was on the last update
+  lastRemarks        String?
+  // Raw response from DTDC for debugging; refreshed every sync
+  rawResponse        Json?
+  lastSyncedAt       DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+
+  events DtdcShipmentEvent[]
+
+  @@index([status])
+  @@index([statusAt])
+}
+
+// One row per scan event (the `trackDetails[]` array DTDC returns). Used to
+// show the full remark trail when a row is clicked on the action table.
+model DtdcShipmentEvent {
+  id          Int      @id @default(autoincrement())
+  shipmentId  Int
+  code        String // strCode — BKD / OBMD / DLV / ATTEMPTED / etc.
+  action      String // strAction — "Booked", "In Transit", "Delivered", ...
+  manifestNo  String?
+  origin      String?
+  destination String?
+  // strActionDate (DDMMYYYY) + strActionTime (HHMM) parsed into a real Date
+  occurredAt  DateTime
+  remarks     String?
+
+  shipment DtdcShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId, occurredAt])
 }

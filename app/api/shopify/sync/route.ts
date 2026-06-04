@@ -98,7 +98,16 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date) {
         orderNumber: order.order_number,
         email: order.email ?? null,
         customerName: customerName(order),
-        phone: order.customer?.phone ?? null,
+        // Phone priority: top-level order.phone (Shopify's canonical
+        // aggregator) → shipping address → customer profile → billing. The
+        // top-level field is the most reliably populated; customer.phone is
+        // null unless the buyer saved it in their account profile.
+        phone:
+          order.phone ??
+          order.shipping_address?.phone ??
+          order.customer?.phone ??
+          order.billing_address?.phone ??
+          null,
         shopifyCustomerId: order.customer?.id ? BigInt(order.customer.id) : null,
         totalPrice: parseFloat(order.total_price),
         subtotalPrice: parseFloat(order.subtotal_price),
@@ -141,6 +150,22 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date) {
           order.note_attributes && order.note_attributes.length > 0
             ? JSON.stringify(order.note_attributes)
             : null,
+        // Fulfillment tracking — use the first fulfillment (single-parcel D2C
+        // is the norm). Carrier name and tracking number come from Shopify's
+        // fulfillments[] array. dtdcAwb is set only when carrier name matches
+        // DTDC — keeps the column clean for the sync job to pick up.
+        ...(() => {
+          const f = order.fulfillments?.[0];
+          if (!f) return { carrier: null, dtdcAwb: null, fulfilledAt: null };
+          const carrier = (f.tracking_company || "").trim() || null;
+          const trackingNumber = (f.tracking_number || f.tracking_numbers?.[0] || "").trim() || null;
+          const isDtdc = carrier ? /dtdc/i.test(carrier) : false;
+          return {
+            carrier,
+            dtdcAwb: isDtdc ? trackingNumber : null,
+            fulfilledAt: parseDate(f.created_at ?? null),
+          };
+        })(),
         syncedAt: new Date(),
       };
 
