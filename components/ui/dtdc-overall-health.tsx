@@ -171,6 +171,17 @@ export function DtdcOverallHealth() {
 
       {!loading && !data?.empty && data && (
         <>
+          {/* Status mix — top of the page so the operator always sees the
+              high-level breakdown of where every shipment currently sits. */}
+          <Card title="Status mix">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+              <StatusTile label="Delivered" value={data.statusMix!.delivered} color={SAGE} />
+              <StatusTile label="In transit / OFD" value={data.statusMix!.inTransit} color={BLUE} />
+              <StatusTile label="Booked / prepared" value={data.statusMix!.booked} color={AMBER} />
+              <StatusTile label="RTO / failed" value={data.statusMix!.rto} color={ROSE} />
+            </div>
+          </Card>
+
           {/* Delivery KPIs */}
           <SectionLabel>Delivery KPIs</SectionLabel>
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -204,15 +215,12 @@ export function DtdcOverallHealth() {
           </div>
 
           {/* Lists row */}
-          <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
             <Card title="Performance by city">
               <CityList rows={data.cityPerformance!} />
             </Card>
             <Card title="Failure reasons">
               <ReasonList rows={data.failureReasons!} />
-            </Card>
-            <Card title="Status mix">
-              <StatusMix mix={data.statusMix!} />
             </Card>
           </div>
         </>
@@ -379,22 +387,11 @@ function ReasonList({ rows }: { rows: { label: string; count: number }[] }) {
   );
 }
 
-function StatusMix({ mix }: { mix: { delivered: number; inTransit: number; booked: number; rto: number } }) {
+function StatusTile({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="space-y-1.5 text-xs">
-      <Row label="Delivered" value={mix.delivered} color={SAGE} />
-      <Row label="In transit / OFD" value={mix.inTransit} color={BLUE} />
-      <Row label="Booked / prepared" value={mix.booked} color={AMBER} />
-      <Row label="RTO / failed" value={mix.rto} color={ROSE} />
-    </div>
-  );
-}
-
-function Row({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span style={{ color: INK }}>{label}</span>
-      <span className="tabular-nums font-bold" style={{ color }}>{value.toLocaleString()}</span>
+    <div className="rounded-xl border p-3" style={{ background: `${color}11`, borderColor: `${color}33` }}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color }}>{value.toLocaleString()}</p>
     </div>
   );
 }
