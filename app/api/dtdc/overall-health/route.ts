@@ -29,12 +29,28 @@ const NDR_REASON_BUCKETS: { id: string; label: string; match: RegExp }[] = [
 // and would otherwise pollute the buckets.
 const FAILURE_REMARK_PATTERN = /^[A-Z]{3}\|/;
 
+// Map DTDC's free-form status string into one of our 4 buckets, aligned
+// with how DTDC's own customer portal classifies things:
+//   • Delivered  = the parcel reached the consignee
+//   • RTO        = anything in the return-to-origin lifecycle (initiated,
+//                  awaiting approval, in-transit back, delivered to seller,
+//                  failed RTO attempts, "Return as per client instruction")
+//   • In transit = everything else that's moving (in transit, OFD, reached,
+//                  not delivered, weekly off, mis-route, received at hub)
+//   • Booked     = pickup scheduled / booked but not yet picked up
 function statusBucket(status: string | null | undefined): "delivered" | "inTransit" | "booked" | "rto" {
   if (!status) return "booked";
   const s = status.toLowerCase();
   if (s === "delivered") return "delivered";
-  if (s.startsWith("rto") || /returned/.test(s)) return "rto";
-  if (/in transit|out for delivery|reached/.test(s) || s === "ofd") return "inTransit";
+  // Match "rto" anywhere (handles "Set RTO initiated", "Waiting For RTO
+  // Approval", "RTO In Transit", etc.) plus the special "Return as per
+  // client instruction" string DTDC emits when the merchant cancels.
+  if (/rto|return/.test(s)) return "rto";
+  if (
+    /in transit|out for delivery|reached|received at|mis route|weekly off|not delivered|ofd/.test(s)
+  ) {
+    return "inTransit";
+  }
   return "booked";
 }
 
