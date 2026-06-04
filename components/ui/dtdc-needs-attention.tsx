@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Download } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Clock, Download, RotateCcw, Package, Repeat, AlertTriangle } from "lucide-react";
 
 const INK = "#4a3a2e";
 const MUTED = "#9a8571";
 const AMBER = "#c99954";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
-const BLUE = "#7c8bb2";
 const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
 
 type AttentionShipment = {
   awb: string;
@@ -23,28 +21,67 @@ type AttentionShipment = {
   attempts: number;
 };
 
-type AttentionPayload = {
-  asOf: string;
-  failedFirstAttempt: { count: number; rows: AttentionShipment[] };
-  agedInTransit: { count: number; rows: AttentionShipment[] };
-  fourPlusAttempts: { count: number; rows: AttentionShipment[] };
-  rtoAwaiting: { count: number; rows: AttentionShipment[] };
+type Bucket = { count: number; rows: AttentionShipment[] };
+type ListBucket = {
+  total: number;
+  breakdown: { label: string; count: number }[];
+  rows: AttentionShipment[];
 };
 
-type TileId = "failedFirstAttempt" | "agedInTransit" | "fourPlusAttempts" | "rtoAwaiting";
+type Payload = {
+  asOf: string;
+  ageingOpen: {
+    tenPlus: Bucket;
+    sixToTen: Bucket;
+    threeToFive: Bucket;
+    zeroToTwo: Bucket;
+  };
+  actionRequired: {
+    rtoApproveAwaited: Bucket;
+    preparedNotCollected: Bucket;
+    bookedNotMoving: Bucket;
+  };
+  fieldFailures: {
+    failedByReason: ListBucket;
+    rtoPipeline: ListBucket;
+    multiAttempt: ListBucket;
+  };
+};
 
-const TILES: { id: TileId; title: string; subtitle: string; color: string; bg: string }[] = [
-  { id: "failedFirstAttempt", title: "Failed 1st attempt only", subtitle: "call & rescue fast", color: BLUE, bg: `${BLUE}1f` },
-  { id: "agedInTransit", title: "Aged in-transit >5d", subtitle: "RTO risk", color: ROSE, bg: `${ROSE}1f` },
-  { id: "fourPlusAttempts", title: "4+ attempts", subtitle: "cost leak", color: AMBER, bg: `${AMBER}1f` },
-  { id: "rtoAwaiting", title: "RTO approve-awaited", subtitle: "your decision", color: MUTED, bg: CREAM_BG },
-];
+function csvFromRows(rows: AttentionShipment[]): string {
+  const header = ["AWB", "Ref", "City", "Phone", "Age (days)", "Status", "Attempts", "Reason"];
+  const body = rows.map((r) => [
+    r.awb,
+    r.refNo ?? "",
+    r.city ?? "",
+    r.phone ?? "",
+    r.ageDays ?? "",
+    r.status ?? "",
+    r.attempts,
+    r.reason ?? "",
+  ]);
+  return [header, ...body]
+    .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+}
+function downloadCsv(rows: AttentionShipment[], filename: string) {
+  if (rows.length === 0) return;
+  const csv = csvFromRows(rows);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filename}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export function DtdcNeedsAttention() {
-  const [data, setData] = useState<AttentionPayload | null>(null);
+  const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<TileId>("failedFirstAttempt");
 
   useEffect(() => {
     let cancel = false;
@@ -52,7 +89,7 @@ export function DtdcNeedsAttention() {
     fetch("/api/dtdc/needs-attention")
       .then(async (r) => {
         if (!r.ok) throw new Error(await r.text());
-        return r.json() as Promise<AttentionPayload>;
+        return r.json() as Promise<Payload>;
       })
       .then((d) => {
         if (!cancel) setData(d);
@@ -68,186 +105,261 @@ export function DtdcNeedsAttention() {
     };
   }, []);
 
-  const tileRows = useMemo(() => {
-    if (!data) return [] as AttentionShipment[];
-    return data[selected].rows;
-  }, [data, selected]);
-
-  const selectedTile = TILES.find((t) => t.id === selected);
-
-  const downloadCsv = () => {
-    if (tileRows.length === 0) return;
-    const header = ["AWB", "Ref", "City", "Phone", "Age (days)", "Status", "Attempts", "Reason"];
-    const rows = tileRows.map((r) => [
-      r.awb,
-      r.refNo ?? "",
-      r.city ?? "",
-      r.phone ?? "",
-      r.ageDays ?? "",
-      r.status ?? "",
-      r.attempts,
-      r.reason ?? "",
-    ]);
-    const csv = [header, ...rows]
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-      .join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `dtdc-${selected}-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  if (loading) {
+    return (
+      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
+        Loading…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="rounded-2xl border p-6 text-sm" style={{ background: "white", borderColor: BORDER, color: ROSE }}>
+        Failed to load: {error}
+      </div>
+    );
+  }
+  if (!data) return null;
 
   return (
-    <div className="space-y-5">
-      {/* Section header */}
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <AlertTriangle size={16} style={{ color: AMBER }} />
-          <h2 className="text-sm font-bold" style={{ color: INK }}>
-            1 · Needs attention now
-          </h2>
-          <span className="text-[12px] italic" style={{ color: MUTED }}>
-            live & unfiltered — always anchored to today
-          </span>
-        </div>
-        {data && (
-          <span className="text-[11px]" style={{ color: MUTED }}>
-            as of {new Date(data.asOf).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-      </div>
-      <p className="text-[12px] -mt-3" style={{ color: MUTED }}>
-        Not affected by the filters below · click a tile to load it into the action table.
-      </p>
-
-      {/* 4 tiles */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {TILES.map((t) => {
-          const active = t.id === selected;
-          const count = data ? data[t.id].count : null;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setSelected(t.id)}
-              className="text-left rounded-2xl border p-4 shadow-sm transition-transform hover:translate-y-[-1px]"
-              style={{
-                background: t.bg,
-                borderColor: active ? t.color : `${t.color}55`,
-                boxShadow: active ? `0 0 0 2px ${t.color}55` : undefined,
-              }}
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: t.color }}>
-                {t.title}
-              </p>
-              <p className="mt-1 text-3xl font-bold tabular-nums" style={{ color: INK }}>
-                {count == null ? "—" : count}
-              </p>
-              <p className="text-[11px]" style={{ color: MUTED }}>
-                {t.subtitle}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Action list */}
-      <div
-        className="rounded-2xl border shadow-sm overflow-hidden"
-        style={{ background: "white", borderColor: BORDER }}
+    <div className="space-y-6">
+      {/* ───────── Ageing open shipments ───────── */}
+      <Section
+        icon={<Clock size={16} style={{ color: ROSE }} />}
+        title="Ageing open shipments"
+        rows={[
+          ...data.ageingOpen.tenPlus.rows,
+          ...data.ageingOpen.sixToTen.rows,
+          ...data.ageingOpen.threeToFive.rows,
+          ...data.ageingOpen.zeroToTwo.rows,
+        ]}
+        filename="dtdc-ageing-all"
       >
-        <div
-          className="flex items-center justify-between px-4 py-3 border-b"
-          style={{ borderColor: BORDER, background: CREAM_BG }}
-        >
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
-              Action list — {selectedTile?.title.toLowerCase()}
-            </p>
-            <p className="text-[11px] italic mt-0.5" style={{ color: MUTED }}>
-              {loading
-                ? "loading…"
-                : tileRows.length === 0
-                ? "no shipments in this cohort right now"
-                : `${tileRows.length} row${tileRows.length === 1 ? "" : "s"} · click a row for full remark trail`}
-            </p>
-          </div>
-          <button
-            onClick={downloadCsv}
-            disabled={tileRows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-40 hover:bg-white"
-            style={{ background: "white", borderColor: BORDER, color: INK }}
-          >
-            <Download size={13} />
-            Export view
-          </button>
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+          <AgeingTile count={data.ageingOpen.tenPlus.count} label="10+ days · escalate" tint={ROSE} severe />
+          <AgeingTile count={data.ageingOpen.sixToTen.count} label="6–10 days · chase" tint={ROSE} />
+          <AgeingTile count={data.ageingOpen.threeToFive.count} label="3–5 days · watch" tint={AMBER} />
+          <AgeingTile count={data.ageingOpen.zeroToTwo.count} label="0–2 days · ok" tint={SAGE} />
         </div>
+      </Section>
 
-        {error && (
-          <div className="px-4 py-6 text-sm" style={{ color: ROSE }}>
-            Failed to load: {error}
-          </div>
-        )}
+      {/* ───────── Action required ───────── */}
+      <SectionHeader label="Action required" />
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+        <ActionCard
+          icon={<RotateCcw size={16} style={{ color: AMBER }} />}
+          title="RTO approve awaited"
+          tag={{ label: "action on Waterful", color: AMBER }}
+          bucket={data.actionRequired.rtoApproveAwaited}
+          body="Waiting on your approval to return. Parcel frozen until actioned."
+          filename="dtdc-rto-approve-awaited"
+        />
+        <ActionCard
+          icon={<Package size={16} style={{ color: ROSE }} />}
+          title="Prepared — not collected"
+          tag={{ label: "action on Waterful", color: AMBER }}
+          extraTag={{ label: "2+ days", color: MUTED }}
+          bucket={data.actionRequired.preparedNotCollected}
+          body="Manifested but not handed to DTDC. Verify dispatch has physically tendered."
+          filename="dtdc-prepared-not-collected"
+        />
+        <ActionCard
+          icon={<Package size={16} style={{ color: ROSE }} />}
+          title="Booked — not moving"
+          tag={{ label: "action on DTDC", color: ROSE }}
+          extraTag={{ label: "2+ days", color: MUTED }}
+          bucket={data.actionRequired.bookedNotMoving}
+          body="Scanned in but not inducted into the network. Escalate to DTDC account manager."
+          filename="dtdc-booked-not-moving"
+        />
+      </div>
 
-        {!error && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: CREAM_BG }}>
-                  {["AWB", "Ref", "City", "Phone", "Age", "Reason"].map((h, i) => (
-                    <th
-                      key={h}
-                      className="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                      style={{
-                        color: MUTED,
-                        textAlign: i === 4 ? "right" : "left",
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tileRows.map((r) => (
-                  <tr
-                    key={r.awb}
-                    className="border-t cursor-pointer transition-colors hover:bg-amber-50/40"
-                    style={{ borderColor: "#f1e7d3" }}
-                    onClick={() => window.alert(`Remark trail for ${r.awb} — coming soon`)}
-                  >
-                    <td className="px-4 py-2.5 font-mono text-[12px]" style={{ color: INK }}>
-                      {r.awb}
-                    </td>
-                    <td className="px-4 py-2.5" style={{ color: INK }}>{r.refNo ?? "—"}</td>
-                    <td className="px-4 py-2.5" style={{ color: INK }}>{r.city ?? "—"}</td>
-                    <td className="px-4 py-2.5 tabular-nums" style={{ color: INK }}>{r.phone ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums" style={{ color: INK }}>
-                      {r.ageDays == null ? "—" : `${r.ageDays}d`}
-                    </td>
-                    <td className="px-4 py-2.5" style={{ color: MUTED }}>{r.reason ?? "—"}</td>
-                  </tr>
-                ))}
-                {!loading && tileRows.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-sm italic" style={{ color: MUTED }}>
-                      Nothing in this cohort right now. ✨
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="px-4 py-2 border-t text-[11px] italic" style={{ borderColor: BORDER, color: MUTED, background: CREAM_BG }}>
-          … one row per shipment · sortable · row click → full remark trail
-        </div>
+      {/* ───────── Field failures ───────── */}
+      <SectionHeader label="Field failures" />
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+        <ListCard
+          icon={<AlertTriangle size={16} style={{ color: ROSE }} />}
+          title="Failed by reason"
+          bucket={data.fieldFailures.failedByReason}
+          filename="dtdc-failed-by-reason"
+        />
+        <ListCard
+          icon={<RotateCcw size={16} style={{ color: ROSE }} />}
+          title="RTO pipeline"
+          bucket={data.fieldFailures.rtoPipeline}
+          filename="dtdc-rto-pipeline"
+        />
+        <ListCard
+          icon={<Repeat size={16} style={{ color: AMBER }} />}
+          title="Multi-attempt"
+          bucket={data.fieldFailures.multiAttempt}
+          footer="live pipeline only"
+          filename="dtdc-multi-attempt"
+        />
       </div>
     </div>
+  );
+}
+
+/* ────────── building blocks ────────── */
+
+function Section({
+  icon,
+  title,
+  children,
+  rows,
+  filename,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  rows: AttentionShipment[];
+  filename: string;
+}) {
+  return (
+    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="text-sm font-bold" style={{ color: INK }}>{title}</h2>
+        </div>
+        <DownloadBtn rows={rows} filename={filename} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+      {label}
+    </p>
+  );
+}
+
+function AgeingTile({
+  count,
+  label,
+  tint,
+  severe,
+}: {
+  count: number;
+  label: string;
+  tint: string;
+  severe?: boolean;
+}) {
+  // Severe = 10+ days. Stronger border + fill.
+  const bg = severe ? `${tint}26` : `${tint}14`;
+  const border = severe ? `${tint}80` : `${tint}40`;
+  return (
+    <div
+      className="rounded-xl border p-4 transition-transform"
+      style={{ background: bg, borderColor: border }}
+    >
+      <p className="text-3xl font-bold tabular-nums" style={{ color: tint }}>{count}</p>
+      <p className="text-[11px] mt-1" style={{ color: MUTED }}>{label}</p>
+    </div>
+  );
+}
+
+function ActionCard({
+  icon,
+  title,
+  tag,
+  extraTag,
+  bucket,
+  body,
+  filename,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tag: { label: string; color: string };
+  extraTag?: { label: string; color: string };
+  bucket: Bucket;
+  body: string;
+  filename: string;
+}) {
+  return (
+    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          {icon}
+          <h3 className="text-sm font-bold truncate" style={{ color: INK }}>{title}</h3>
+        </div>
+        <DownloadBtn rows={bucket.rows} filename={filename} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag {...tag} />
+        {extraTag && <Tag {...extraTag} />}
+      </div>
+      <p className="text-3xl font-bold tabular-nums" style={{ color: AMBER }}>{bucket.count}</p>
+      <p className="text-[12px]" style={{ color: MUTED }}>{body}</p>
+    </div>
+  );
+}
+
+function ListCard({
+  icon,
+  title,
+  bucket,
+  footer,
+  filename,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  bucket: ListBucket;
+  footer?: string;
+  filename: string;
+}) {
+  return (
+    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          {icon}
+          <h3 className="text-sm font-bold truncate" style={{ color: INK }}>{title}</h3>
+        </div>
+        <DownloadBtn rows={bucket.rows} filename={filename} />
+      </div>
+      <p className="text-3xl font-bold tabular-nums" style={{ color: ROSE }}>{bucket.total}</p>
+      {bucket.breakdown.length === 0 ? (
+        <p className="text-[12px] italic" style={{ color: MUTED }}>no entries</p>
+      ) : (
+        <div className="space-y-1.5">
+          {bucket.breakdown.map((r) => (
+            <div key={r.label} className="flex items-center justify-between text-[13px]">
+              <span style={{ color: INK }}>{r.label}</span>
+              <span className="tabular-nums font-semibold" style={{ color: MUTED }}>{r.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {footer && <p className="text-[11px] italic" style={{ color: MUTED }}>{footer}</p>}
+    </div>
+  );
+}
+
+function Tag({ label, color }: { label: string; color: string }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{ background: `${color}22`, color }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function DownloadBtn({ rows, filename }: { rows: AttentionShipment[]; filename: string }) {
+  return (
+    <button
+      onClick={() => downloadCsv(rows, filename)}
+      disabled={rows.length === 0}
+      className="rounded-md border p-1.5 transition-colors disabled:opacity-40 hover:bg-amber-50"
+      style={{ background: "white", borderColor: BORDER, color: INK }}
+      title={`Download ${rows.length} row${rows.length === 1 ? "" : "s"} as CSV`}
+    >
+      <Download size={13} />
+    </button>
   );
 }
