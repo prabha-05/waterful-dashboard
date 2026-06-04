@@ -29,26 +29,32 @@ const NDR_REASON_BUCKETS: { id: string; label: string; match: RegExp }[] = [
 // and would otherwise pollute the buckets.
 const FAILURE_REMARK_PATTERN = /^[A-Z]{3}\|/;
 
-// Map DTDC's free-form status string into one of our 4 buckets, aligned
-// with how DTDC's own customer portal classifies things:
-//   • Delivered  = the parcel reached the consignee
-//   • RTO        = anything in the return-to-origin lifecycle (initiated,
-//                  awaiting approval, in-transit back, delivered to seller,
-//                  failed RTO attempts, "Return as per client instruction")
-//   • In transit = everything else that's moving (in transit, OFD, reached,
-//                  not delivered, weekly off, mis-route, received at hub)
-//   • Booked     = pickup scheduled / booked but not yet picked up
-function statusBucket(status: string | null | undefined): "delivered" | "inTransit" | "booked" | "rto" {
+// Map DTDC's free-form status string into one of 6 buckets, aligned with
+// the breakdown shown on DTDC's customer portal "Booking vs Delivered" tab:
+//   • Delivered    = parcel reached the consignee
+//   • RTO          = anywhere in the return-to-origin lifecycle
+//   • Not Delivered = attempted but failed (DTDC's "Not Delivered" status)
+//   • In Transit   = moving (in transit / OFD / reached / received / etc.)
+//   • Booked       = pickup scheduled, booked but not yet picked up
+// "Reattempt Initiated" is derived separately from in-transit shipments
+// where a delivery has already been attempted at least once.
+type StatusBucket = "delivered" | "inTransit" | "booked" | "rto" | "notDelivered";
+
+function statusBucket(status: string | null | undefined): StatusBucket {
   if (!status) return "booked";
   const s = status.toLowerCase();
   if (s === "delivered") return "delivered";
-  // Match "rto" anywhere (handles "Set RTO initiated", "Waiting For RTO
-  // Approval", "RTO In Transit", etc.) plus the special "Return as per
-  // client instruction" string DTDC emits when the merchant cancels.
+  // "RTO Delivered" = parcel already returned to seller, RTO lifecycle is
+  // complete. DTDC's portal treats this as a final state (not an active RTO),
+  // so we bucket it with Delivered to keep numbers aligned with their report.
+  if (s === "rto delivered") return "delivered";
   if (/rto|return/.test(s)) return "rto";
-  if (
-    /in transit|out for delivery|reached|received at|mis route|weekly off|not delivered|ofd/.test(s)
-  ) {
+  if (s === "not delivered") return "notDelivered";
+  // "Reached At Destination" + "Received At Delivery Centre" are pre-OFD
+  // hub-arrival states — DTDC's portal counts these as Booked/Prepared,
+  // not In Transit. Pickup-scheduled and plain "Booked" also live here.
+  if (/reached|received at|pickup scheduled|^booked$/.test(s)) return "booked";
+  if (/in transit|out for delivery|mis route|weekly off|ofd/.test(s)) {
     return "inTransit";
   }
   return "booked";
@@ -138,8 +144,11 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Bucket once.
-  const buckets = { delivered: 0, inTransit: 0, booked: 0, rto: 0 };
+  // Bucket once. Six categories matching DTDC's customer-portal split.
+  const buckets = { delivered: 0, inTransit: 0, booked: 0, rto: 0, notDelivered: 0 };
+  // "Reattempt initiated" derived separately — shipments still in transit
+  // that already had a failed delivery attempt (noOfAttempts >= 1).
+  let reattemptInitiated = 0;
   const transitTimes: number[] = [];
   const transitBuckets: Record<string, number> = { "1d": 0, "2d": 0, "3d": 0, "4d": 0, "5d": 0, "6d+": 0 };
   const cityStats = new Map<string, { total: number; delivered: number; transit: number[] }>();
@@ -151,6 +160,10 @@ export async function GET(req: NextRequest) {
   for (const s of shipments) {
     const b = statusBucket(s.status);
     buckets[b]++;
+    // Reattempt = shipment that's currently in transit AND DTDC has already
+    // made at least 2 delivery attempts. Matches DTDC's portal's "Reattempt
+    // Initiated" sub-bucket (a retry after a failed first attempt + reschedule).
+    if (b === "inTransit" && (s.noOfAttempts ?? 0) >= 2) reattemptInitiated++;
 
     const city = s.destination?.toUpperCase() ?? "UNKNOWN";
     if (!cityStats.has(city)) cityStats.set(city, { total: 0, delivered: 0, transit: [] });
@@ -261,7 +274,9 @@ export async function GET(req: NextRequest) {
       delivered: buckets.delivered,
       inTransit: buckets.inTransit,
       booked: buckets.booked,
+      notDelivered: buckets.notDelivered,
       rto: buckets.rto,
+      reattemptInitiated,
     },
     deliveryKpis: {
       deliveredPct,

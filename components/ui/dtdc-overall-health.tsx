@@ -16,7 +16,14 @@ type HealthPayload = {
   filters: { from: string | null; to: string | null; city: string | null; status: string | null };
   empty: boolean;
   total?: number;
-  statusMix?: { delivered: number; inTransit: number; booked: number; rto: number };
+  statusMix?: {
+    delivered: number;
+    inTransit: number;
+    booked: number;
+    notDelivered: number;
+    rto: number;
+    reattemptInitiated: number;
+  };
   deliveryKpis?: {
     deliveredPct: number;
     onTimeSlaPct: number | null;
@@ -171,14 +178,16 @@ export function DtdcOverallHealth() {
 
       {!loading && !data?.empty && data && (
         <>
-          {/* Status mix — top of the page so the operator always sees the
-              high-level breakdown of where every shipment currently sits. */}
+          {/* Status mix — top of the page, matches DTDC's customer-portal
+              "Booking vs Delivered" 6-category split exactly. */}
           <Card title="Status mix">
-            <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
               <StatusTile label="Delivered" value={data.statusMix!.delivered} color={SAGE} />
               <StatusTile label="In transit / OFD" value={data.statusMix!.inTransit} color={BLUE} />
               <StatusTile label="Booked / prepared" value={data.statusMix!.booked} color={AMBER} />
-              <StatusTile label="RTO / failed" value={data.statusMix!.rto} color={ROSE} />
+              <StatusTile label="Not delivered" value={data.statusMix!.notDelivered} color={ROSE} />
+              <StatusTile label="RTO" value={data.statusMix!.rto} color={ROSE} />
+              <StatusTile label="Reattempt initiated" value={data.statusMix!.reattemptInitiated} color={AMBER} />
             </div>
           </Card>
 
