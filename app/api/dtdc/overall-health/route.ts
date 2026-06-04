@@ -9,12 +9,25 @@ import { prisma } from "@/lib/db";
 // All filters are AND-ed. Date range filters by DtdcShipment.bookedAt.
 
 const SLA_DAYS = 3;
+// Failure-reason buckets — based on the real codes DTDC emits in
+// `strRemarks` for non-delivered shipments. The pipe-prefix codes (PNA, KYC,
+// NSR, ADR, UAT, DLK) are stable; matching on them gives us tighter buckets
+// than matching the free-text description.
 const NDR_REASON_BUCKETS: { id: string; label: string; match: RegExp }[] = [
-  { id: "receiverUnreachable", label: "Receiver not reachable", match: /not\s*reachable|PNA/i },
-  { id: "addressWrong", label: "Address wrong", match: /address|wrong\s*pincode|address not found/i },
-  { id: "nonServiceable", label: "Area non-serviceable", match: /non\s*service|NSR|area\s*non/i },
-  { id: "refused", label: "Refused / KYC", match: /refuse|KYC|REF/i },
+  { id: "receiverUnreachable", label: "Receiver not reachable", match: /\bPNA\b|not\s*reachable/i },
+  { id: "addressWrong", label: "Address wrong / incomplete", match: /\bADR\b|address\s*(incomplete|wrong|not\s*found)/i },
+  { id: "nonServiceable", label: "Area non-serviceable", match: /\bNSR\b|non[\s-]*service|area\s*non/i },
+  { id: "refused", label: "Refused / KYC", match: /\bKYC\b|\bREF\b|refuse/i },
+  { id: "notAttempted", label: "Could not attempt", match: /\bUAT\b|could\s*not\s*attempt/i },
+  { id: "officeClosed", label: "Office closed / door lock", match: /\bDLK\b|door\s*lock|office\s*closed/i },
 ];
+
+// Only treat a remark as a failure reason when it looks like one — i.e. it
+// starts with a 3-letter uppercase code and a pipe (DTDC's failure code
+// convention). Routing breadcrumbs like "Out Going Load Made To..." and raw
+// numeric weights ("0.00", "4.50") are scan history, not failure remarks,
+// and would otherwise pollute the buckets.
+const FAILURE_REMARK_PATTERN = /^[A-Z]{3}\|/;
 
 function statusBucket(status: string | null | undefined): "delivered" | "inTransit" | "booked" | "rto" {
   if (!status) return "booked";
@@ -145,8 +158,10 @@ export async function GET(req: NextRequest) {
       if (s.noOfAttempts === 1) firstAttemptDelivered++;
     }
 
-    // Failure reasons — only for shipments with a non-delivered status + a remark.
-    if (b !== "delivered" && s.lastRemarks) {
+    // Failure reasons — only for shipments with a non-delivered status AND
+    // a remark that looks like a failure code (e.g. "PNA|..."), not a transit
+    // breadcrumb or numeric weight.
+    if (b !== "delivered" && s.lastRemarks && FAILURE_REMARK_PATTERN.test(s.lastRemarks)) {
       for (const r of NDR_REASON_BUCKETS) {
         if (r.match.test(s.lastRemarks)) {
           reasonCounts[r.id]++;

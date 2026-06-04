@@ -106,13 +106,14 @@ export async function GET() {
   // Cohort 3 — 4+ attempts
   const fourPlusAttempts = all.filter((s) => s.noOfAttempts >= 4);
 
-  // Cohort 4 — RTO initiated, awaiting decision (has rtoNumber set and status
-  // contains RTO but not yet completed/RTO-delivered).
-  const rtoAwaiting = all.filter(
-    (s) =>
-      (s.rtoNumber && s.rtoNumber.trim().length > 0) ||
-      (s.status && /rto/i.test(s.status)),
-  );
+  // Cohort 4 — RTO initiated AND waiting for the merchant's decision. Only
+  // pre-approval statuses qualify; once the merchant has approved and the
+  // parcel is moving back ("RTO In Transit" / "RTO Delivered" / etc.) the
+  // shipment leaves this tile.
+  const rtoAwaiting = all.filter((s) => {
+    if (!s.status) return false;
+    return /^(set rto initiated|waiting for rto approval)/i.test(s.status);
+  });
 
   const payload: AttentionPayload = {
     asOf: new Date().toISOString(),
