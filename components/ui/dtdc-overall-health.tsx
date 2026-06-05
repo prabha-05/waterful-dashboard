@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, MapPin, Filter, Heart } from "lucide-react";
+import { Calendar, MapPin } from "lucide-react";
 
 const INK = "#4a3a2e";
 const MUTED = "#9a8571";
@@ -12,58 +12,63 @@ const BLUE = "#7c8bb2";
 const BORDER = "#e8dfd0";
 const CREAM_BG = "#faf6ef";
 
-type HealthPayload = {
-  filters: { from: string | null; to: string | null; city: string | null; status: string | null };
-  empty: boolean;
-  total?: number;
-  statusMix?: {
-    delivered: number;
-    inTransit: number;
-    booked: number;
-    notDelivered: number;
-    rto: number;
-    reattemptInitiated: number;
+type HistTier = "green" | "amber" | "orange" | "red";
+type Family = "delivered" | "pipeline" | "failed" | "rtoProgress" | "rtoComplete";
+
+type Payload = {
+  totalShipments: number;
+  citiesBreakdown: {
+    rows: { city: string; closed: number; delivered: number; rto: number; failed: number; deliveryRate: number }[];
   };
-  deliveryKpis?: {
-    deliveredPct: number;
-    onTimeSlaPct: number | null;
-    firstAttemptPct: number | null;
-    rtoPct: number;
-    ndrRecoveryPct: number | null;
+  topCitiesByVolume: {
+    total: number;
+    rows: { city: string; count: number; pct: number }[];
   };
-  speedCost?: {
-    avgTransit: number | null;
-    pickupLag: number | null;
-    costPerDelivered: number | null;
-    rtoCostMonth: number | null;
+  deliveryTimeHistogram: {
+    totalDelivered: number;
+    buckets: { label: string; count: number; pct: number; tier: HistTier }[];
+  };
+  failureReasons: {
+    total: number;
+    rows: { label: string; count: number; pct: number }[];
+  };
+  partnership: {
+    filters: { from: string | null; to: string | null; city: string | null };
+    cities: string[];
     totalShipments: number;
+    statusDistribution: { label: string; count: number; pct: number; family: Family }[];
   };
-  funnel?: { booked: number; shipped: number; delivered: number };
-  transitSpread?: Record<string, number>;
-  weeklyVolume?: { week: string; booked: number; delivered: number }[];
-  cityPerformance?: { city: string; total: number; deliveredPct: number; avgTransit: number | null }[];
-  failureReasons?: { label: string; count: number }[];
 };
 
-function fmtPct(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return `${v.toFixed(1)}%`;
-}
-function fmtDays(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return `${v.toFixed(1)}d`;
-}
-function fmtNum(v: number | null | undefined): string {
-  if (v == null) return "—";
-  return v.toLocaleString("en-IN");
+const HIST_COLOR: Record<HistTier, string> = { green: SAGE, amber: AMBER, orange: "#d48642", red: ROSE };
+const FAMILY_COLOR: Record<Family, string> = {
+  delivered: SAGE,
+  pipeline: BLUE,
+  failed: ROSE,
+  rtoProgress: AMBER,
+  rtoComplete: MUTED,
+};
+const FAMILY_LABEL: Record<Family, string> = {
+  delivered: "Delivered",
+  pipeline: "In pipeline",
+  failed: "Failed / non-delivered",
+  rtoProgress: "RTO progress",
+  rtoComplete: "RTO complete",
+};
+
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
 }
 
 export function DtdcOverallHealth() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [city, setCity] = useState("");
-  const [status, setStatus] = useState("");
-  const [data, setData] = useState<HealthPayload | null>(null);
+  const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
 
   const url = useMemo(() => {
@@ -71,17 +76,16 @@ export function DtdcOverallHealth() {
     if (from) q.set("from", from);
     if (to) q.set("to", to);
     if (city) q.set("city", city);
-    if (status) q.set("status", status);
     const qs = q.toString();
     return `/api/dtdc/overall-health${qs ? `?${qs}` : ""}`;
-  }, [from, to, city, status]);
+  }, [from, to, city]);
 
   useEffect(() => {
     let cancel = false;
     setLoading(true);
     fetch(url)
       .then((r) => r.json())
-      .then((d: HealthPayload) => {
+      .then((d: Payload) => {
         if (!cancel) setData(d);
       })
       .finally(() => {
@@ -92,17 +96,19 @@ export function DtdcOverallHealth() {
     };
   }, [url]);
 
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <Heart size={16} style={{ color: SAGE }} />
-        <h2 className="text-sm font-bold" style={{ color: INK }}>2 · Overall health</h2>
-        <span className="text-[12px] italic" style={{ color: MUTED }}>
-          filters below reshape this section only
-        </span>
+  if (loading || !data) {
+    return (
+      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
+        Loading…
       </div>
+    );
+  }
 
-      {/* Filters */}
+  return (
+    <div className="space-y-6">
+      {/* ─────── Section 1 — Partnership health ─────── */}
+      <SectionHeader title="Section 1 — Partnership health" />
+
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
         style={{ background: "white", borderColor: BORDER }}
@@ -128,123 +134,64 @@ export function DtdcOverallHealth() {
           />
         </FilterInput>
         <FilterInput label="City" icon={<MapPin size={13} style={{ color: BLUE }} />}>
-          <input
-            type="text"
-            value={city}
-            placeholder="e.g. MUMBAI"
-            onChange={(e) => setCity(e.target.value)}
-            className="rounded-lg border px-2.5 py-1 text-xs outline-none focus:ring-2 focus:ring-amber-400 w-32"
-            style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
-          />
-        </FilterInput>
-        <FilterInput label="Status" icon={<Filter size={13} style={{ color: MUTED }} />}>
           <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
             className="rounded-lg border px-2.5 py-1 text-xs outline-none focus:ring-2 focus:ring-amber-400"
-            style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+            style={{ borderColor: BORDER, color: INK, background: CREAM_BG, minWidth: 120 }}
           >
-            <option value="">All</option>
-            <option value="Delivered">Delivered</option>
-            <option value="In Transit">In Transit</option>
-            <option value="Out For Delivery">Out For Delivery</option>
-            <option value="RTO Initiated">RTO Initiated</option>
-            <option value="RTO Delivered">RTO Delivered</option>
-            <option value="Not Delivered">Not Delivered</option>
+            <option value="">All cities</option>
+            {data.partnership.cities.map((c) => (
+              <option key={c} value={c}>
+                {titleCase(c)}
+              </option>
+            ))}
           </select>
         </FilterInput>
-        {(from || to || city || status) && (
+        {(from || to || city) && (
           <button
-            onClick={() => { setFrom(""); setTo(""); setCity(""); setStatus(""); }}
-            className="text-[11px] underline ml-2"
+            onClick={() => {
+              setFrom("");
+              setTo("");
+              setCity("");
+            }}
+            className="text-[11px] underline ml-1"
             style={{ color: MUTED }}
           >
             clear all
           </button>
         )}
+        <span className="text-[10px] italic ml-auto" style={{ color: MUTED }}>
+          date applies to the whole page · city scopes Status distribution only
+        </span>
       </div>
 
-      {loading && (
-        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
-          Loading…
-        </div>
-      )}
+      <StatusDistributionCard total={data.partnership.totalShipments} rows={data.partnership.statusDistribution} />
 
-      {!loading && data?.empty && (
-        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
-          No shipments match the current filters.
-        </div>
-      )}
+      {/* ─────── Section 2 — Network performance ─────── */}
+      <SectionHeader title="Section 2 — Network performance" subtitle={`${data.totalShipments.toLocaleString("en-IN")} shipments in the selected date range, across all cities`} />
 
-      {!loading && !data?.empty && data && (
-        <>
-          {/* Status mix — top of the page, matches DTDC's customer-portal
-              "Booking vs Delivered" 6-category split exactly. */}
-          <Card title="Status mix">
-            <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              <StatusTile label="Delivered" value={data.statusMix!.delivered} color={SAGE} />
-              <StatusTile label="In transit / OFD" value={data.statusMix!.inTransit} color={BLUE} />
-              <StatusTile label="Booked / prepared" value={data.statusMix!.booked} color={AMBER} />
-              <StatusTile label="Not delivered" value={data.statusMix!.notDelivered} color={ROSE} />
-              <StatusTile label="RTO" value={data.statusMix!.rto} color={ROSE} />
-              <StatusTile label="Reattempt initiated" value={data.statusMix!.reattemptInitiated} color={AMBER} />
-            </div>
-          </Card>
+      <DeliveryTimeHistogram totalDelivered={data.deliveryTimeHistogram.totalDelivered} buckets={data.deliveryTimeHistogram.buckets} />
 
-          {/* Delivery KPIs */}
-          <SectionLabel>Delivery KPIs</SectionLabel>
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            <KpiTile label="Delivered (dispatched)" value={fmtPct(data.deliveryKpis!.deliveredPct)} color={SAGE} />
-            <KpiTile label="On-time SLA %" value={fmtPct(data.deliveryKpis!.onTimeSlaPct)} color={SAGE} />
-            <KpiTile label="1st-attempt success" value={fmtPct(data.deliveryKpis!.firstAttemptPct)} color={SAGE} />
-            <KpiTile label="RTO rate" value={fmtPct(data.deliveryKpis!.rtoPct)} color={ROSE} />
-            <KpiTile label="NDR recovery" value={fmtPct(data.deliveryKpis!.ndrRecoveryPct)} color={AMBER} />
-          </div>
+      <FailureReasonsCard total={data.failureReasons.total} rows={data.failureReasons.rows} />
 
-          {/* Speed */}
-          <SectionLabel>Speed</SectionLabel>
-          <div className="grid gap-3 grid-cols-3">
-            <KpiTile label="Avg transit" value={fmtDays(data.speedCost!.avgTransit)} color={INK} />
-            <KpiTile label="Pickup lag" value={fmtDays(data.speedCost!.pickupLag)} color={INK} />
-            <KpiTile label="Total shipments" value={fmtNum(data.speedCost!.totalShipments)} color={INK} />
-          </div>
+      <TopVolumeCard rows={data.topCitiesByVolume.rows} total={data.topCitiesByVolume.total} />
 
-          {/* Charts row */}
-          <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
-            <Card title="Weekly volume & delivered">
-              <WeeklyBars data={data.weeklyVolume!} />
-            </Card>
-            <Card title="Funnel">
-              <Funnel data={data.funnel!} />
-              <p className="mt-3 text-[10px]" style={{ color: MUTED }}>booked → shipped → delivered</p>
-            </Card>
-            <Card title="Transit-time spread">
-              <TransitSpread data={data.transitSpread!} />
-            </Card>
-          </div>
-
-          {/* Lists row */}
-          <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
-            <Card title="Performance by city">
-              <CityList rows={data.cityPerformance!} />
-            </Card>
-            <Card title="Failure reasons">
-              <ReasonList rows={data.failureReasons!} />
-            </Card>
-          </div>
-        </>
-      )}
+      <CityBreakdownTable rows={data.citiesBreakdown.rows} />
     </div>
   );
 }
 
-/* ────────── small helpers / building blocks ────────── */
+/* ───────── building blocks ───────── */
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
-      {children}
-    </p>
+    <div className="space-y-1">
+      <h2 className="text-base font-bold" style={{ color: INK }}>{title}</h2>
+      {subtitle && (
+        <p className="text-[12px] italic" style={{ color: MUTED }}>{subtitle}</p>
+      )}
+    </div>
   );
 }
 
@@ -258,149 +205,216 @@ function FilterInput({ label, icon, children }: { label: string; icon?: React.Re
   );
 }
 
-function KpiTile({ label, value, color }: { label: string; value: string; color: string }) {
+function CityBreakdownTable({ rows }: { rows: Payload["citiesBreakdown"]["rows"] }) {
   return (
-    <div className="rounded-2xl border p-3 shadow-sm" style={{ background: CREAM_BG, borderColor: BORDER }}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color }}>{value}</p>
+    <div className="rounded-2xl border p-4 shadow-sm overflow-x-auto" style={{ background: "white", borderColor: BORDER }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: MUTED }}>
+        City performance · min 5 closed · worst delivery rate first
+      </p>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left" style={{ color: INK }}>
+            <th className="py-2 px-3 font-semibold">City</th>
+            <th className="py-2 px-3 font-semibold text-right">Closed</th>
+            <th className="py-2 px-3 font-semibold text-right">Delivered</th>
+            <th className="py-2 px-3 font-semibold text-right">RTO</th>
+            <th className="py-2 px-3 font-semibold text-right">Failed</th>
+            <th className="py-2 px-3 font-semibold text-right">Delivery rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.city} className="border-t" style={{ borderColor: BORDER }}>
+              <td className="py-2.5 px-3" style={{ color: INK }}>{titleCase(r.city)}</td>
+              <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: INK }}>{r.closed}</td>
+              <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: SAGE }}>{r.delivered}</td>
+              <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: AMBER }}>{r.rto}</td>
+              <td className="py-2.5 px-3 text-right tabular-nums" style={{ color: ROSE }}>{r.failed}</td>
+              <td className="py-2.5 px-3 text-right tabular-nums font-semibold" style={{ color: INK }}>
+                {r.deliveryRate.toFixed(1)}%
+              </td>
+            </tr>
+          ))}
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-6 text-center text-[12px] italic" style={{ color: MUTED }}>
+                No cities with 5+ closed shipments yet.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function TopVolumeCard({ rows, total }: { rows: Payload["topCitiesByVolume"]["rows"]; total: number }) {
+  const max = rows[0]?.count || 1;
   return (
     <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
-      <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: MUTED }}>{title}</p>
-      {children}
-    </div>
-  );
-}
-
-function WeeklyBars({ data }: { data: { week: string; booked: number; delivered: number }[] }) {
-  const max = Math.max(1, ...data.map((d) => d.booked));
-  return (
-    <div className="flex items-end justify-between gap-2 h-32">
-      {data.map((d) => {
-        const h = Math.max(6, (d.booked / max) * 100);
-        const deliveredH = Math.max(0, (d.delivered / max) * 100);
-        const label = new Date(d.week).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-        return (
-          <div key={d.week} className="flex flex-col items-center flex-1 min-w-0">
-            <div className="relative w-full max-w-[28px]" style={{ height: 100 }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: MUTED }}>
+        Top 10 cities by shipment volume
+      </p>
+      <p className="text-[10px] mb-3" style={{ color: MUTED }}>
+        % of total {total.toLocaleString("en-IN")}
+      </p>
+      <div className="space-y-2">
+        {rows.map((r) => (
+          <div key={r.city} className="flex items-center gap-2 text-[12px]">
+            <div className="w-24 truncate text-right" style={{ color: INK }}>
+              {titleCase(r.city)}
+            </div>
+            <div className="flex-1 relative h-5 rounded" style={{ background: `${BLUE}14` }}>
               <div
-                className="absolute bottom-0 left-0 right-0 rounded-t"
-                style={{ height: `${h}%`, background: `${BLUE}55` }}
-              />
-              <div
-                className="absolute bottom-0 left-0 right-0 rounded-t"
-                style={{ height: `${deliveredH}%`, background: BLUE }}
+                className="absolute top-0 left-0 bottom-0 rounded"
+                style={{ width: `${(r.count / max) * 100}%`, background: BLUE }}
               />
             </div>
-            <span className="mt-1 text-[9px] text-center leading-tight" style={{ color: MUTED }}>{label}</span>
+            <div className="w-24 text-right tabular-nums" style={{ color: INK }}>
+              {r.count.toLocaleString("en-IN")}{" "}
+              <span style={{ color: MUTED }}>({r.pct.toFixed(1)}%)</span>
+            </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
 
-function Funnel({ data }: { data: { booked: number; shipped: number; delivered: number } }) {
-  const max = data.booked || 1;
-  const rows = [
-    { label: "booked", value: data.booked, color: `${BLUE}55` },
-    { label: "shipped", value: data.shipped, color: BLUE },
-    { label: "delivered", value: data.delivered, color: SAGE },
-  ];
+function DeliveryTimeHistogram({ totalDelivered, buckets }: { totalDelivered: number; buckets: Payload["deliveryTimeHistogram"]["buckets"] }) {
+  const max = Math.max(1, ...buckets.map((b) => b.count));
+  const BAR_AREA = 160;
   return (
-    <div className="space-y-2">
-      {rows.map((r) => (
-        <div key={r.label} className="flex items-center gap-2">
-          <div className="flex-1 h-6 rounded-md overflow-hidden" style={{ background: "#f1f1f1" }}>
-            <div className="h-full rounded-md" style={{ width: `${(r.value / max) * 100}%`, background: r.color }} />
-          </div>
-          <span className="text-xs font-bold tabular-nums w-12 text-right" style={{ color: INK }}>{r.value.toLocaleString()}</span>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-baseline justify-between mb-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+          Delivery time histogram
+        </p>
+        <p className="text-[10px]" style={{ color: MUTED }}>
+          {totalDelivered.toLocaleString("en-IN")} delivered shipments
+        </p>
+      </div>
+      <div className="flex gap-3 text-[10px] mb-4" style={{ color: MUTED }}>
+        <LegendDot color={HIST_COLOR.green} label="≤3 days (on time)" />
+        <LegendDot color={HIST_COLOR.amber} label="4–5 days" />
+        <LegendDot color={HIST_COLOR.orange} label="6–7 days" />
+        <LegendDot color={HIST_COLOR.red} label="8+ days" />
+      </div>
+      <div className="flex items-end justify-between gap-3" style={{ height: BAR_AREA + 50 }}>
+        {buckets.map((b) => {
+          const h = (b.count / max) * BAR_AREA;
+          return (
+            <div key={b.label} className="flex flex-col items-center flex-1 min-w-0">
+              <div className="text-center mb-1" style={{ color: HIST_COLOR[b.tier] }}>
+                <div className="text-base font-bold tabular-nums leading-tight">{b.count}</div>
+                <div className="text-[10px]" style={{ color: MUTED }}>{b.pct.toFixed(1)}%</div>
+              </div>
+              <div
+                className="w-full max-w-[44px] rounded-t transition-all"
+                style={{ height: Math.max(6, h), background: HIST_COLOR[b.tier] }}
+              />
+              <div className="mt-2 text-[11px]" style={{ color: MUTED }}>
+                {b.label === "8+" ? "8+ days" : `${b.label} day${b.label === "1" ? "" : "s"}`}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FailureReasonsCard({ total, rows }: { total: number; rows: Payload["failureReasons"]["rows"] }) {
+  const max = rows[0]?.count || 1;
+  return (
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+          RTO / failure reasons
+        </p>
+        <p className="text-[10px]" style={{ color: MUTED }}>
+          {total.toLocaleString("en-IN")} cases
+        </p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-[12px] italic" style={{ color: MUTED }}>No failure reasons recorded yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center gap-2 text-[12px]">
+              <div className="w-40 truncate text-right" style={{ color: INK }}>
+                {r.label}
+              </div>
+              <div className="flex-1 relative h-5 rounded" style={{ background: `${ROSE}14` }}>
+                <div
+                  className="absolute top-0 left-0 bottom-0 rounded"
+                  style={{ width: `${(r.count / max) * 100}%`, background: ROSE }}
+                />
+              </div>
+              <div className="w-24 text-right tabular-nums" style={{ color: INK }}>
+                {r.count}{" "}
+                <span style={{ color: MUTED }}>({r.pct.toFixed(1)}%)</span>
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function TransitSpread({ data }: { data: Record<string, number> }) {
-  const keys = ["1d", "2d", "3d", "4d", "5d", "6d+"];
-  const max = Math.max(1, ...keys.map((k) => data[k] ?? 0));
-  const BAR_AREA = 100; // pixel height of the bar canvas
+function StatusDistributionCard({ total, rows }: { total: number; rows: Payload["partnership"]["statusDistribution"] }) {
+  const max = rows[0]?.count || 1;
+  const families: Family[] = ["delivered", "pipeline", "failed", "rtoProgress", "rtoComplete"];
   return (
-    <div className="flex items-end justify-between gap-2">
-      {keys.map((k) => {
-        const v = data[k] ?? 0;
-        const h = v > 0 ? Math.max(6, (v / max) * BAR_AREA) : 4;
-        const isPeak = v > 0 && v === max;
-        return (
-          <div key={k} className="flex flex-col items-center flex-1 min-w-0">
-            <span className="text-[10px] font-semibold tabular-nums leading-none mb-1" style={{ color: INK }}>
-              {v}
-            </span>
-            <div
-              className="w-full max-w-[28px] rounded-t"
-              style={{ height: `${h}px`, background: isPeak ? SAGE : `${BLUE}55` }}
-              title={`${k}: ${v}`}
-            />
-            <span className="mt-1.5 text-[9px]" style={{ color: MUTED }}>{k}</span>
-          </div>
-        );
-      })}
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+          Status distribution
+        </p>
+        <p className="text-[10px]" style={{ color: MUTED }}>
+          {total.toLocaleString("en-IN")} shipments
+        </p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-[12px] italic py-4 text-center" style={{ color: MUTED }}>
+          No shipments match the current filters.
+        </p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center gap-2 text-[12px]">
+              <div className="w-40 truncate text-right" style={{ color: INK }}>
+                {r.label}
+              </div>
+              <div className="flex-1 relative h-5 rounded" style={{ background: `${FAMILY_COLOR[r.family]}14` }}>
+                <div
+                  className="absolute top-0 left-0 bottom-0 rounded"
+                  style={{ width: `${(r.count / max) * 100}%`, background: FAMILY_COLOR[r.family] }}
+                />
+              </div>
+              <div className="w-24 text-right tabular-nums" style={{ color: INK }}>
+                {r.count.toLocaleString("en-IN")}{" "}
+                <span style={{ color: MUTED }}>({r.pct.toFixed(1)}%)</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-3 pt-3 border-t text-[10px]" style={{ borderColor: BORDER, color: MUTED }}>
+        {families.map((f) => (
+          <LegendDot key={f} color={FAMILY_COLOR[f]} label={FAMILY_LABEL[f]} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function CityList({ rows }: { rows: { city: string; total: number; deliveredPct: number; avgTransit: number | null }[] }) {
-  if (rows.length === 0) return <p className="text-xs italic" style={{ color: MUTED }}>no city data</p>;
+function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <div className="space-y-1.5">
-      {rows.map((r) => {
-        const pctColor = r.deliveredPct >= 85 ? SAGE : r.deliveredPct >= 75 ? AMBER : ROSE;
-        return (
-          <div key={r.city} className="flex items-center justify-between gap-2 text-xs">
-            <span className="font-medium truncate" style={{ color: INK }}>{r.city}</span>
-            <span className="tabular-nums shrink-0" style={{ color: pctColor }}>
-              <span className="font-bold">{r.deliveredPct.toFixed(0)}%</span>
-              <span className="text-neutral-400"> · {fmtDays(r.avgTransit)}</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ReasonList({ rows }: { rows: { label: string; count: number }[] }) {
-  if (rows.length === 0) return <p className="text-xs italic" style={{ color: MUTED }}>no failures recorded</p>;
-  const max = Math.max(...rows.map((r) => r.count));
-  return (
-    <div className="space-y-1.5">
-      {rows.map((r) => {
-        // Visualize severity with simple dots; up to 4 dots based on share of max.
-        const dots = Math.max(1, Math.min(4, Math.round((r.count / max) * 4)));
-        return (
-          <div key={r.label} className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-neutral-700 truncate">{r.label}</span>
-            <span className="tabular-nums shrink-0">
-              {"●".repeat(dots).split("").map((c, i) => (
-                <span key={i} style={{ color: ROSE }}>{c}</span>
-              ))}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function StatusTile({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="rounded-xl border p-3" style={{ background: `${color}11`, borderColor: `${color}33` }}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color }}>{value.toLocaleString()}</p>
-    </div>
+    <span className="inline-flex items-center gap-1">
+      <span className="inline-block h-2 w-2 rounded-sm" style={{ background: color }} />
+      <span>{label}</span>
+    </span>
   );
 }
