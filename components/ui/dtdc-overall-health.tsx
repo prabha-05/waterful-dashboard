@@ -68,6 +68,20 @@ export function DtdcOverallHealth() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [city, setCity] = useState("");
+
+  // Default the date filter to yesterday on mount. Done in an effect rather
+  // than the initial state so SSR and client hydration agree, and we get
+  // the user's local "yesterday" (not the server's).
+  useEffect(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yesterday = `${yyyy}-${mm}-${dd}`;
+    setFrom(yesterday);
+    setTo(yesterday);
+  }, []);
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
 
