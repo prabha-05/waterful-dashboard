@@ -375,3 +375,39 @@ export function fetchAdSetById(metaAdSetId: string): Promise<MetaAdSetRaw | null
 export function fetchAdById(metaAdId: string): Promise<MetaAdRaw | null> {
   return metaGetById<MetaAdRaw>(metaAdId, AD_FIELDS);
 }
+
+// Batched thumbnail refresh. Meta's CDN URLs expire after a few hours,
+// so the URLs cached in our DB go stale. This re-fetches fresh URLs for
+// a list of ads in a single API call using the `?ids=` batch endpoint.
+//
+// Meta caps `?ids=` at 50 per request, so callers should chunk.
+export async function fetchAdThumbnailsBatch(
+  metaAdIds: string[],
+): Promise<Record<string, string | null>> {
+  if (!META_ACCESS_TOKEN) {
+    throw new Error("META_ACCESS_TOKEN must be set in .env");
+  }
+  if (metaAdIds.length === 0) return {};
+
+  const ids = metaAdIds.join(",");
+  const url = `${BASE_URL}/?ids=${encodeURIComponent(
+    ids,
+  )}&fields=creative{thumbnail_url,image_url}&access_token=${META_ACCESS_TOKEN}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${text}`);
+  }
+  const json = (await res.json()) as Record<
+    string,
+    { creative?: { thumbnail_url?: string; image_url?: string } }
+  >;
+
+  const out: Record<string, string | null> = {};
+  for (const id of metaAdIds) {
+    const c = json[id]?.creative;
+    out[id] = c?.thumbnail_url || c?.image_url || null;
+  }
+  return out;
+}

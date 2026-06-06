@@ -169,6 +169,49 @@ function thumbColor(name: string): string {
   return palette[Math.abs(hash) % palette.length];
 }
 
+// Renders an ad thumbnail with a graceful fallback. If the URL is null
+// OR the image fails to load (stale Meta CDN token), we drop back to a
+// coloured initial-letter tile instead of showing a broken-image icon.
+function AdThumbnail({
+  url,
+  name,
+  size,
+  big = false,
+}: {
+  url: string | null | undefined;
+  name: string;
+  size: number;
+  big?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = url && !failed;
+  if (showImage) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url!}
+        alt=""
+        onError={() => setFailed(true)}
+        className={`object-cover flex-shrink-0 ${big ? "rounded-2xl" : "rounded"}`}
+        style={{ width: size, height: big ? Math.round(size * 1.22) : size, background: CREAM }}
+      />
+    );
+  }
+  return (
+    <div
+      className={`flex items-center justify-center flex-shrink-0 font-bold text-white ${big ? "rounded-2xl" : "rounded"}`}
+      style={{
+        width: size,
+        height: big ? Math.round(size * 1.22) : size,
+        fontSize: big ? Math.round(size * 0.36) : Math.max(10, Math.round(size * 0.42)),
+        background: `linear-gradient(135deg, ${thumbColor(name)}, ${thumbColor(name)}cc)`,
+      }}
+    >
+      {thumbInitial(name)}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────
 // Mini Sparkline (table rows)
 // ─────────────────────────────────────────────────────────────────
@@ -503,6 +546,11 @@ export function MetaAds() {
   type SortKey = "spend" | "hookRate" | "roas" | "ctr" | "frequency";
   const [sortBy, setSortBy] = useState<SortKey>("spend");
 
+  // Fresh thumbnail URLs keyed by metaAdId. Stored Meta CDN URLs expire
+  // within hours, so we re-fetch live URLs after the ad list loads and
+  // shadow the stale `thumbnailUrl` on each ad.
+  const [freshThumbs, setFreshThumbs] = useState<Record<string, string | null>>({});
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -511,6 +559,16 @@ export function MetaAds() {
       .then((d: ApiResponse) => {
         if (cancelled) return;
         setData(d);
+        // Kick off a background refresh of thumbnail URLs.
+        const ids = Array.from(new Set(d.ads.map((a) => a.metaAdId).filter(Boolean)));
+        if (ids.length > 0) {
+          fetch(`/api/meta/ad-thumbnails?ids=${ids.join(",")}`)
+            .then((r) => (r.ok ? r.json() : {}))
+            .then((m: Record<string, string | null>) => {
+              if (!cancelled) setFreshThumbs(m);
+            })
+            .catch(() => { /* swallow — fallback letter handles it */ });
+        }
         if (d.ads && d.ads.length > 0) {
           // Deep-link: if the URL has ?metaAdId=…, jump to that ad and scroll
           // into the drill-down. Used by the Campaigns page "Ads by attributed
@@ -909,17 +967,11 @@ export function MetaAds() {
                           >
                             <td className="px-3 py-1.5 pl-16 text-[12px]" style={{ color: INK }} title={ad.name}>
                               <div className="flex items-center gap-2">
-                                {ad.thumbnailUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={ad.thumbnailUrl} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0" style={{ background: CREAM }} />
-                                ) : (
-                                  <div
-                                    className="h-6 w-6 rounded flex items-center justify-center flex-shrink-0 font-bold text-white text-[10px]"
-                                    style={{ background: `linear-gradient(135deg, ${thumbColor(ad.name)}, ${thumbColor(ad.name)}cc)` }}
-                                  >
-                                    {thumbInitial(ad.name)}
-                                  </div>
-                                )}
+                                <AdThumbnail
+                                  url={freshThumbs[ad.metaAdId] ?? ad.thumbnailUrl}
+                                  name={ad.name}
+                                  size={24}
+                                />
                                 <span className="truncate">{ad.name}</span>
                               </div>
                             </td>
@@ -1101,27 +1153,12 @@ export function MetaAds() {
           <div className="p-5 space-y-6">
             {/* Hero strip */}
             <div className="flex flex-col sm:flex-row gap-5">
-              {selected.thumbnailUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selected.thumbnailUrl}
-                  alt=""
-                  className="rounded-2xl object-cover flex-shrink-0"
-                  style={{ width: 180, height: 220, background: CREAM }}
-                />
-              ) : (
-                <div
-                  className="rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0"
-                  style={{
-                    width: 180,
-                    height: 220,
-                    fontSize: 64,
-                    background: `linear-gradient(135deg, ${thumbColor(selected.name)}, ${thumbColor(selected.name)}aa)`,
-                  }}
-                >
-                  {thumbInitial(selected.name)}
-                </div>
-              )}
+              <AdThumbnail
+                url={freshThumbs[selected.metaAdId] ?? selected.thumbnailUrl}
+                name={selected.name}
+                size={180}
+                big
+              />
 
               <div className="flex-1 min-w-0 space-y-4">
                 <div>
