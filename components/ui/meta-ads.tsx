@@ -191,6 +191,9 @@ function AdThumbnail({
       <img
         src={url!}
         alt=""
+        // Facebook's CDN rejects requests whose Referer is not facebook.com,
+        // so strip the referrer to let third-party sites embed thumbnails.
+        referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
         className={`object-cover flex-shrink-0 ${big ? "rounded-2xl" : "rounded"}`}
         style={{ width: size, height: big ? Math.round(size * 1.22) : size, background: CREAM }}
