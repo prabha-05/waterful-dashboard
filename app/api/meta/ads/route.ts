@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
           metaAdId: true,
           name: true,
           status: true,
+          effectiveStatus: true,
           creativeType: true,
           thumbnailUrl: true,
           previewLink: true,
@@ -85,6 +86,7 @@ export async function GET(req: NextRequest) {
     metaAdId: string;
     name: string;
     status: string;
+    effectiveStatus: string | null;
     adSetName: string;
     campaignName: string;
     creativeType: string | null;
@@ -107,6 +109,7 @@ export async function GET(req: NextRequest) {
         metaAdId: r.ad.metaAdId,
         name: r.ad.name,
         status: r.ad.status,
+        effectiveStatus: r.ad.effectiveStatus,
         adSetName: r.ad.adSet.name,
         campaignName: campaignNameLookup.get(r.ad.adSet.metaCampaignId) ?? "—",
         creativeType: r.ad.creativeType,
@@ -193,6 +196,7 @@ export async function GET(req: NextRequest) {
         metaAdId: a.metaAdId,
         name: a.name,
         status: a.status,
+        effectiveStatus: a.effectiveStatus,
         adSetName: a.adSetName,
         campaignName: a.campaignName,
         creativeType: a.creativeType,

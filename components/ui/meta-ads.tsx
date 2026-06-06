@@ -57,6 +57,7 @@ type Ad = {
   metaAdId: string;
   name: string;
   status: string;
+  effectiveStatus: string | null;
   adSetName: string;
   campaignName: string;
   creativeType: string | null;
@@ -167,6 +168,25 @@ function thumbColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
   return palette[Math.abs(hash) % palette.length];
+}
+
+// Derives the rich status label for an ad. Combines what the user set
+// (status: ACTIVE/PAUSED) with what Meta's actually doing
+// (effectiveStatus: ACTIVE / ADSET_PAUSED / CAMPAIGN_PAUSED /
+// WITH_ISSUES / …), so the dashboard surfaces ads that look ON but
+// are silently blocked by a paused parent or flagged by Meta.
+function deriveAdStatus(ad: Pick<Ad, "status" | "effectiveStatus" | "roas" | "spend">): {
+  label: string;
+  color: string;
+} {
+  if (ad.status !== "ACTIVE") return { label: "Paused", color: MUTED };
+  const eff = ad.effectiveStatus || "";
+  if (eff === "ADSET_PAUSED") return { label: "Ad set off", color: MUTED };
+  if (eff === "CAMPAIGN_PAUSED") return { label: "Campaign off", color: MUTED };
+  if (eff === "WITH_ISSUES") return { label: "Meta flagged", color: ROSE };
+  // Effective status is ACTIVE (or unknown — treat as running).
+  if (ad.roas < 1 && ad.spend > 1000) return { label: "Pause?", color: ROSE };
+  return { label: "Running", color: SAGE };
 }
 
 // Renders an ad thumbnail with a graceful fallback. If the URL is null
@@ -954,10 +974,7 @@ export function MetaAds() {
                           ad.avgFrequency > 3 ? { label: "Fatigued", color: ROSE }
                           : ad.avgFrequency > 2 ? { label: "Tiring", color: AMBER }
                           : { label: "Fresh", color: SAGE };
-                        const adStatus =
-                          ad.status !== "ACTIVE" ? { label: "Paused", color: MUTED }
-                          : ad.roas < 1 && ad.spend > 1000 ? { label: "Pause?", color: ROSE }
-                          : { label: "Running", color: SAGE };
+                        const adStatus = deriveAdStatus(ad);
                         rows.push(
                           <tr
                             key={`c-${ci}-as-${asi}-ad-${ai}`}
