@@ -46,12 +46,16 @@ function detailedStatus(rawStatus: string | null): DetailedStatus {
 }
 
 // Closed = parcel has reached a terminal state. Used for the city table.
+//   Delivered  = "delivered"
+//   RTO        = "rto delivered"
+//   Failed     = "not delivered"
+//   anything else (in transit, OFD, booked, RTO in progress, etc.) = pipeline
 type Terminal = "delivered" | "rto" | "failed" | null;
 function terminalState(rawStatus: string | null): Terminal {
   const s = (rawStatus || "").toLowerCase().trim();
   if (s === "delivered") return "delivered";
   if (s === "rto delivered") return "rto";
-  if (s === "not delivered" || s === "rto non-delivered" || s === "rto not delivered") return "failed";
+  if (s === "not delivered") return "failed";
   return null;
 }
 
