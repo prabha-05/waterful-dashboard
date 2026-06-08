@@ -144,6 +144,13 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    label: "Amazon",
+    icon: null,
+    children: [
+      { label: "Sales", href: "/dashboard/amazon/sales" },
+    ],
+  },
+  {
     label: "Meta",
     icon: null,
     children: [

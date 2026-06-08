@@ -294,6 +294,20 @@ model DtdcShipment {
   @@index([statusAt])
 }
 
+// One row per IST calendar day of Amazon sales. Populated from the manually
+// uploaded "Sales Dashboard" CSV (Seller Central → Business Reports). Re-
+// uploads are idempotent — the date is the primary key, so the latest values
+// overwrite. YoY columns are pulled straight from the CSV (Amazon computes
+// them server-side for whatever window the user picked at export time).
+model AmazonDailySales {
+  date          DateTime @id          // IST calendar day at 00:00 UTC
+  revenue       Float    @default(0)  // Ordered Product Sales (INR)
+  units         Int      @default(0)  // Units Ordered
+  yoyRevenue    Float?                // Same day, one year ago
+  yoyUnits      Int?
+  uploadedAt    DateTime @default(now()) @updatedAt
+}
+
 // One row per scan event (the `trackDetails[]` array DTDC returns). Used to
 // show the full remark trail when a row is clicked on the action table.
 model DtdcShipmentEvent {
