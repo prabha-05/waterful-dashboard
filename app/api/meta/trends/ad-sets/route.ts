@@ -241,13 +241,52 @@ export async function GET(req: NextRequest) {
   // Sort by current spend descending
   adSets.sort((a, b) => b.current.spend - a.current.spend);
 
-  // Alerts at the selected ad-set level — computed client-side because they
-  // depend on the selected ad set. API returns campaign+adSet structure only.
+  // ─── Budget headroom (page-wide summary, independent of the rolling
+  //                       trends window) ────────────────────────────────
+  const activeAdSetBudgetRows = await prisma.metaAdSet.findMany({
+    where: { status: "ACTIVE", effectiveStatus: "ACTIVE" },
+    select: { dailyBudget: true },
+  });
+  const activeCampaignBudgetRows = await prisma.metaCampaign.findMany({
+    where: { status: "ACTIVE" },
+    select: { dailyBudget: true },
+  });
+  let abosBudget = 0;
+  let abosWithBudget = 0;
+  for (const r of activeAdSetBudgetRows) {
+    const v = r.dailyBudget ? Number(r.dailyBudget) : 0;
+    if (v > 0) { abosBudget += v; abosWithBudget++; }
+  }
+  let cbosBudget = 0;
+  let cbosWithBudget = 0;
+  for (const r of activeCampaignBudgetRows) {
+    const v = r.dailyBudget ? Number(r.dailyBudget) : 0;
+    if (v > 0) { cbosBudget += v; cbosWithBudget++; }
+  }
+  const totalDailyBudget = abosBudget + cbosBudget;
+  const yesterday = addDays(startOfIstDay(new Date()), -1);
+  const todayMidnight = addDays(yesterday, 1);
+  const yesterdayRows = await prisma.metaAdSetDaily.findMany({
+    where: { date: { gte: yesterday, lt: todayMidnight } },
+    select: { spend: true },
+  });
+  const yesterdaySpend = yesterdayRows.reduce((a, r) => a + r.spend, 0);
 
   return NextResponse.json({
     days,
     window: { from: formatIstYmd(currentStart), to: formatIstYmd(addDays(currentEnd, -1)) },
     priorWindow: { from: formatIstYmd(priorStart), to: formatIstYmd(addDays(priorEnd, -1)) },
     adSets,
+    budgetSummary: {
+      totalDailyBudget: Math.round(totalDailyBudget),
+      cbosBudget: Math.round(cbosBudget),
+      cbosWithBudget,
+      abosBudget: Math.round(abosBudget),
+      abosWithBudget,
+      yesterdaySpend: Math.round(yesterdaySpend),
+      yesterdayDate: formatIstYmd(yesterday),
+      utilization: totalDailyBudget > 0 ? (yesterdaySpend / totalDailyBudget) * 100 : 0,
+      headroom: Math.max(0, Math.round(totalDailyBudget - yesterdaySpend)),
+    },
   });
 }

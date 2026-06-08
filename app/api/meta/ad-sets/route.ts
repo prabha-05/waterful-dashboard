@@ -166,6 +166,43 @@ export async function GET(req: NextRequest) {
   const totalAdSets = await prisma.metaAdSet.count();
   const activeAdSets = await prisma.metaAdSet.count({ where: { status: "ACTIVE" } });
 
+  // ─── Budget headroom ──────────────────────────────────────────
+  // Sum daily budgets across what's CURRENTLY active so you can see
+  // "what's the system allowed to spend today" vs "what did it spend."
+  // Ad sets in ABO mode contribute their own dailyBudget. Campaigns in
+  // CBO mode contribute a single budget that pools across their ad sets;
+  // count it once at the campaign level only when it's set.
+  const activeAdSetBudgetRows = await prisma.metaAdSet.findMany({
+    where: { status: "ACTIVE", effectiveStatus: "ACTIVE" },
+    select: { dailyBudget: true },
+  });
+  const activeCampaignBudgetRows = await prisma.metaCampaign.findMany({
+    where: { status: "ACTIVE" },
+    select: { dailyBudget: true },
+  });
+  let abosBudget = 0;
+  let abosWithBudget = 0;
+  for (const r of activeAdSetBudgetRows) {
+    const v = r.dailyBudget ? Number(r.dailyBudget) : 0;
+    if (v > 0) { abosBudget += v; abosWithBudget++; }
+  }
+  let cbosBudget = 0;
+  let cbosWithBudget = 0;
+  for (const r of activeCampaignBudgetRows) {
+    const v = r.dailyBudget ? Number(r.dailyBudget) : 0;
+    if (v > 0) { cbosBudget += v; cbosWithBudget++; }
+  }
+  const totalDailyBudget = abosBudget + cbosBudget;
+
+  // Yesterday's actual spend (most recent complete day, IST).
+  const yesterday = addDays(startOfIstDay(new Date()), -1);
+  const todayMidnight = addDays(yesterday, 1);
+  const yesterdayRows = await prisma.metaAdSetDaily.findMany({
+    where: { date: { gte: yesterday, lt: todayMidnight } },
+    select: { spend: true },
+  });
+  const yesterdaySpend = yesterdayRows.reduce((a, r) => a + r.spend, 0);
+
   return NextResponse.json({
     count,
     unit,
@@ -177,6 +214,17 @@ export async function GET(req: NextRequest) {
       roas: totals.spend > 0 ? totals.purchaseValue / totals.spend : 0,
     },
     adSets,
+    budgetSummary: {
+      totalDailyBudget: Math.round(totalDailyBudget),
+      cbosBudget: Math.round(cbosBudget),
+      cbosWithBudget,
+      abosBudget: Math.round(abosBudget),
+      abosWithBudget,
+      yesterdaySpend: Math.round(yesterdaySpend),
+      yesterdayDate: formatIstYmd(yesterday),
+      utilization: totalDailyBudget > 0 ? (yesterdaySpend / totalDailyBudget) * 100 : 0,
+      headroom: Math.max(0, Math.round(totalDailyBudget - yesterdaySpend)),
+    },
     meta: {
       lastSyncedAt: lastRow?.syncedAt ?? null,
       totalAdSets,

@@ -64,6 +64,17 @@ type ApiResp = {
   window: { from: string; to: string };
   priorWindow: { from: string; to: string };
   adSets: AdSet[];
+  budgetSummary: {
+    totalDailyBudget: number;
+    cbosBudget: number;
+    cbosWithBudget: number;
+    abosBudget: number;
+    abosWithBudget: number;
+    yesterdaySpend: number;
+    yesterdayDate: string;
+    utilization: number;
+    headroom: number;
+  };
 };
 
 type Quality = "good" | "decent" | "bad" | "neutral";
@@ -441,6 +452,64 @@ export function MetaTrendsAdSets() {
           Last {data.days} days · {data.window.from} – {data.window.to} · vs prior {data.days} days {data.priorWindow.from} – {data.priorWindow.to}
         </p>
       </div>
+
+      {/* Budget headroom — total daily cap vs yesterday's spend */}
+      {(() => {
+        const b = data.budgetSummary;
+        const util = Math.max(0, Math.min(100, b.utilization));
+        const utilColor = util >= 95 ? ROSE : util >= 60 ? AMBER : SAGE;
+        const hint =
+          util >= 95 ? "near cap — algorithm bidding aggressively"
+          : util >= 60 ? "healthy utilisation"
+          : "lots of unused headroom";
+        return (
+          <section
+            className="rounded-2xl border p-5 shadow-sm"
+            style={{ background: "white", borderColor: BORDER }}
+          >
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-sm font-bold" style={{ color: INK }}>Daily budget headroom</h2>
+              <span className="text-[11px] italic" style={{ color: MUTED }}>
+                yesterday&rsquo;s spend ({b.yesterdayDate}) vs total active daily caps
+              </span>
+            </div>
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Total daily cap</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+                  ₹{b.totalDailyBudget.toLocaleString("en-IN")}
+                </p>
+                <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+                  {b.cbosWithBudget} CBO (₹{b.cbosBudget.toLocaleString("en-IN")}) + {b.abosWithBudget} ABO (₹{b.abosBudget.toLocaleString("en-IN")})
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Yesterday&rsquo;s spend</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+                  ₹{b.yesterdaySpend.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Utilisation</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: utilColor }}>
+                  {util.toFixed(0)}%
+                </p>
+                <p className="mt-1 text-[10px] italic" style={{ color: MUTED }}>{hint}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Headroom left</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+                  ₹{b.headroom.toLocaleString("en-IN")}
+                </p>
+                <p className="mt-1 text-[10px]" style={{ color: MUTED }}>untapped daily capacity</p>
+              </div>
+            </div>
+            <div className="mt-4 h-2 w-full rounded-full overflow-hidden" style={{ background: `${MUTED}18` }}>
+              <div className="h-full transition-all" style={{ width: `${util}%`, background: utilColor }} />
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Alerts — always visible */}
       <div

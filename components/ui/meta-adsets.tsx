@@ -46,6 +46,17 @@ type Data = {
     roas: number;
   };
   adSets: AdSet[];
+  budgetSummary: {
+    totalDailyBudget: number;
+    cbosBudget: number;
+    cbosWithBudget: number;
+    abosBudget: number;
+    abosWithBudget: number;
+    yesterdaySpend: number;
+    yesterdayDate: string;
+    utilization: number;
+    headroom: number;
+  };
   meta: {
     lastSyncedAt: string | null;
     totalAdSets: number;
@@ -113,6 +124,82 @@ function KpiCard({
         </p>
       )}
     </div>
+  );
+}
+
+function BudgetHeadroom({
+  summary,
+}: {
+  summary: Data["budgetSummary"];
+}) {
+  const util = Math.max(0, Math.min(100, summary.utilization));
+  // Utilisation colour: under 60% = sage (under-spending), 60-95% = amber
+  // (healthy), 95%+ = rose (close to cap)
+  const utilColor = util >= 95 ? ROSE : util >= 60 ? AMBER : SAGE;
+  const utilHint =
+    util >= 95 ? "near cap — algorithm is bidding aggressively"
+    : util >= 60 ? "healthy utilisation"
+    : "lots of unused headroom";
+  return (
+    <section
+      className="rounded-2xl border p-5 shadow-sm"
+      style={{ background: "white", borderColor: BORDER }}
+    >
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-base font-semibold" style={{ color: INK }}>
+          Daily budget headroom
+        </h2>
+        <span className="text-[11px] italic" style={{ color: MUTED }}>
+          comparing yesterday&rsquo;s spend ({summary.yesterdayDate}) to total active daily caps
+        </span>
+      </div>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+            Total daily cap
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+            ₹{summary.totalDailyBudget.toLocaleString("en-IN")}
+          </p>
+          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>
+            {summary.cbosWithBudget} CBO campaign{summary.cbosWithBudget === 1 ? "" : "s"} (₹{summary.cbosBudget.toLocaleString("en-IN")}) + {summary.abosWithBudget} ABO ad set{summary.abosWithBudget === 1 ? "" : "s"} (₹{summary.abosBudget.toLocaleString("en-IN")})
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+            Yesterday&rsquo;s spend
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+            ₹{summary.yesterdaySpend.toLocaleString("en-IN")}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+            Utilisation
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: utilColor }}>
+            {util.toFixed(0)}%
+          </p>
+          <p className="mt-1 text-[10px] italic" style={{ color: MUTED }}>{utilHint}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+            Headroom left
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums" style={{ color: INK }}>
+            ₹{summary.headroom.toLocaleString("en-IN")}
+          </p>
+          <p className="mt-1 text-[10px]" style={{ color: MUTED }}>untapped daily capacity</p>
+        </div>
+      </div>
+      {/* Utilisation bar */}
+      <div className="mt-4 h-2 w-full rounded-full overflow-hidden" style={{ background: `${MUTED}18` }}>
+        <div
+          className="h-full transition-all"
+          style={{ width: `${util}%`, background: utilColor }}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -198,6 +285,9 @@ export function MetaAdSets() {
         <KpiCard title="Purchases" value={formatNumber(t.purchases)} icon={Users} tint={INK} hint="Meta-attributed" />
       </div>
 
+      {/* Budget headroom */}
+      <BudgetHeadroom summary={data.budgetSummary} />
+
       {/* Ad Set table */}
       <section
         className="rounded-2xl border shadow-sm overflow-hidden"
@@ -219,6 +309,7 @@ export function MetaAdSets() {
                   { label: "Ad Set", align: "left" },
                   { label: "Campaign", align: "left" },
                   { label: "Status", align: "left" },
+                  { label: "Daily budget", align: "right" },
                   { label: "Spend", align: "right" },
                   { label: "Reach", align: "right" },
                   { label: "Freq", align: "right" },
@@ -239,15 +330,31 @@ export function MetaAdSets() {
             <tbody>
               {data.adSets.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
+                  <td colSpan={12} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
                     No ad set spend in this window. Try a wider date range.
                   </td>
                 </tr>
               )}
-              {data.adSets.map((a, i) => {
-                const roasColor = a.roas >= 2 ? SAGE : a.roas >= 1 ? AMBER : ROSE;
-                const freqColor = a.avgFrequency > 3 ? ROSE : a.avgFrequency > 2 ? AMBER : INK;
-                return (
+              {(() => {
+                // Window length in days — used to compute per-ad-set budget
+                // utilisation: actual spend / (dailyBudget * daysInWindow).
+                const daysInWindow = Math.max(
+                  1,
+                  Math.round(
+                    (new Date(data.window.to).getTime() - new Date(data.window.from).getTime()) / 86_400_000,
+                  ),
+                );
+                return data.adSets.map((a, i) => {
+                  const roasColor = a.roas >= 2 ? SAGE : a.roas >= 1 ? AMBER : ROSE;
+                  const freqColor = a.avgFrequency > 3 ? ROSE : a.avgFrequency > 2 ? AMBER : INK;
+                  const budget = a.dailyBudget ? Number(a.dailyBudget) : 0;
+                  const utilPct = budget > 0 ? (a.spend / (budget * daysInWindow)) * 100 : null;
+                  const utilColor =
+                    utilPct == null ? MUTED
+                    : utilPct >= 95 ? ROSE
+                    : utilPct >= 60 ? AMBER
+                    : SAGE;
+                  return (
                   <tr key={i} className="border-t" style={{ borderColor: CREAM }}>
                     <td className="px-3 py-2.5 font-medium max-w-xs truncate" style={{ color: INK }} title={a.name}>
                       {a.name}
@@ -263,6 +370,22 @@ export function MetaAdSets() {
                         }}>
                         {a.status}
                       </span>
+                    </td>
+                    <td
+                      className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap"
+                      style={{ color: INK }}
+                      title={budget > 0 ? `${utilPct?.toFixed(0)}% of cap used over ${daysInWindow}d` : "no daily budget set"}
+                    >
+                      {budget > 0 ? (
+                        <>
+                          {formatInr(budget)}
+                          <span className="ml-2 text-[11px] font-semibold" style={{ color: utilColor }}>
+                            {utilPct!.toFixed(0)}%
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ color: MUTED }}>—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{formatInr(a.spend)}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{formatNumber(a.reach)}</td>
@@ -280,8 +403,9 @@ export function MetaAdSets() {
                       {a.spend > 0 ? `${a.roas.toFixed(2)}x` : "—"}
                     </td>
                   </tr>
-                );
-              })}
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
