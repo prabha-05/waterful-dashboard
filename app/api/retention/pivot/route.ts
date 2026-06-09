@@ -39,9 +39,20 @@ type CustomerRow = {
 // post-pivot count) so the same orders count in every dimension. Without this
 // the lifetime "first order" could be a cancelled row from years ago and the
 // Pre/Post tag would be wrong.
+//
+// Excluded:
+//   • Cancelled orders (status contains "cancel")
+//   • RTO orders (status starts with "RTO" — the customer ordered but the
+//     parcel came back, so qty=0 and total=0; counting them as 1 active
+//     order inflated retention numbers).
 const ACTIVE_ORDER_FILTER = {
   duplicate: 1,
-  NOT: { status: { contains: "cancel", mode: "insensitive" as const } },
+  NOT: {
+    OR: [
+      { status: { contains: "cancel", mode: "insensitive" as const } },
+      { status: { startsWith: "RTO", mode: "insensitive" as const } },
+    ],
+  },
 };
 
 // Normalize Indian mobile numbers so the same customer doesn't show up twice
