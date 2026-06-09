@@ -20,11 +20,19 @@ type CustomerRow = {
   // Total active orders across the customer's entire history. Surfaced so
   // it's obvious why first/last dates can fall outside the window.
   lifetimeOrders: number;
+  // Total qty of product across the customer's entire history. One order
+  // can have multiple units, so this is usually >= lifetimeOrders.
+  lifetimeUnits: number;
+  // Total INR spent across the customer's entire history (sum of order
+  // totals, including tax/shipping as Shopify reports them).
+  lifetimeRevenue: number;
   firstOrderDate: string;
   lastOrderDate: string;
   firstTag: "pre" | "post";
   lastTag: "pre" | "post";
   postPivotOrders: number;
+  postPivotUnits: number;
+  postPivotRevenue: number;
 };
 
 // Active-order filter — applied everywhere (in-window pull, lifetime min/max,
@@ -164,6 +172,7 @@ export async function GET(req: NextRequest) {
           _min: { date: true },
           _max: { date: true },
           _count: { _all: true },
+          _sum: { qty: true, total: true },
         })
       : Promise.resolve([]),
     mobiles.length
@@ -173,6 +182,7 @@ export async function GET(req: NextRequest) {
           _min: { date: true },
           _max: { date: true },
           _count: { _all: true },
+          _sum: { qty: true, total: true },
         })
       : Promise.resolve([]),
     cids.length
@@ -184,6 +194,7 @@ export async function GET(req: NextRequest) {
             ...ACTIVE_ORDER_FILTER,
           },
           _count: { _all: true },
+          _sum: { qty: true, total: true },
         })
       : Promise.resolve([]),
     mobiles.length
@@ -196,6 +207,7 @@ export async function GET(req: NextRequest) {
             ...ACTIVE_ORDER_FILTER,
           },
           _count: { _all: true },
+          _sum: { qty: true, total: true },
         })
       : Promise.resolve([]),
   ]);
@@ -203,42 +215,48 @@ export async function GET(req: NextRequest) {
   // Merge groupBy results into the normalized identity space. Multiple raw
   // mobile groups can map to the same identity (the "+91..." / "..." case),
   // so first/last/count get min/max/sum-merged.
-  const lifetime = new Map<string, { first: Date; last: Date; count: number }>();
-  const mergeLifetime = (key: string, first: Date, last: Date, count: number) => {
+  const lifetime = new Map<string, { first: Date; last: Date; count: number; units: number; revenue: number }>();
+  const mergeLifetime = (key: string, first: Date, last: Date, count: number, units: number, revenue: number) => {
     const existing = lifetime.get(key);
     if (!existing) {
-      lifetime.set(key, { first, last, count });
+      lifetime.set(key, { first, last, count, units, revenue });
       return;
     }
     if (first < existing.first) existing.first = first;
     if (last > existing.last) existing.last = last;
     existing.count += count;
+    existing.units += units;
+    existing.revenue += revenue;
   };
   for (const r of cidGroups) {
     if (r.shopifyCustomerId && r._min.date && r._max.date) {
-      mergeLifetime(`cid:${r.shopifyCustomerId}`, r._min.date, r._max.date, r._count._all);
+      mergeLifetime(`cid:${r.shopifyCustomerId}`, r._min.date, r._max.date, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
     }
   }
   for (const r of mobileGroups) {
     if (r.mobile && r._min.date && r._max.date) {
       const norm = normalizeMobile(r.mobile);
       if (!norm) continue;
-      mergeLifetime(`mob:${norm}`, r._min.date, r._max.date, r._count._all);
+      mergeLifetime(`mob:${norm}`, r._min.date, r._max.date, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
     }
   }
 
   const postCounts = new Map<string, number>();
-  const addPost = (key: string, count: number) => {
+  const postUnits = new Map<string, number>();
+  const postRevenue = new Map<string, number>();
+  const addPost = (key: string, count: number, units: number, revenue: number) => {
     postCounts.set(key, (postCounts.get(key) ?? 0) + count);
+    postUnits.set(key, (postUnits.get(key) ?? 0) + units);
+    postRevenue.set(key, (postRevenue.get(key) ?? 0) + revenue);
   };
   for (const r of cidPostCounts) {
-    if (r.shopifyCustomerId) addPost(`cid:${r.shopifyCustomerId}`, r._count._all);
+    if (r.shopifyCustomerId) addPost(`cid:${r.shopifyCustomerId}`, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
   }
   for (const r of mobilePostCounts) {
     if (r.mobile) {
       const norm = normalizeMobile(r.mobile);
       if (!norm) continue;
-      addPost(`mob:${norm}`, r._count._all);
+      addPost(`mob:${norm}`, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
     }
   }
 
@@ -272,11 +290,15 @@ export async function GET(req: NextRequest) {
         email: shop?.email ?? null,
         ordersInRange: a.ordersInRange,
         lifetimeOrders: life.count,
+        lifetimeUnits: life.units,
+        lifetimeRevenue: life.revenue,
         firstOrderDate: formatIstYmd(life.first),
         lastOrderDate: formatIstYmd(life.last),
         firstTag: life.first < pivotDate ? "pre" : "post",
         lastTag: life.last < pivotDate ? "pre" : "post",
         postPivotOrders: postCounts.get(a.identity) ?? 0,
+        postPivotUnits: postUnits.get(a.identity) ?? 0,
+        postPivotRevenue: postRevenue.get(a.identity) ?? 0,
       } satisfies CustomerRow;
     })
     .filter((c): c is CustomerRow => c !== null);

@@ -18,11 +18,15 @@ type CustomerRow = {
   email: string | null;
   ordersInRange: number;
   lifetimeOrders: number;
+  lifetimeUnits: number;
+  lifetimeRevenue: number;
   firstOrderDate: string;
   lastOrderDate: string;
   firstTag: "pre" | "post";
   lastTag: "pre" | "post";
   postPivotOrders: number;
+  postPivotUnits: number;
+  postPivotRevenue: number;
 };
 
 type Response = {
@@ -34,6 +38,13 @@ type Response = {
 
 function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function fmtInr(v: number): string {
+  const n = Math.round(v);
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${n.toLocaleString("en-IN")}`;
 }
 
 function nDaysAgo(n: number): Date {
@@ -75,13 +86,19 @@ export function RetentionPivot() {
     if (!data || data.customers.length === 0) return;
     const header = [
       "Name", "Phone", "Email",
+      "Lifetime units", "Pre-pivot units", "Post-pivot units",
+      "Lifetime revenue", "Pre-pivot revenue", "Post-pivot revenue",
       "Orders in window", "Lifetime orders",
+      "Pre-pivot orders", "Post-pivot orders",
       "First order", "First vs pivot",
       "Last order", "Last vs pivot",
     ];
     const rows = data.customers.map((c) => [
       c.name, c.phone, c.email ?? "",
+      c.lifetimeUnits, c.lifetimeUnits - c.postPivotUnits, c.postPivotUnits,
+      Math.round(c.lifetimeRevenue), Math.round(c.lifetimeRevenue - c.postPivotRevenue), Math.round(c.postPivotRevenue),
       c.ordersInRange, c.lifetimeOrders,
+      c.lifetimeOrders - c.postPivotOrders, c.postPivotOrders,
       c.firstOrderDate, c.firstTag,
       c.lastOrderDate, c.lastTag,
     ]);
@@ -178,8 +195,13 @@ export function RetentionPivot() {
                     { h: "Name", align: "left" },
                     { h: "Phone", align: "left" },
                     { h: "Email", align: "left" },
+                    { h: "Units", align: "right" },
+                    { h: "Units pre / post", align: "right" },
+                    { h: "Revenue", align: "right" },
+                    { h: "Revenue pre / post", align: "right" },
                     { h: "In window", align: "right" },
                     { h: "Lifetime", align: "right" },
+                    { h: "Pre / Post", align: "right" },
                     { h: "First order", align: "right" },
                     { h: "vs pivot", align: "left" },
                     { h: "Last order", align: "right" },
@@ -201,8 +223,25 @@ export function RetentionPivot() {
                     <td className="px-3 py-2.5 font-medium" style={{ color: INK }}>{c.name}</td>
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: INK }}>{c.phone || "—"}</td>
                     <td className="px-3 py-2.5" style={{ color: INK }}>{c.email || "—"}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{c.lifetimeUnits}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                      <span style={{ color: ROSE }}>{c.lifetimeUnits - c.postPivotUnits}</span>
+                      <span style={{ color: MUTED }}> / </span>
+                      <span style={{ color: SAGE }}>{c.postPivotUnits}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{fmtInr(c.lifetimeRevenue)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                      <span style={{ color: ROSE }}>{fmtInr(c.lifetimeRevenue - c.postPivotRevenue)}</span>
+                      <span style={{ color: MUTED }}> / </span>
+                      <span style={{ color: SAGE }}>{fmtInr(c.postPivotRevenue)}</span>
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: INK }}>{c.ordersInRange}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: MUTED }}>{c.lifetimeOrders}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                      <span style={{ color: ROSE }}>{c.lifetimeOrders - c.postPivotOrders}</span>
+                      <span style={{ color: MUTED }}> / </span>
+                      <span style={{ color: SAGE }}>{c.postPivotOrders}</span>
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{c.firstOrderDate}</td>
                     <td className="px-3 py-2.5"><PrePostBadge tag={c.firstTag} /></td>
                     <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: INK }}>{c.lastOrderDate}</td>
