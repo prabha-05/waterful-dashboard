@@ -94,18 +94,43 @@ export async function POST(req: NextRequest) {
   if (end === -1) end = lines.length;
 
   // start+1 is the column header row; data begins at start+2.
-  const rows: { date: Date; revenue: number; units: number; yoyRevenue: number | null; yoyUnits: number | null }[] = [];
+  // Amazon emits HOURLY rows when the export window is short (e.g.
+  // last 2 days). Multiple rows per calendar day must be summed
+  // before upsert; otherwise the last hour's values would clobber
+  // earlier ones (since the date column is the table's primary key).
+  type Aggregate = { date: Date; revenue: number; units: number; yoyRevenue: number; yoyUnits: number; hadYoy: boolean };
+  const byDate = new Map<string, Aggregate>();
   for (let i = start + 2; i < end; i++) {
     const cols = splitCsvRow(lines[i]);
     if (cols.length < 3) continue;
     const date = parseIstDate(cols[0]);
     if (!date) continue;
+    const key = date.toISOString().slice(0, 10);
     const revenue = parseCurrency(cols[1]);
     const units = parseNumber(cols[2]);
-    const yoyRevenue = cols[3] !== undefined ? parseCurrency(cols[3]) : null;
-    const yoyUnits = cols[4] !== undefined ? parseNumber(cols[4]) : null;
-    rows.push({ date, revenue, units, yoyRevenue, yoyUnits });
+    const yoyRevenue = cols[3] !== undefined ? parseCurrency(cols[3]) : 0;
+    const yoyUnits = cols[4] !== undefined ? parseNumber(cols[4]) : 0;
+    const hasYoyCol = cols[3] !== undefined || cols[4] !== undefined;
+    const existing = byDate.get(key);
+    if (existing) {
+      existing.revenue += revenue;
+      existing.units += units;
+      existing.yoyRevenue += yoyRevenue;
+      existing.yoyUnits += yoyUnits;
+      existing.hadYoy = existing.hadYoy || hasYoyCol;
+    } else {
+      byDate.set(key, { date, revenue, units, yoyRevenue, yoyUnits, hadYoy: hasYoyCol });
+    }
   }
+  const rows = Array.from(byDate.values())
+    .map((a) => ({
+      date: a.date,
+      revenue: a.revenue,
+      units: a.units,
+      yoyRevenue: a.hadYoy ? a.yoyRevenue : null,
+      yoyUnits: a.hadYoy ? a.yoyUnits : null,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 
   if (rows.length === 0) {
     return NextResponse.json({ error: "No daily rows parsed from the CSV." }, { status: 400 });
