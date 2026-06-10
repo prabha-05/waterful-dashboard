@@ -112,12 +112,11 @@ export async function GET(req: NextRequest) {
   });
 
   // Step 2: unique customer identities seen in the window. Identity is
-  // cid:X when Shopify gave us a customer.id; otherwise mob:<normalized 10
-  // digit phone>. Rows that have neither a cid nor a valid phone are dropped.
-  // We also track all RAW mobile strings that map to each identity — needed
-  // later for DB queries that filter by raw mobile.
+  // ALWAYS the normalized 10-digit mobile. Rows without a valid phone
+  // are skipped (can't be deduplicated). This merges multiple Shopify
+  // customer IDs that share a phone into one row — common when the same
+  // person signed up twice with different emails.
   const identityOf = (o: { shopifyCustomerId: bigint | null; mobile: string }) => {
-    if (o.shopifyCustomerId) return `cid:${o.shopifyCustomerId}`;
     const norm = normalizeMobile(o.mobile);
     return norm ? `mob:${norm}` : null;
   };
@@ -161,49 +160,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ start, end, pivot, customers: [] });
   }
 
-  // Step 3: lifetime first/last + post-pivot count per identity. Filter same
-  // way as the in-window pull (active orders only) so totals stay consistent.
-  const cids = Array.from(byIdentity.values())
-    .map((a) => a.cid)
-    .filter((c): c is bigint => c != null);
-  // For mobile-only identities, query by ALL raw forms of the phone — we may
-  // have rows with "+919999..." and "9999..." that are really the same person.
+  // Step 3: lifetime first/last + post-pivot per identity (phone-based).
+  // Query by every raw mobile form seen for any in-window customer (no
+  // cid carve-out anymore). Orders saved as "+919876543210" and
+  // "9876543210" merge into the same lifetime totals after normalization.
   const allRawMobiles = new Set<string>();
   for (const a of byIdentity.values()) {
-    if (a.cid != null) continue;
     for (const raw of a.rawMobiles) allRawMobiles.add(raw);
   }
   const mobiles = Array.from(allRawMobiles);
 
-  const [cidGroups, mobileGroups, cidPostCounts, mobilePostCounts] = await Promise.all([
-    cids.length
-      ? prisma.salesOrder.groupBy({
-          by: ["shopifyCustomerId"],
-          where: { shopifyCustomerId: { in: cids }, ...ACTIVE_ORDER_FILTER },
-          _min: { date: true },
-          _max: { date: true },
-          _count: { _all: true },
-          _sum: { qty: true, total: true },
-        })
-      : Promise.resolve([]),
+  const [mobileGroups, mobilePostCounts] = await Promise.all([
     mobiles.length
       ? prisma.salesOrder.groupBy({
           by: ["mobile"],
-          where: { mobile: { in: mobiles }, shopifyCustomerId: null, ...ACTIVE_ORDER_FILTER },
+          where: { mobile: { in: mobiles }, ...ACTIVE_ORDER_FILTER },
           _min: { date: true },
           _max: { date: true },
-          _count: { _all: true },
-          _sum: { qty: true, total: true },
-        })
-      : Promise.resolve([]),
-    cids.length
-      ? prisma.salesOrder.groupBy({
-          by: ["shopifyCustomerId"],
-          where: {
-            shopifyCustomerId: { in: cids },
-            date: { gte: pivotDate },
-            ...ACTIVE_ORDER_FILTER,
-          },
           _count: { _all: true },
           _sum: { qty: true, total: true },
         })
@@ -239,11 +212,6 @@ export async function GET(req: NextRequest) {
     existing.units += units;
     existing.revenue += revenue;
   };
-  for (const r of cidGroups) {
-    if (r.shopifyCustomerId && r._min.date && r._max.date) {
-      mergeLifetime(`cid:${r.shopifyCustomerId}`, r._min.date, r._max.date, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
-    }
-  }
   for (const r of mobileGroups) {
     if (r.mobile && r._min.date && r._max.date) {
       const norm = normalizeMobile(r.mobile);
@@ -260,9 +228,6 @@ export async function GET(req: NextRequest) {
     postUnits.set(key, (postUnits.get(key) ?? 0) + units);
     postRevenue.set(key, (postRevenue.get(key) ?? 0) + revenue);
   };
-  for (const r of cidPostCounts) {
-    if (r.shopifyCustomerId) addPost(`cid:${r.shopifyCustomerId}`, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
-  }
   for (const r of mobilePostCounts) {
     if (r.mobile) {
       const norm = normalizeMobile(r.mobile);

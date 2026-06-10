@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Calendar, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 
 const INK = "#4a3a2e";
 const MUTED = "#9a8571";
@@ -53,7 +54,13 @@ function nDaysAgo(n: number): Date {
   return d;
 }
 
-export function RetentionPivot() {
+export function RetentionPivot({
+  endpoint = "/api/retention/pivot",
+}: {
+  // Where to fetch the cohort from. Default is the TypeScript route;
+  // the Python-backed page passes "/api/retention/pivot-python".
+  endpoint?: string;
+} = {}) {
   // Sensible defaults: window = last 30 days, pivot = today.
   const [start, setStart] = useState<string>(formatDate(nDaysAgo(30)));
   const [end, setEnd] = useState<string>(formatDate(new Date()));
@@ -66,7 +73,7 @@ export function RetentionPivot() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/retention/pivot?start=${start}&end=${end}&pivot=${pivot}`);
+      const res = await fetch(`${endpoint}?start=${start}&end=${end}&pivot=${pivot}`);
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || "Failed to load");
@@ -82,8 +89,30 @@ export function RetentionPivot() {
     }
   };
 
-  const downloadCsv = () => {
+  const downloadExcel = () => {
     if (!data || data.customers.length === 0) return;
+    // Build an array-of-objects so XLSX preserves column order via header
+    // option below. Numbers stay numeric (so Excel can sum them), strings
+    // stay strings (so phones aren't munged into scientific notation).
+    const rows = data.customers.map((c) => ({
+      "Name": c.name,
+      "Phone": c.phone || "",
+      "Email": c.email ?? "",
+      "Lifetime units": c.lifetimeUnits,
+      "Pre-pivot units": c.lifetimeUnits - c.postPivotUnits,
+      "Post-pivot units": c.postPivotUnits,
+      "Lifetime revenue": Math.round(c.lifetimeRevenue),
+      "Pre-pivot revenue": Math.round(c.lifetimeRevenue - c.postPivotRevenue),
+      "Post-pivot revenue": Math.round(c.postPivotRevenue),
+      "Orders in window": c.ordersInRange,
+      "Lifetime orders": c.lifetimeOrders,
+      "Pre-pivot orders": c.lifetimeOrders - c.postPivotOrders,
+      "Post-pivot orders": c.postPivotOrders,
+      "First order": c.firstOrderDate,
+      "First vs pivot": c.firstTag,
+      "Last order": c.lastOrderDate,
+      "Last vs pivot": c.lastTag,
+    }));
     const header = [
       "Name", "Phone", "Email",
       "Lifetime units", "Pre-pivot units", "Post-pivot units",
@@ -93,27 +122,26 @@ export function RetentionPivot() {
       "First order", "First vs pivot",
       "Last order", "Last vs pivot",
     ];
-    const rows = data.customers.map((c) => [
-      c.name, c.phone, c.email ?? "",
-      c.lifetimeUnits, c.lifetimeUnits - c.postPivotUnits, c.postPivotUnits,
-      Math.round(c.lifetimeRevenue), Math.round(c.lifetimeRevenue - c.postPivotRevenue), Math.round(c.postPivotRevenue),
-      c.ordersInRange, c.lifetimeOrders,
-      c.lifetimeOrders - c.postPivotOrders, c.postPivotOrders,
-      c.firstOrderDate, c.firstTag,
-      c.lastOrderDate, c.lastTag,
-    ]);
-    const csv = [header, ...rows]
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
-      .join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `pivot-cohort-${data.start}_to_${data.end}_pivot-${data.pivot}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.json_to_sheet(rows, { header });
+    // Force Phone to be stored as text so leading-zero / long-digit phones
+    // don't get coerced into numbers by Excel.
+    const range = XLSX.utils.decode_range(ws["!ref"]!);
+    for (let r = range.s.r + 1; r <= range.e.r; r++) {
+      const addr = XLSX.utils.encode_cell({ r, c: 1 }); // col 1 = Phone
+      const cell = ws[addr];
+      if (cell) cell.t = "s";
+    }
+    // Reasonable column widths.
+    ws["!cols"] = [
+      { wch: 22 }, { wch: 14 }, { wch: 28 },
+      { wch: 13 }, { wch: 14 }, { wch: 14 },
+      { wch: 15 }, { wch: 16 }, { wch: 16 },
+      { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Pivot Cohort");
+    XLSX.writeFile(wb, `pivot-cohort-${data.start}_to_${data.end}_pivot-${data.pivot}.xlsx`);
   };
 
   return (
@@ -179,12 +207,12 @@ export function RetentionPivot() {
               </p>
             </div>
             <button
-              onClick={downloadCsv}
+              onClick={downloadExcel}
               className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white"
               style={{ background: "white", borderColor: BORDER, color: INK }}
             >
               <Download size={13} />
-              Download CSV
+              Download Excel
             </button>
           </div>
           <div className="overflow-x-auto">
