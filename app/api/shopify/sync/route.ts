@@ -255,8 +255,17 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date) {
           month: "short",
           year: "numeric",
         });
-        // Phone preferred, email fallback so phoneless orders show up
-        const mobile = order.customer?.phone || order.email || "";
+        // Phone only — try customer profile, then the shipping/billing
+        // addresses (these are usually populated even when customer.phone
+        // is null for express-checkout flows). Falling back to email would
+        // corrupt the column's meaning — downstream pivot-cohort logic
+        // normalizes this as a phone number, and emails would all be
+        // rejected and shown blank.
+        const mobile =
+          order.customer?.phone ||
+          order.shipping_address?.phone ||
+          order.billing_address?.phone ||
+          "";
         const shopifyCustomerId = order.customer?.id ? BigInt(order.customer.id) : null;
         const cName = customerName(order);
         // Mark voided / refunded as cancelled so the dashboard's "cancel" string match catches them

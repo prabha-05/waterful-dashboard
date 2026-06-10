@@ -586,9 +586,12 @@ function CampaignBlock({ campaign }: { campaign: Campaign }) {
   // Headline shows the LATEST day's spend (matches the last sparkline bar).
   const latestSpend = c.series.spend[c.series.spend.length - 1]?.value ?? 0;
   const latestLabel = c.series.spend[c.series.spend.length - 1]?.label ?? "";
-  // Fixed Rs.15K/day target for all campaigns (manual override per user).
-  // Simple binary rule: over budget = red, within budget = green.
-  const plannedDaily = 15000;
+  // Use the campaign's actual daily budget from Meta. CBO campaigns expose
+  // their dailyBudget directly; ABO campaigns have null at the campaign
+  // level, but the API sums their active ad sets' daily budgets and
+  // returns that aggregate as `dailyBudget` here. Falls back to 15K if
+  // both are absent (shouldn't happen for live campaigns).
+  const plannedDaily = c.dailyBudget && c.dailyBudget > 0 ? c.dailyBudget : 15000;
   const budgetUtil = Math.round((latestSpend / plannedDaily) * 100);
   const spendCaption = `${budgetUtil}% of Rs.${formatNum(plannedDaily)} daily budget`;
   const spendAbsoluteQuality: Quality =
