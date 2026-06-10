@@ -133,6 +133,7 @@ const navItems: NavItem[] = [
       { label: "Overview", href: "/dashboard/final/retention" },
       { label: "Analytics", href: "/dashboard/final/retention-analytics" },
       { label: "Pivot Cohort", href: "/dashboard/final/retention-pivot" },
+      { label: "Pivot Cohort · Python", href: "/dashboard/final/retention-pivot-python" },
     ],
   },
   {
