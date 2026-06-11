@@ -35,43 +35,48 @@ type CustomerRow = {
   postPivotRevenue: number;
 };
 
-// Active-order filter — applied everywhere (in-window pull, lifetime min/max,
-// post-pivot count) so the same orders count in every dimension. Without this
-// the lifetime "first order" could be a cancelled row from years ago and the
-// Pre/Post tag would be wrong.
-//
-// Excluded:
-//   • Cancelled orders (status contains "cancel")
-//   • RTO orders (status starts with "RTO" — the customer ordered but the
-//     parcel came back, so qty=0 and total=0; counting them as 1 active
-//     order inflated retention numbers).
-const ACTIVE_ORDER_FILTER = {
-  duplicate: 1,
-  NOT: {
-    OR: [
-      { status: { contains: "cancel", mode: "insensitive" as const } },
-      { status: { startsWith: "RTO", mode: "insensitive" as const } },
-    ],
-  },
-};
+// Delivered-order filter — matches clean_up_file.py's is_delivered():
+//   • ShopifyOrder.fulfillmentStatus = 'fulfilled'
+//   • ShopifyOrder.cancelledAt IS NULL
+//   • ShopifyOrder.tags do NOT contain "RTO Delivered" / "RTO Initiated"
+//     / "rtorejected" (case-insensitive)
+// We pre-fetch the list of delivered ShopifyOrder.orderNumber values
+// once per request and then filter every SalesOrder query by
+// `orderId IN (delivered list)` + `duplicate = 1`.
+async function fetchDeliveredOrderIds(): Promise<number[]> {
+  const rows = await prisma.shopifyOrder.findMany({
+    where: {
+      fulfillmentStatus: "fulfilled",
+      cancelledAt: null,
+      NOT: {
+        OR: [
+          { tags: { contains: "RTO Delivered", mode: "insensitive" as const } },
+          { tags: { contains: "RTO Initiated", mode: "insensitive" as const } },
+          { tags: { contains: "rtorejected", mode: "insensitive" as const } },
+        ],
+      },
+    },
+    select: { orderNumber: true },
+  });
+  return rows.map((r) => r.orderNumber);
+}
 
-// Normalize Indian mobile numbers so the same customer doesn't show up twice
-// just because one order saved "+919427729739" and another "9427729739".
-// Also reject values that look like emails (Shopify imports occasionally place
-// the email in the phone field). Returns "" when the value isn't a phone.
+// Normalize Indian mobile numbers — matches clean_up_file.py's rules:
+//   • Strip non-digits
+//   • Drop leading 91 (handles 12- or 13-digit "+91..." forms)
+//   • Drop leading 0
+//   • Require exactly 10 digits AND first digit in {6,7,8,9} (the
+//     real Indian mobile range — landlines / garbage have other prefixes)
+//   • Reject any value containing "@" (catches email-in-mobile rows)
 function normalizeMobile(raw: string | null | undefined): string {
   if (!raw) return "";
-  let s = String(raw).trim();
-  if (!s || s.includes("@")) return "";
-  // Strip all non-digits — drops "+", spaces, hyphens, parens.
-  s = s.replace(/\D/g, "");
-  // Indian mobiles: drop leading country code "91" (12 → 10 digits).
-  if (s.length === 12 && s.startsWith("91")) s = s.slice(2);
-  // Drop leading "0" some POS systems prefix.
+  const str = String(raw).trim();
+  if (!str || str.includes("@")) return "";
+  let s = str.replace(/\D/g, "");
+  if ((s.length === 12 || s.length === 13) && s.startsWith("91")) s = s.slice(2);
   if (s.length === 11 && s.startsWith("0")) s = s.slice(1);
-  // Anything that isn't 10 digits is suspicious — treat as not-a-phone.
-  if (s.length !== 10) return "";
-  return s;
+  if (s.length === 10 && /[6789]/.test(s[0])) return s;
+  return "";
 }
 
 export async function GET(req: NextRequest) {
@@ -95,11 +100,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "end must be on or after start" }, { status: 400 });
   }
 
-  // Step 1: pull all active orders in the window.
+  // Pre-fetch the set of delivered orderIds once. Used as a filter on
+  // every subsequent SalesOrder query so cancelled / not-fulfilled /
+  // RTO-tagged orders are excluded everywhere consistently.
+  const deliveredOrderIds = await fetchDeliveredOrderIds();
+  const deliveredFilter = {
+    duplicate: 1,
+    orderId: { in: deliveredOrderIds },
+  };
+
+  // Step 1: pull all delivered orders in the window.
   const inWindow = await prisma.salesOrder.findMany({
     where: {
       date: { gte: startDate, lt: endDate },
-      ...ACTIVE_ORDER_FILTER,
+      ...deliveredFilter,
     },
     select: {
       orderId: true,
@@ -174,7 +188,7 @@ export async function GET(req: NextRequest) {
     mobiles.length
       ? prisma.salesOrder.groupBy({
           by: ["mobile"],
-          where: { mobile: { in: mobiles }, ...ACTIVE_ORDER_FILTER },
+          where: { mobile: { in: mobiles }, ...deliveredFilter },
           _min: { date: true },
           _max: { date: true },
           _count: { _all: true },
@@ -186,9 +200,8 @@ export async function GET(req: NextRequest) {
           by: ["mobile"],
           where: {
             mobile: { in: mobiles },
-            shopifyCustomerId: null,
             date: { gte: pivotDate },
-            ...ACTIVE_ORDER_FILTER,
+            ...deliveredFilter,
           },
           _count: { _all: true },
           _sum: { qty: true, total: true },
