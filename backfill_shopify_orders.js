@@ -66,6 +66,14 @@ async function fetchPage(url) {
   throw new Error("Exceeded retry attempts");
 }
 
+async function orderExists(shopifyId) {
+  const found = await prisma.shopifyOrder.findUnique({
+    where: { shopifyId },
+    select: { id: true },
+  });
+  return !!found;
+}
+
 async function upsertOrder(order) {
   const orderData = {
     shopifyId: BigInt(order.id),
@@ -154,10 +162,18 @@ async function main() {
     const { orders, linkHeader } = await fetchPage(nextUrl);
     const fetchMs = Date.now() - t0;
 
-    // Upsert each order in series — keeps Neon connection happy
+    // Upsert each order in series — keeps Neon connection happy.
+    // Skip orders we already have (avoids slow updates over the same
+    // rows when resuming a partial backfill).
     const upsertT0 = Date.now();
+    let skipped = 0;
     for (const order of orders) {
       try {
+        if (await orderExists(BigInt(order.id))) {
+          skipped++;
+          totalProcessed++;
+          continue;
+        }
         await upsertOrder(order);
         totalProcessed++;
       } catch (err) {
@@ -168,7 +184,7 @@ async function main() {
 
     const elapsedTotal = ((Date.now() - startMs) / 1000).toFixed(0);
     console.log(
-      `[page ${pageNum}] +${orders.length} orders (fetch ${fetchMs}ms, upsert ${upsertMs}ms) ` +
+      `[page ${pageNum}] +${orders.length} orders (skipped ${skipped}, fetch ${fetchMs}ms, upsert ${upsertMs}ms) ` +
         `→ total processed ${totalProcessed} after ${elapsedTotal}s`,
     );
 

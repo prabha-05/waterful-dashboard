@@ -89,6 +89,72 @@ export async function POST(req: NextRequest) {
 
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { cellDates: true, type: "array" });
+
+  // Auto-detect file format:
+  //   • clean_up_file.py OUTPUT — has a "Raw Data" sheet with already-
+  //     deduplicated per-customer rows (Name / Phone / Lifetime units /
+  //     etc.). We just transform to JSON and return as-is.
+  //   • Raw Shopify export — every row is an order line. We apply the
+  //     full clean_up_file.py logic (normalize phones, drop non-delivered,
+  //     dedupe by phone, split pre/post pivot).
+  if (workbook.SheetNames.includes("Raw Data")) {
+    const rawDataSheet = workbook.Sheets["Raw Data"];
+    const processedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(rawDataSheet, { raw: true, defval: null });
+    const looksProcessed = processedRows.length > 0 && "Lifetime units" in processedRows[0];
+    if (looksProcessed) {
+      const customers = processedRows.map((r, i) => {
+        const lifetimeUnits = num(r["Lifetime units"]);
+        const prePivotUnits = num(r["Pre-pivot units"]);
+        const postPivotUnits = num(r["Post-pivot units"]);
+        const lifetimeRevenue = num(r["Lifetime revenue"]);
+        const postPivotRevenue = num(r["Post-pivot revenue"]);
+        const lifetimeOrders = num(r["Lifetime orders"]);
+        const postPivotOrders = num(r["Post-pivot orders"]);
+        const firstOrder = parseExcelDate(r["First order"]);
+        const lastOrder = parseExcelDate(r["Last order"]);
+        const phone = String(r["Phone"] ?? "").trim();
+        return {
+          identity: `pre:${phone}:${i}`,
+          name: String(r["Name"] ?? "").trim() || "Unknown",
+          phone,
+          email: r["Email"] ? String(r["Email"]).trim() : null,
+          ordersInRange: lifetimeOrders,
+          lifetimeOrders,
+          lifetimeUnits,
+          lifetimeRevenue,
+          firstOrderDate: firstOrder ? fmtYmd(firstOrder) : "",
+          lastOrderDate: lastOrder ? fmtYmd(lastOrder) : "",
+          firstTag: String(r["First vs pivot"] ?? "pre").toLowerCase() === "post" ? "post" : "pre",
+          lastTag: String(r["Last vs pivot"] ?? "pre").toLowerCase() === "post" ? "post" : "pre",
+          postPivotOrders,
+          postPivotUnits,
+          postPivotRevenue,
+          // Sanity checks against report inconsistencies in the upstream
+          // file. These three are derived so the dashboard shows the
+          // pre/post split consistently with the totals.
+          _derivedPreUnits: prePivotUnits,
+        };
+      });
+
+      return NextResponse.json({
+        start: startStr,
+        end: endStr,
+        pivot: pivotStr,
+        customers,
+        meta: {
+          source: "clean_up_file.py output (Raw Data sheet)",
+          rowsParsed: processedRows.length,
+          droppedNoPhone: 0,
+          droppedNotDelivered: 0,
+          droppedOutOfWindow: 0,
+          customerCount: customers.length,
+        },
+      });
+    }
+  }
+
+  // Otherwise treat as a raw Shopify orders export and run the full
+  // clean_up_file.py logic ourselves.
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) {
@@ -115,10 +181,6 @@ export async function POST(req: NextRequest) {
     inRangeNames: Set<string>;
   };
   const byPhone = new Map<string, Acc>();
-
-  // To avoid double-counting Total + ordersInRange across multiple line
-  // items of the same order, we record per-order "seen" sets per customer.
-  const seenOrderForRevenue = new Map<string, Set<string>>();
 
   let parsedRows = 0;
   let droppedNoPhone = 0;

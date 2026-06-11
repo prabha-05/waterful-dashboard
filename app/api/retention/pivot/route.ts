@@ -100,30 +100,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "end must be on or after start" }, { status: 400 });
   }
 
-  // Pre-fetch the set of delivered orderIds once. Used as a filter on
-  // every subsequent SalesOrder query so cancelled / not-fulfilled /
-  // RTO-tagged orders are excluded everywhere consistently.
-  const deliveredOrderIds = await fetchDeliveredOrderIds();
-  const deliveredFilter = {
-    duplicate: 1,
-    orderId: { in: deliveredOrderIds },
-  };
-
-  // Step 1: pull all delivered orders in the window.
-  const inWindow = await prisma.salesOrder.findMany({
-    where: {
-      date: { gte: startDate, lt: endDate },
-      ...deliveredFilter,
-    },
-    select: {
-      orderId: true,
-      date: true,
-      customerName: true,
-      mobile: true,
-      shopifyCustomerId: true,
-    },
-    orderBy: { date: "desc" }, // newest first so "latest order" wins on display
-  });
+  // Step 1: pull all delivered orders in the window via raw SQL JOIN.
+  // Using Prisma's `IN (large list)` for the delivered filter exceeds
+  // Postgres' parameter limit once ShopifyOrder grows past ~30K rows.
+  // A JOIN handles any scale.
+  const inWindow = await prisma.$queryRaw<Array<{
+    orderId: number;
+    date: Date;
+    customerName: string;
+    mobile: string;
+    shopifyCustomerId: bigint | null;
+  }>>`
+    SELECT s."orderId", s."date", s."customerName", s."mobile", s."shopifyCustomerId"
+    FROM "SalesOrder" s
+    INNER JOIN "ShopifyOrder" so ON so."orderNumber" = s."orderId"
+    WHERE s."date" >= ${startDate}
+      AND s."date" < ${endDate}
+      AND s."duplicate" = 1
+      AND so."fulfillmentStatus" = 'fulfilled'
+      AND so."cancelledAt" IS NULL
+      AND COALESCE(so.tags, '') !~* 'RTO Delivered|RTO Initiated|rtorejected'
+    ORDER BY s."date" DESC
+  `;
 
   // Step 2: unique customer identities seen in the window. Identity is
   // ALWAYS the normalized 10-digit mobile. Rows without a valid phone
@@ -184,30 +182,45 @@ export async function GET(req: NextRequest) {
   }
   const mobiles = Array.from(allRawMobiles);
 
-  const [mobileGroups, mobilePostCounts] = await Promise.all([
-    mobiles.length
-      ? prisma.salesOrder.groupBy({
-          by: ["mobile"],
-          where: { mobile: { in: mobiles }, ...deliveredFilter },
-          _min: { date: true },
-          _max: { date: true },
-          _count: { _all: true },
-          _sum: { qty: true, total: true },
-        })
-      : Promise.resolve([]),
-    mobiles.length
-      ? prisma.salesOrder.groupBy({
-          by: ["mobile"],
-          where: {
-            mobile: { in: mobiles },
-            date: { gte: pivotDate },
-            ...deliveredFilter,
-          },
-          _count: { _all: true },
-          _sum: { qty: true, total: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  // Lifetime and post-pivot aggregates — raw SQL JOIN avoids the giant
+  // IN-list problem when ShopifyOrder is large.
+  type GroupRow = { mobile: string; first: Date; last: Date; count: bigint; units: number | null; revenue: number | null };
+  type PostGroupRow = { mobile: string; count: bigint; units: number | null; revenue: number | null };
+  const [mobileGroups, mobilePostCounts] = mobiles.length
+    ? await Promise.all([
+        prisma.$queryRaw<GroupRow[]>`
+          SELECT s."mobile" AS mobile,
+                 MIN(s."date") AS first,
+                 MAX(s."date") AS last,
+                 COUNT(*) AS count,
+                 COALESCE(SUM(s."qty"), 0)   AS units,
+                 COALESCE(SUM(s."total"), 0) AS revenue
+          FROM "SalesOrder" s
+          INNER JOIN "ShopifyOrder" so ON so."orderNumber" = s."orderId"
+          WHERE s."mobile" = ANY(${mobiles})
+            AND s."duplicate" = 1
+            AND so."fulfillmentStatus" = 'fulfilled'
+            AND so."cancelledAt" IS NULL
+            AND COALESCE(so.tags, '') !~* 'RTO Delivered|RTO Initiated|rtorejected'
+          GROUP BY s."mobile"
+        `,
+        prisma.$queryRaw<PostGroupRow[]>`
+          SELECT s."mobile" AS mobile,
+                 COUNT(*) AS count,
+                 COALESCE(SUM(s."qty"), 0)   AS units,
+                 COALESCE(SUM(s."total"), 0) AS revenue
+          FROM "SalesOrder" s
+          INNER JOIN "ShopifyOrder" so ON so."orderNumber" = s."orderId"
+          WHERE s."mobile" = ANY(${mobiles})
+            AND s."date" >= ${pivotDate}
+            AND s."duplicate" = 1
+            AND so."fulfillmentStatus" = 'fulfilled'
+            AND so."cancelledAt" IS NULL
+            AND COALESCE(so.tags, '') !~* 'RTO Delivered|RTO Initiated|rtorejected'
+          GROUP BY s."mobile"
+        `,
+      ])
+    : [[] as GroupRow[], [] as PostGroupRow[]];
 
   // Merge groupBy results into the normalized identity space. Multiple raw
   // mobile groups can map to the same identity (the "+91..." / "..." case),
@@ -226,10 +239,10 @@ export async function GET(req: NextRequest) {
     existing.revenue += revenue;
   };
   for (const r of mobileGroups) {
-    if (r.mobile && r._min.date && r._max.date) {
+    if (r.mobile && r.first && r.last) {
       const norm = normalizeMobile(r.mobile);
       if (!norm) continue;
-      mergeLifetime(`mob:${norm}`, r._min.date, r._max.date, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
+      mergeLifetime(`mob:${norm}`, r.first, r.last, Number(r.count), Number(r.units ?? 0), Number(r.revenue ?? 0));
     }
   }
 
@@ -245,7 +258,7 @@ export async function GET(req: NextRequest) {
     if (r.mobile) {
       const norm = normalizeMobile(r.mobile);
       if (!norm) continue;
-      addPost(`mob:${norm}`, r._count._all, r._sum.qty ?? 0, r._sum.total ?? 0);
+      addPost(`mob:${norm}`, Number(r.count), Number(r.units ?? 0), Number(r.revenue ?? 0));
     }
   }
 
