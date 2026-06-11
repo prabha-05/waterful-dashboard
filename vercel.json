@@ -5,8 +5,8 @@
       "schedule": "0 21 * * *"
     },
     {
-      "path": "/api/shopify/mirror",
-      "schedule": "30 21 * * *"
+      "path": "/api/shopify/mirror?days=2",
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/meta/sync-ads-daily?days=7",
