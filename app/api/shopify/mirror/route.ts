@@ -15,11 +15,17 @@ export async function GET(req: NextRequest) {
   }
 
   // Optional `?days=N` limits the mirror to orders from the last N days.
-  // This keeps the cron-job.org call under their 30s request timeout — a
-  // full-history mirror processes ~14k rows and takes ~17-30s, while
-  // last-7-days runs in ~2s. No param = full mirror (slow, manual only).
+  // With our ShopifyOrder table at 38K+ rows after the historical
+  // backfill, a no-param call (full mirror) now exceeds the cron service
+  // timeout — so we default to days=7. To do a full mirror, pass
+  // `?days=all` explicitly.
   const daysParam = req.nextUrl.searchParams.get("days");
-  const daysBack = daysParam ? Math.max(1, parseInt(daysParam, 10)) : null;
+  let daysBack: number | null = 7;
+  if (daysParam === "all") {
+    daysBack = null;
+  } else if (daysParam) {
+    daysBack = Math.max(1, parseInt(daysParam, 10));
+  }
   const sinceDate = daysBack
     ? new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000)
     : null;
