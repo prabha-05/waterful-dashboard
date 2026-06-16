@@ -36,7 +36,7 @@ async function withDbRetry<T>(fn: () => Promise<T>, attempts = 6, baseDelayMs = 
   throw lastErr;
 }
 
-async function syncOrders(force: boolean = false, sinceOverride?: Date) {
+async function syncOrders(force: boolean = false, sinceOverride?: Date, lookbackHours: number = 2) {
   // Refuse to start if another sync is genuinely in progress (within last 3 min).
   // Window is short because the SyncLog status field is unreliable — Neon drops
   // long connections so the final "completed" update sometimes doesn't persist.
@@ -64,7 +64,17 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date) {
     data: { status: "failed", completedAt: new Date(), error: "Marked failed by next sync run" },
   });
 
-  // Find the last successful sync to do incremental fetch (unless forcing full)
+  // Find the last successful sync to do incremental fetch (unless forcing full).
+  //
+  // Why we cap the lookback: when a sync fails on Vercel (60s function
+  // timeout), `completedAt` never gets written, so the next attempt sees
+  // a much older "last successful sync" and tries to re-pull everything
+  // since then. That re-pull also times out, perpetuating the failure.
+  //
+  // We never look back further than `lookbackHours` even if the last
+  // successful sync was older. Each cron run pulls a small, predictable
+  // window. Caller (GET handler) chooses the value: 2h for hourly crons,
+  // 26h for the daily cron that needs to cover a full day's orders.
   const lastSync = force
     ? null
     : await prisma.syncLog.findFirst({
@@ -72,7 +82,10 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date) {
         orderBy: { completedAt: "desc" },
       });
 
-  const sinceDate = lastSync?.completedAt ?? undefined;
+  const lookbackCutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
+  const sinceDate = lastSync?.completedAt && lastSync.completedAt > lookbackCutoff
+    ? lastSync.completedAt
+    : lookbackCutoff;
 
   const log = await prisma.syncLog.create({
     data: { status: "running" },
@@ -418,8 +431,16 @@ export async function GET(request: Request) {
   // so we only pull orders created after this date, not orders edited after.
   const sinceParam = searchParams.get("since");
   const sinceOverride = sinceParam ? new Date(`${sinceParam}T00:00:00Z`) : undefined;
-  const cronSecret = process.env.CRON_SECRET;
 
+  // How far back to look for changed orders. Defaults to 2h so hourly
+  // crons stay fast and never time out. The daily 21:00 UTC Vercel cron
+  // passes ?lookbackHours=26 to cover the whole day. Max 26 hours.
+  const lookbackParam = searchParams.get("lookbackHours");
+  const lookbackHours = lookbackParam
+    ? Math.max(1, Math.min(26, parseInt(lookbackParam, 10)))
+    : 2;
+
+  const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && token !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -427,7 +448,7 @@ export async function GET(request: Request) {
   if (wait) {
     // Inline mode — block until sync finishes (manual debugging)
     try {
-      const result = await syncOrders(force, sinceOverride);
+      const result = await syncOrders(force, sinceOverride, lookbackHours);
       return NextResponse.json(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sync failed";
@@ -441,7 +462,7 @@ export async function GET(request: Request) {
   // client (cron-job.org) gets its response.
   after(async () => {
     try {
-      await syncOrders(force, sinceOverride);
+      await syncOrders(force, sinceOverride, lookbackHours);
     } catch (err) {
       console.error("[shopify/sync] Background sync failed:", err);
     }

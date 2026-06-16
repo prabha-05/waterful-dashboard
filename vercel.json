@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/shopify/sync",
+      "path": "/api/shopify/sync?lookbackHours=26",
       "schedule": "0 21 * * *"
     },
     {
