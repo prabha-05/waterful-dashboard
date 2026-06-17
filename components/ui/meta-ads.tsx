@@ -795,21 +795,25 @@ export function MetaAds() {
           </button>
         </div>
         <div className="overflow-x-auto">
+          {(() => {
+            const showVideoMetrics = formatFilter === "ALL" || formatFilter === "video";
+            const headers = [
+              { label: "Ad",         align: "left",  key: null,                videoOnly: false },
+              { label: "Spend",      align: "right", key: "spend"     as SortKey, videoOnly: false },
+              { label: "Purchases",  align: "right", key: "purchases" as SortKey, videoOnly: false },
+              { label: "ROAS",       align: "right", key: "roas"      as SortKey, videoOnly: false },
+              { label: "Hook rate",  align: "right", key: "hookRate"  as SortKey, videoOnly: true  },
+              { label: "ThruPlay",   align: "right", key: "thruplay"  as SortKey, videoOnly: true  },
+              { label: "CTR",        align: "right", key: "ctr"       as SortKey, videoOnly: false },
+              { label: "CPP",        align: "right", key: "cpp"       as SortKey, videoOnly: false },
+              { label: "Fatigue",    align: "left",  key: "fatigue"   as SortKey, videoOnly: false },
+              { label: "Status",     align: "left",  key: null,                videoOnly: false },
+            ].filter((h) => showVideoMetrics || !h.videoOnly);
+            return (
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: CREAM_BG }}>
-                {[
-                  { label: "Ad",         align: "left",  key: null              },
-                  { label: "Spend",      align: "right", key: "spend"     as SortKey },
-                  { label: "Purchases",  align: "right", key: "purchases" as SortKey },
-                  { label: "ROAS",       align: "right", key: "roas"      as SortKey },
-                  { label: "Hook rate",  align: "right", key: "hookRate"  as SortKey },
-                  { label: "ThruPlay",   align: "right", key: "thruplay"  as SortKey },
-                  { label: "CTR",        align: "right", key: "ctr"       as SortKey },
-                  { label: "CPP",        align: "right", key: "cpp"       as SortKey },
-                  { label: "Fatigue",    align: "left",  key: "fatigue"   as SortKey },
-                  { label: "Status",     align: "left",  key: null              },
-                ].map((h) => {
+                {headers.map((h) => {
                   const sortable = h.key !== null;
                   const active = sortable && sortBy === h.key;
                   const arrow = active ? (sortDir === "desc" ? " ▼" : " ▲") : "";
@@ -833,7 +837,7 @@ export function MetaAds() {
             <tbody>
               {filteredAds.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
+                  <td colSpan={headers.length} className="px-3 py-12 text-center text-sm italic" style={{ color: MUTED }}>
                     {data.ads.length === 0
                       ? "No ad spend in this window. Try a wider date range."
                       : "No ads match the current filter."}
@@ -901,24 +905,28 @@ export function MetaAds() {
                     <td className="px-3 py-2 text-right tabular-nums font-semibold" style={{ color: roasColor }}>
                       {ad.roas.toFixed(2)}x
                     </td>
-                    {/* Hook rate */}
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {hookRate > 0 ? (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold" style={{ color: hookQuality.color }}>{hookRate.toFixed(0)}%</span>
-                          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${hookQuality.color}22`, color: hookQuality.color }}>{hookQuality.label}</span>
-                        </div>
-                      ) : <span style={{ color: MUTED }}>—</span>}
-                    </td>
-                    {/* ThruPlay (= hold rate) */}
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {holdRate > 0 ? (
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="font-semibold" style={{ color: holdQuality.color }}>{holdRate.toFixed(0)}%</span>
-                          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${holdQuality.color}22`, color: holdQuality.color }}>{holdQuality.label}</span>
-                        </div>
-                      ) : <span style={{ color: MUTED }}>—</span>}
-                    </td>
+                    {showVideoMetrics && (
+                      <>
+                        {/* Hook rate */}
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {hookRate > 0 ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="font-semibold" style={{ color: hookQuality.color }}>{hookRate.toFixed(0)}%</span>
+                              <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${hookQuality.color}22`, color: hookQuality.color }}>{hookQuality.label}</span>
+                            </div>
+                          ) : <span style={{ color: MUTED }}>—</span>}
+                        </td>
+                        {/* ThruPlay = % of total viewers who watched the full video */}
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {holdRate > 0 ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="font-semibold" style={{ color: holdQuality.color }}>{holdRate.toFixed(0)}%</span>
+                              <span className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none" style={{ background: `${holdQuality.color}22`, color: holdQuality.color }}>{holdQuality.label}</span>
+                            </div>
+                          ) : <span style={{ color: MUTED }}>—</span>}
+                        </td>
+                      </>
+                    )}
                     {/* CTR */}
                     <td className="px-3 py-2 text-right tabular-nums" style={{ color: INK }}>
                       {ad.ctr.toFixed(2)}%
@@ -944,6 +952,8 @@ export function MetaAds() {
               })}
             </tbody>
           </table>
+            );
+          })()}
         </div>
       </section>
 
