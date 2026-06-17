@@ -850,8 +850,8 @@ export function MetaAds() {
                   : hookRate >= 20 ? { label: "Decent", color: AMBER }
                   : { label: "Poor", color: ROSE };
                 const holdQuality =
-                  holdRate >= 15 ? { label: "Good", color: SAGE }
-                  : holdRate >= 10 ? { label: "Decent", color: AMBER }
+                  holdRate >= 10 ? { label: "Good", color: SAGE }
+                  : holdRate >= 5 ? { label: "Decent", color: AMBER }
                   : { label: "Poor", color: ROSE };
                 const fatigue =
                   ad.avgFrequency > 3 ? { label: "Fatigued", color: ROSE }
@@ -1181,11 +1181,11 @@ export function MetaAds() {
                               />
                               <VerdictCard
                                 title="ThruPlay"
-                                subtitle="% who watched at least a quarter of the video"
+                                subtitle="% of viewers who watched the full video"
                                 value={holdRate}
                                 formatted={`${holdRate.toFixed(0)}%`}
-                                target={{ from: 40, to: 50 }}
-                                caption="Benchmark 40–50%+"
+                                target={{ from: 5, to: 10 }}
+                                caption="Benchmark 5–10%+"
                               />
                             </>
                           )}

@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
       purchaseValue: r.purchaseValue,
       frequency: r.frequency,
       hookRate: r.impressions > 0 ? (r.video3sViews / r.impressions) * 100 : 0,
-      holdRate: r.video3sViews > 0 ? (r.videoP75Views / r.video3sViews) * 100 : 0,
+      holdRate: r.impressions > 0 ? (r.video100pViews / r.impressions) * 100 : 0,
     });
     if (r.qualityRanking) agg.qualityRanking = r.qualityRanking;
     if (r.engagementRateRanking) agg.engagementRateRanking = r.engagementRateRanking;
