@@ -2,6 +2,7 @@ import { SplineScene } from "@/components/ui/splite";
 import { Card } from "@/components/ui/card";
 import { Spotlight } from "@/components/ui/spotlight";
 import { LoginForm } from "@/components/ui/login-form";
+import { WaterfulZeroLogo } from "@/components/ui/waterful-logo";
 
 export default function Home() {
   return (
@@ -13,8 +14,9 @@ export default function Home() {
         />
 
         <div className="flex h-full">
-          {/* Left — Login form */}
-          <div className="flex-1 relative z-10 flex items-center justify-center p-8">
+          {/* Left — Logo + Login form */}
+          <div className="flex-1 relative z-10 flex flex-col items-center justify-center gap-6 p-8">
+            <WaterfulZeroLogo size={140} />
             <LoginForm />
           </div>
 
