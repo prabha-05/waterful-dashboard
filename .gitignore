@@ -54,3 +54,5 @@ next-env.d.ts
 # claude code local settings + state
 .claude/
 .next-dev.log
+
+.vercel
