@@ -1,7 +1,3 @@
-"use client";
-
-import { useId } from "react";
-
 type LogoProps = {
   size?: number;
   showText?: boolean;
@@ -9,8 +5,7 @@ type LogoProps = {
 };
 
 export function WaterfulZeroLogo({ size = 80, showText = true, className }: LogoProps) {
-  const reactId = useId();
-  const id = `wz-${reactId.replace(/[^a-zA-Z0-9]/g, "")}`;
+  const id = `wz-${Math.random().toString(36).slice(2, 8)}`;
   return (
     <svg
       width={size}
