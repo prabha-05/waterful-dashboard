@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
+const INK = "#ffffff";
+const MUTED = "#9ca3af";
+const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const BORDER = "#e7d9c1";
 const BLUE = "#7c8bb2";
-const CREAM_BG = "#faf6ef";
+const CREAM_BG = "#0a0a0a";
 
 function formatInr(v: number) {
   if (v >= 100000) return `Rs.${(v / 100000).toFixed(2)}L`;
@@ -344,7 +344,7 @@ function InlineSpark({
             className="absolute right-0 px-1.5 py-[1px] text-[8px] font-bold rounded-full leading-none whitespace-nowrap shadow-sm"
             style={{
               top: -7,
-              background: "white",
+              background: "#0a0a0a",
               color: INK,
               border: `1px solid ${INK}55`,
             }}
@@ -487,7 +487,7 @@ export function MetaTrendsCampaigns() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border p-12 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
+      <div className="rounded-2xl border p-12 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
         Loading trends…
       </div>
     );
@@ -541,7 +541,7 @@ export function MetaTrendsCampaigns() {
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
           className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-400"
-          style={{ borderColor: BORDER, color: INK, background: "white" }}
+          style={{ borderColor: BORDER, color: INK, background: "#0a0a0a" }}
         >
           {campaignOptions.map((name) => (
             <option key={name} value={name}>{name}</option>
@@ -550,7 +550,7 @@ export function MetaTrendsCampaigns() {
       </div>
 
       {visibleCampaigns.length === 0 && (
-        <div className="rounded-2xl border p-12 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
+        <div className="rounded-2xl border p-12 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
           No campaign activity in this window.
         </div>
       )}
@@ -748,7 +748,7 @@ function MetricGuide() {
     { title: "Purchases", target: "No fixed benchmark", body: "Total conversions in the period. Track alongside ROAS — high volume at low ROAS means scale without profitability." },
   ];
   return (
-    <section className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+    <section className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <h3 className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: MUTED }}>Metric guide</h3>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {guides.map((g) => (

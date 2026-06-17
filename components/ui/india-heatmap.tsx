@@ -22,7 +22,7 @@ export function IndiaHeatmap({ points }: { points: HeatmapPoint[] }) {
 
   if (points.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[400px] bg-neutral-50 rounded-lg text-neutral-400 text-sm">
+      <div className="flex items-center justify-center h-[400px] bg-[#0a0a0a] rounded-lg text-neutral-400 text-sm">
         No orders mapped for this period.
       </div>
     );
@@ -164,34 +164,34 @@ export function IndiaHeatmap({ points }: { points: HeatmapPoint[] }) {
 
       {hovered && (
         <div
-          className="absolute z-20 bg-white border border-neutral-200 rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[200px]"
+          className="absolute z-20 bg-[#0a0a0a] border border-neutral-800 rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[200px]"
           style={{
             left: Math.min(mousePos.x + 12, 500),
             top: mousePos.y + 12,
           }}
         >
-          <p className="font-semibold text-neutral-900">{hovered.city}</p>
+          <p className="font-semibold text-white">{hovered.city}</p>
           <p className="text-neutral-500 mb-2">{hovered.state}</p>
           <div className="space-y-1">
             <div className="flex justify-between gap-4">
               <span className="text-neutral-500">Orders</span>
-              <span className="font-medium text-neutral-900">{hovered.orderCount}</span>
+              <span className="font-medium text-white">{hovered.orderCount}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-neutral-500">Revenue</span>
-              <span className="font-medium text-neutral-900">₹{hovered.revenue.toLocaleString()}</span>
+              <span className="font-medium text-white">₹{hovered.revenue.toLocaleString()}</span>
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-neutral-500">Top product</span>
-              <span className="font-medium text-neutral-900 text-right">{hovered.topProduct}</span>
+              <span className="font-medium text-white text-right">{hovered.topProduct}</span>
             </div>
             {hovered.topPincodes.length > 0 && (
-              <div className="pt-1 mt-1 border-t border-neutral-100">
+              <div className="pt-1 mt-1 border-t border-neutral-800">
                 <p className="text-neutral-500 mb-1">Top pincodes</p>
                 {hovered.topPincodes.map((pc) => (
                   <div key={pc.pincode} className="flex justify-between">
-                    <span className="text-neutral-600">{pc.pincode}</span>
-                    <span className="text-neutral-900 font-medium">{pc.count}</span>
+                    <span className="text-neutral-400">{pc.pincode}</span>
+                    <span className="text-white font-medium">{pc.count}</span>
                   </div>
                 ))}
               </div>

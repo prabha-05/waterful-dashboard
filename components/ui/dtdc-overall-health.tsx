@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, MapPin } from "lucide-react";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
+const INK = "#ffffff";
+const MUTED = "#9ca3af";
+const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const BLUE = "#7c8bb2";
-const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
+const BORDER = "#1a1a1a";
+const CREAM_BG = "#0a0a0a";
 
 type HistTier = "green" | "amber" | "orange" | "red";
 type Family = "delivered" | "pipeline" | "failed" | "rtoProgress" | "rtoComplete";
@@ -112,7 +112,7 @@ export function DtdcOverallHealth() {
 
   if (loading || !data) {
     return (
-      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "white", borderColor: BORDER, color: MUTED }}>
+      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
         Loading…
       </div>
     );
@@ -125,7 +125,7 @@ export function DtdcOverallHealth() {
 
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "white", borderColor: BORDER }}
+        style={{ background: "#0a0a0a", borderColor: BORDER }}
       >
         <FilterInput label="From" icon={<Calendar size={13} style={{ color: AMBER }} />}>
           <input
@@ -211,7 +211,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 
 function FilterInput({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-2 py-1" style={{ borderColor: BORDER }}>
+    <div className="inline-flex items-center gap-1.5 rounded-xl border bg-[#0a0a0a] px-2 py-1" style={{ borderColor: BORDER }}>
       {icon}
       <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</span>
       {children}
@@ -221,7 +221,7 @@ function FilterInput({ label, icon, children }: { label: string; icon?: React.Re
 
 function CityBreakdownTable({ rows }: { rows: Payload["citiesBreakdown"]["rows"] }) {
   return (
-    <div className="rounded-2xl border p-4 shadow-sm overflow-x-auto" style={{ background: "white", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm overflow-x-auto" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <p className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: MUTED }}>
         City performance · min 5 closed · worst delivery rate first
       </p>
@@ -265,7 +265,7 @@ function CityBreakdownTable({ rows }: { rows: Payload["citiesBreakdown"]["rows"]
 function TopVolumeCard({ rows, total }: { rows: Payload["topCitiesByVolume"]["rows"]; total: number }) {
   const max = rows[0]?.count || 1;
   return (
-    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <p className="text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: MUTED }}>
         Top 10 cities by shipment volume
       </p>
@@ -299,7 +299,7 @@ function DeliveryTimeHistogram({ totalDelivered, buckets }: { totalDelivered: nu
   const max = Math.max(1, ...buckets.map((b) => b.count));
   const BAR_AREA = 160;
   return (
-    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-baseline justify-between mb-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           Delivery time histogram
@@ -341,7 +341,7 @@ function DeliveryTimeHistogram({ totalDelivered, buckets }: { totalDelivered: nu
 function FailureReasonsCard({ total, rows }: { total: number; rows: Payload["failureReasons"]["rows"] }) {
   const max = rows[0]?.count || 1;
   return (
-    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-baseline justify-between mb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           RTO / failure reasons
@@ -381,7 +381,7 @@ function StatusDistributionCard({ total, rows }: { total: number; rows: Payload[
   const max = rows[0]?.count || 1;
   const families: Family[] = ["delivered", "pipeline", "failed", "rtoProgress", "rtoComplete"];
   return (
-    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-baseline justify-between mb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           Status distribution
