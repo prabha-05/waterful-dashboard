@@ -1298,23 +1298,28 @@ export function MetaAds() {
                                 {comparisonStages.map((s) => {
                                   const industryH = (s.industry / maxRate) * BAR_AREA;
                                   const oursH = (s.ours / maxRate) * BAR_AREA;
+                                  // Clicks is shown without an industry benchmark bar —
+                                  // CTR comparison adds noise; user just wants the count.
+                                  const hideIndustry = s.label === "Clicks";
                                   return (
                                     <div key={s.label} className="flex-1 flex flex-col items-center">
                                       <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA + 28 }}>
-                                        {/* Industry bar — "%  ·  count" inline above the bar */}
-                                        <div className="flex flex-col items-center" style={{ width: 56 }}>
-                                          <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: "#5b8def" }}>
-                                            {s.industry.toFixed(0)}% · {s.industryExpectedCount.toLocaleString("en-IN")}
-                                          </span>
-                                          <div
-                                            className="w-full rounded-t-md"
-                                            style={{
-                                              height: industryH,
-                                              background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
-                                            }}
-                                            title={`Industry standard: ${s.industry.toFixed(0)}% (would give ~${s.industryExpectedCount} here)`}
-                                          />
-                                        </div>
+                                        {/* Industry bar — hidden for Clicks */}
+                                        {!hideIndustry && (
+                                          <div className="flex flex-col items-center" style={{ width: 56 }}>
+                                            <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: "#5b8def" }}>
+                                              {s.industry.toFixed(0)}% · {s.industryExpectedCount.toLocaleString("en-IN")}
+                                            </span>
+                                            <div
+                                              className="w-full rounded-t-md"
+                                              style={{
+                                                height: industryH,
+                                                background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
+                                              }}
+                                              title={`Industry standard: ${s.industry.toFixed(0)}% (would give ~${s.industryExpectedCount} here)`}
+                                            />
+                                          </div>
+                                        )}
                                         {/* Our bar — "%  ·  count" inline */}
                                         <div className="flex flex-col items-center" style={{ width: 56 }}>
                                           <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: s.color }}>
