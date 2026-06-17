@@ -6,11 +6,11 @@ import { Calendar } from "lucide-react";
 import { SalesSummaryPanels } from "./sales-summary-panels";
 import type { SalesMetrics } from "@/lib/sales-aggregations";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
+const INK = "#f5f5f5";
+const MUTED = "#a3a3a3";
 const AMBER = "#c99954";
-const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
+const BORDER = "#262626";
+const CREAM_BG = "#171717";
 
 type RangeData = SalesMetrics & { from: string; to: string };
 
@@ -82,7 +82,7 @@ export function SalesSummary() {
       {/* FROM / TO range picker (cream + amber styling) */}
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "white", borderColor: BORDER }}
+        style={{ background: "#171717", borderColor: BORDER }}
       >
         <div className="flex items-center gap-2">
           <Calendar size={14} style={{ color: AMBER }} />
@@ -120,7 +120,7 @@ export function SalesSummary() {
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-8 text-center">
           <p className="text-sm text-neutral-500">No orders found in this range.</p>
         </div>
       )}

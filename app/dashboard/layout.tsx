@@ -19,7 +19,7 @@ export default async function DashboardLayout({
     <div className="flex flex-col lg:flex-row min-h-screen">
       <Sidebar username={username} />
       {/* min-w-0 prevents flex items (charts/tables) from forcing horizontal overflow */}
-      <main className="flex-1 bg-neutral-50 min-h-screen min-w-0">
+      <main className="flex-1 bg-neutral-950 min-h-screen min-w-0 text-neutral-100">
         {children}
       </main>
     </div>
