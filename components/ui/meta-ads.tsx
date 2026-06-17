@@ -1235,57 +1235,108 @@ export function MetaAds() {
                             verdict.tone === "decent" ? AMBER :
                             verdict.tone === "bad" ? ROSE : MUTED;
 
+                          // Build comparison data: industry benchmark (midpoint of good/decent
+                          // range) vs our actual % at each transition. Stage 0 (Clicks) is the
+                          // starting point — only stages 1..4 get bars.
+                          const comparisonStages = stages.slice(1).map((s, idx) => {
+                            const prev = stages[idx].count;
+                            const ours = prev > 0 ? (s.count / prev) * 100 : 0;
+                            const bm = s.benchmark;
+                            // Industry standard = midpoint between decent and good thresholds.
+                            const industry = bm ? (bm.good + bm.decent) / 2 : 0;
+                            const q = qualities[idx + 1];
+                            const ourColor =
+                              q === "good" ? SAGE :
+                              q === "decent" ? AMBER :
+                              q === "poor" ? ROSE : MUTED;
+                            return { label: s.label, count: s.count, ours, industry, color: ourColor, q };
+                          });
+                          const maxRate = Math.max(
+                            ...comparisonStages.flatMap((c) => [c.industry, c.ours]),
+                            1,
+                          );
+                          const BAR_AREA = 180; // px
+
                           return (
                             <div className="space-y-3">
-                              <div className="flex items-stretch gap-2 overflow-x-auto">
-                                {stages.map((s, i) => {
-                                  const prev = i > 0 ? stages[i - 1].count : null;
-                                  const passPct = prev != null && prev > 0
-                                    ? Math.round((s.count / prev) * 100)
-                                    : null;
-                                  const bm = s.benchmark;
-                                  const q = qualities[i];
-                                  const passColor =
-                                    q === "good" ? SAGE :
-                                    q === "decent" ? AMBER :
-                                    q === "poor" ? ROSE : MUTED;
+                              {/* Starting point — clicks */}
+                              <div className="flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
+                                <span>Starting from</span>
+                                <span className="font-bold tabular-nums" style={{ color: INK }}>
+                                  {stages[0].count.toLocaleString("en-IN")}
+                                </span>
+                                <span>clicks</span>
+                              </div>
+
+                              {/* Bar chart — 4 stage groups, 2 bars each (industry vs us) */}
+                              <div
+                                className="flex items-end gap-4 px-2 pt-2"
+                                style={{ height: BAR_AREA + 80, borderBottom: `1px solid ${BORDER}` }}
+                              >
+                                {comparisonStages.map((s) => {
+                                  const industryH = (s.industry / maxRate) * BAR_AREA;
+                                  const oursH = (s.ours / maxRate) * BAR_AREA;
                                   return (
-                                    <div key={s.label} className="flex items-stretch flex-1 min-w-0 gap-2">
-                                      {i > 0 && (
-                                        <div className="flex flex-col items-center justify-center shrink-0 min-w-[72px]">
-                                          <span
-                                            className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
-                                            style={{ background: `${passColor}22`, color: passColor }}
-                                          >
-                                            {passPct == null ? "—" : `${passPct}%`}
+                                    <div key={s.label} className="flex-1 flex flex-col items-center">
+                                      <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA + 24 }}>
+                                        {/* Industry bar */}
+                                        <div className="flex flex-col items-center" style={{ width: 36 }}>
+                                          <span className="text-[10px] font-bold tabular-nums mb-1" style={{ color: "#5b8def" }}>
+                                            {s.industry.toFixed(0)}%
                                           </span>
-                                          {bm && (
-                                            <span
-                                              className="text-[9px] leading-tight text-center mt-1"
-                                              style={{ color: MUTED }}
-                                            >
-                                              std {bm.label.replace(/^(\d+)–(\d+)%?\+? of .+/, "$1–$2%")}
-                                            </span>
-                                          )}
+                                          <div
+                                            className="w-full rounded-t-md"
+                                            style={{
+                                              height: industryH,
+                                              background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
+                                            }}
+                                            title={`Industry standard: ${s.industry.toFixed(0)}%`}
+                                          />
                                         </div>
-                                      )}
-                                      <div
-                                        className="rounded-xl border px-4 py-3 flex-1 min-w-[110px]"
-                                        style={{
-                                          borderColor: i === 0 ? BORDER : `${passColor}55`,
-                                          background: i === 0 ? CREAM_BG : `${passColor}10`,
-                                        }}
-                                      >
-                                        <p className="text-2xl font-bold tabular-nums leading-none" style={{ color: INK }}>
+                                        {/* Our bar */}
+                                        <div className="flex flex-col items-center" style={{ width: 36 }}>
+                                          <span className="text-[10px] font-bold tabular-nums mb-1" style={{ color: s.color }}>
+                                            {s.ours.toFixed(0)}%
+                                          </span>
+                                          <div
+                                            className="w-full rounded-t-md"
+                                            style={{ height: oursH, background: s.color }}
+                                            title={`Our actual: ${s.ours.toFixed(1)}%`}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 text-center">
+                                        <p className="text-xs font-semibold leading-tight" style={{ color: INK }}>{s.label}</p>
+                                        <p className="text-[10px] tabular-nums" style={{ color: MUTED }}>
                                           {s.count.toLocaleString("en-IN")}
-                                        </p>
-                                        <p className="text-[10px] mt-1" style={{ color: MUTED }}>
-                                          {s.label}
                                         </p>
                                       </div>
                                     </div>
                                   );
                                 })}
+                              </div>
+
+                              {/* Legend */}
+                              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[10px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="inline-block h-3 w-4 rounded"
+                                    style={{ background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)" }}
+                                  />
+                                  <span style={{ color: MUTED }}>Industry standard</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
+                                  <span style={{ color: MUTED }}>Us — ahead</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-block h-3 w-4 rounded" style={{ background: AMBER }} />
+                                  <span style={{ color: MUTED }}>Us — close</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-block h-3 w-4 rounded" style={{ background: ROSE }} />
+                                  <span style={{ color: MUTED }}>Us — behind</span>
+                                </div>
                               </div>
 
                               {/* Overall funnel verdict */}
