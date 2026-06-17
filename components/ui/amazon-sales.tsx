@@ -13,13 +13,13 @@ import {
 } from "recharts";
 
 const INK = "#ffffff";
-const MUTED = "#90a1b9";
+const MUTED = "#9ca3af";
 const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const BLUE = "#7c8bb2";
-const BORDER = "#314158";
-const CREAM_BG = "#1d293d";
+const BORDER = "#1a1a1a";
+const CREAM_BG = "#0a0a0a";
 
 type Daily = {
   date: string;
@@ -136,7 +136,7 @@ export function AmazonSales() {
       {/* ───── Filter bar ───── */}
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "#1d293d", borderColor: BORDER }}
+        style={{ background: "#0a0a0a", borderColor: BORDER }}
       >
         <PresetChip active={preset === "today"} onClick={() => setPreset("today")}>Today</PresetChip>
         <PresetChip active={preset === "yesterday"} onClick={() => setPreset("yesterday")}>Yesterday</PresetChip>
@@ -144,7 +144,7 @@ export function AmazonSales() {
         <PresetChip active={preset === "last30"} onClick={() => setPreset("last30")}>Last 30 days</PresetChip>
         <PresetChip active={preset === "custom"} onClick={() => setPreset("custom")}>Custom</PresetChip>
 
-        <div className="inline-flex items-center gap-1.5 rounded-xl border bg-[#1d293d] px-2 py-1" style={{ borderColor: BORDER }}>
+        <div className="inline-flex items-center gap-1.5 rounded-xl border bg-[#0a0a0a] px-2 py-1" style={{ borderColor: BORDER }}>
           <Calendar size={13} style={{ color: AMBER }} />
           <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>From</span>
           <input
@@ -156,7 +156,7 @@ export function AmazonSales() {
             style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
           />
         </div>
-        <div className="inline-flex items-center gap-1.5 rounded-xl border bg-[#1d293d] px-2 py-1" style={{ borderColor: BORDER }}>
+        <div className="inline-flex items-center gap-1.5 rounded-xl border bg-[#0a0a0a] px-2 py-1" style={{ borderColor: BORDER }}>
           <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>To</span>
           <input
             type="date"
@@ -180,17 +180,17 @@ export function AmazonSales() {
 
       {/* ───── KPI tiles ───── */}
       {loading && !data && (
-        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#1d293d", borderColor: BORDER, color: MUTED }}>
+        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
           Loading…
         </div>
       )}
       {error && (
-        <div className="rounded-2xl border p-5 text-sm" style={{ background: "#1d293d", borderColor: BORDER, color: ROSE }}>
+        <div className="rounded-2xl border p-5 text-sm" style={{ background: "#0a0a0a", borderColor: BORDER, color: ROSE }}>
           Failed to load: {error}
         </div>
       )}
       {data && !loading && data.daily.length === 0 && (
-        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#1d293d", borderColor: BORDER, color: MUTED }}>
+        <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
           No Amazon data for this range yet. Upload a Sales Dashboard CSV that covers these dates.
         </div>
       )}
@@ -268,7 +268,7 @@ function KpiTile({
 }) {
   const up = yoyPct != null && yoyPct >= 0;
   return (
-    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#1d293d", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
         <span style={{ color: AMBER }}>{icon}</span>
@@ -299,7 +299,7 @@ function DailyBars({ rows }: { rows: Daily[] }) {
   }));
 
   return (
-    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#1d293d", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-baseline justify-between mb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           Daily Amazon performance
@@ -390,7 +390,7 @@ function DailyTooltip({
   return (
     <div
       className="rounded-lg border px-3 py-2 text-[11px] shadow-sm"
-      style={{ background: "#1d293d", borderColor: BORDER }}
+      style={{ background: "#0a0a0a", borderColor: BORDER }}
     >
       <p className="font-bold mb-1" style={{ color: INK }}>{label}</p>
       <div className="space-y-0.5">
@@ -431,7 +431,7 @@ function downloadDailyCsv(rows: Daily[]) {
 
 function DailyTable({ rows }: { rows: Daily[] }) {
   return (
-    <div className="rounded-2xl border p-4 shadow-sm overflow-x-auto" style={{ background: "#1d293d", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-4 shadow-sm overflow-x-auto" style={{ background: "#0a0a0a", borderColor: BORDER }}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
           Daily breakdown
@@ -440,7 +440,7 @@ function DailyTable({ rows }: { rows: Daily[] }) {
           onClick={() => downloadDailyCsv(rows)}
           disabled={rows.length === 0}
           className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-40 hover:bg-cyan-950/30"
-          style={{ background: "#1d293d", borderColor: BORDER, color: INK }}
+          style={{ background: "#0a0a0a", borderColor: BORDER, color: INK }}
           title={`Download ${rows.length} row${rows.length === 1 ? "" : "s"} as CSV`}
         >
           <Download size={12} />
@@ -514,7 +514,7 @@ function UploadCard({ onUploaded }: { onUploaded: () => void }) {
   return (
     <div
       className="rounded-2xl border-2 border-dashed p-5 transition-colors hover:bg-cyan-950/30"
-      style={{ background: "#1d293d", borderColor: BORDER }}
+      style={{ background: "#0a0a0a", borderColor: BORDER }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >

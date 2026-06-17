@@ -43,7 +43,7 @@ export function SalesBContent({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-[#1d293d] rounded-lg p-4 border border-neutral-800"
+              className="bg-[#0a0a0a] rounded-lg p-4 border border-neutral-800"
             >
               <p className="text-sm text-neutral-500">{kpi.label}</p>
               <p className="text-2xl font-bold text-white mt-1">{kpi.value}</p>
@@ -110,7 +110,7 @@ export function SalesBContent({
             </thead>
             <tbody>
               {data.topCustomers.map((c, i) => (
-                <tr key={i} className="border-b border-neutral-800 hover:bg-[#1d293d]">
+                <tr key={i} className="border-b border-neutral-800 hover:bg-[#0a0a0a]">
                   <td className="py-3 px-4 text-white">{c.name}</td>
                   <td className="py-3 px-4 text-right text-neutral-400">{c.orders}</td>
                   <td className="py-3 px-4 text-right text-white font-medium">

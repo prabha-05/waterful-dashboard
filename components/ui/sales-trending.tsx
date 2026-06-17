@@ -143,7 +143,7 @@ function MetricCard({
 }) {
   const tone = TONE_MAP[cfg.tone];
   return (
-    <div className="group relative h-full overflow-hidden rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+    <div className="group relative h-full overflow-hidden rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
       <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neutral-50 to-transparent opacity-40 blur-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
@@ -200,7 +200,7 @@ function TrendChart({
   const overallRepeatPct = totals.total > 0 ? Math.round((totals.repeat / totals.total) * 1000) / 10 : 0;
 
   return (
-    <div className="h-full min-h-[260px] rounded-2xl border border-neutral-800 bg-[#1d293d] p-4 shadow-sm">
+    <div className="h-full min-h-[260px] rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-4 shadow-sm">
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
@@ -234,7 +234,7 @@ function TrendChart({
       </div>
 
       {/* % distribution strip */}
-      <div className="mt-3 flex items-center gap-4 rounded-xl border border-neutral-800 bg-[#1d293d]/60 px-3 py-2.5">
+      <div className="mt-3 flex items-center gap-4 rounded-xl border border-neutral-800 bg-[#0a0a0a]/60 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Mix</span>
           <div className="flex h-2 w-28 overflow-hidden rounded-full bg-neutral-200">
@@ -344,7 +344,7 @@ export function SalesTrending() {
         <div className="relative">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border border-neutral-800 bg-[#1d293d] px-4 py-2.5 text-sm font-medium text-neutral-300 shadow-sm transition-colors hover:bg-[#1d293d]"
+            className="flex items-center gap-2.5 rounded-xl border border-neutral-800 bg-[#0a0a0a] px-4 py-2.5 text-sm font-medium text-neutral-300 shadow-sm transition-colors hover:bg-[#0a0a0a]"
           >
             <Calendar size={16} className="text-rose-500" />
             {range?.from && range?.to
@@ -353,7 +353,7 @@ export function SalesTrending() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border border-neutral-800 bg-[#1d293d] p-3 shadow-xl">
+            <div className="absolute z-50 mt-2 rounded-xl border border-neutral-800 bg-[#0a0a0a] p-3 shadow-xl">
               <DayPicker
                 mode="range"
                 selected={range}
@@ -366,7 +366,7 @@ export function SalesTrending() {
               <div className="flex justify-end gap-2 px-3 pb-2">
                 <button
                   onClick={() => setShowPicker(false)}
-                  className="rounded px-3 py-1.5 text-sm text-neutral-400 hover:bg-[#1d293d]"
+                  className="rounded px-3 py-1.5 text-sm text-neutral-400 hover:bg-[#0a0a0a]"
                 >
                   Cancel
                 </button>
@@ -387,7 +387,7 @@ export function SalesTrending() {
             <button
               key={p.label}
               onClick={() => applyPreset(p.days)}
-              className="rounded-lg border border-neutral-800 bg-[#1d293d] px-3 py-2 text-sm text-neutral-400 transition-colors hover:border-rose-200 hover:bg-rose-950/30/40 hover:text-rose-700"
+              className="rounded-lg border border-neutral-800 bg-[#0a0a0a] px-3 py-2 text-sm text-neutral-400 transition-colors hover:border-rose-200 hover:bg-rose-950/30/40 hover:text-rose-700"
             >
               {p.label}
             </button>
@@ -397,7 +397,7 @@ export function SalesTrending() {
 
       {/* Global legend — one place to learn the code */}
       {data && data.dailyBreakdown?.length > 0 && (
-        <div className="flex flex-wrap items-center gap-5 rounded-xl border border-neutral-800 bg-[#1d293d] px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-5 rounded-xl border border-neutral-800 bg-[#0a0a0a] px-4 py-3 shadow-sm">
           <span className="text-xs uppercase tracking-wider text-neutral-500">Line guide</span>
           <LegendDot color={LINE_COLORS.total} label="Total" />
           <LegendDot color={LINE_COLORS.new} label="New users" />
@@ -417,14 +417,14 @@ export function SalesTrending() {
 
       {/* Empty */}
       {!loading && !data && (
-        <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-12 text-center">
+        <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-12 text-center">
           <p className="text-sm text-neutral-400">Pick a date range or preset to see the trend.</p>
         </div>
       )}
 
       {/* No data */}
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-8 text-center">
+        <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-8 text-center">
           <p className="text-sm text-neutral-500">No orders found in this period.</p>
         </div>
       )}
@@ -703,7 +703,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-neutral-800 bg-[#1d293d] text-neutral-400 hover:border-indigo-200 hover:bg-indigo-50/40"
+                  : "border-neutral-800 bg-[#0a0a0a] text-neutral-400 hover:border-indigo-200 hover:bg-indigo-50/40"
               }`}
               title={p.product}
             >
@@ -715,7 +715,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
 
       {/* Detail view: stat card + line chart */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
-        <div className="rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
             Selected product
           </p>
@@ -736,7 +736,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-neutral-800 bg-[#1d293d] p-4 shadow-sm">
+        <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-4 shadow-sm">
           <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={detailSeries} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
@@ -766,7 +766,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
             </ResponsiveContainer>
           </div>
           {/* Volume sparkline strip */}
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-800 bg-[#1d293d]/60 px-3 py-2.5">
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-800 bg-[#0a0a0a]/60 px-3 py-2.5">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
               Volume (qty) over time
             </span>
@@ -805,7 +805,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
         return (
           <div key={p.product} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
             <MetricCard cfg={cfg} split={split} />
-            <div className="h-full min-h-[260px] rounded-2xl border border-neutral-800 bg-[#1d293d] p-4 shadow-sm">
+            <div className="h-full min-h-[260px] rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-4 shadow-sm">
               <StackedAreaChart data={compData} />
             </div>
           </div>
@@ -834,7 +834,7 @@ export function PaymentTrend({ metrics }: { metrics: PeriodData }) {
       <p className="text-xs italic text-neutral-400">
         Top 5 payment methods by revenue. Each line = daily revenue through that method.
       </p>
-      <div className="rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+      <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
         <MultiSeriesChart data={chartData} keys={topMethods} isCurrency={true} />
         <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
           {topMethods.map((m, i) => (
@@ -862,7 +862,7 @@ export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
     return (
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-white">Discount Codes</h2>
-        <div className="rounded-2xl border border-dashed border-neutral-800 bg-[#1d293d]/60 p-6 text-center text-sm text-neutral-500">
+        <div className="rounded-2xl border border-dashed border-neutral-800 bg-[#0a0a0a]/60 p-6 text-center text-sm text-neutral-500">
           No discount codes used in this period.
         </div>
       </section>
@@ -875,7 +875,7 @@ export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
       <p className="text-xs italic text-neutral-400">
         Top codes by revenue. Bar split shows first-time vs repeat customer share.
       </p>
-      <div className="rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+      <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
         <div className="space-y-3">
           {codes.map((c, i) => {
             const ftPct = c.total > 0 ? (c.firstTime / c.total) * 100 : 0;

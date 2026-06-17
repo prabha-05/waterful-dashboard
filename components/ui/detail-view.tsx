@@ -147,7 +147,7 @@ function CustomersDetail({ customers }: { customers: CustomerDetail[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, phone, city, pincode…"
-          className="w-full max-w-sm rounded-lg border border-neutral-800 bg-[#1d293d] px-3 py-2 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          className="w-full max-w-sm rounded-lg border border-neutral-800 bg-[#0a0a0a] px-3 py-2 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
         />
       </div>
 
@@ -180,7 +180,7 @@ function CustomerCard({ customer }: { customer: CustomerDetail }) {
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-neutral-800 bg-[#1d293d] p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-xl border border-neutral-800 bg-[#0a0a0a] p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-fuchsia-100 opacity-50 blur-xl transition-opacity group-hover:opacity-80" />
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
@@ -204,7 +204,7 @@ function CustomerCard({ customer }: { customer: CustomerDetail }) {
           <span className="flex-1">{customer.phone || "—"}</span>
           <button
             onClick={copy}
-            className="rounded p-1 text-violet-500 hover:bg-[#1d293d] hover:text-violet-900"
+            className="rounded p-1 text-violet-500 hover:bg-[#0a0a0a] hover:text-violet-900"
             title="Copy"
           >
             <Copy size={12} />
@@ -323,11 +323,11 @@ function OrdersDetail({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, phone, city, product, order #…"
-          className={`w-full max-w-sm rounded-lg border border-neutral-800 bg-[#1d293d] px-3 py-2 text-sm outline-none focus:ring-2 ${toneClass.focus}`}
+          className={`w-full max-w-sm rounded-lg border border-neutral-800 bg-[#0a0a0a] px-3 py-2 text-sm outline-none focus:ring-2 ${toneClass.focus}`}
         />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-800 bg-[#1d293d]">
+      <div className="overflow-hidden rounded-xl border border-neutral-800 bg-[#0a0a0a]">
         <div className="max-h-[640px] overflow-auto">
           <table className="w-full text-sm">
             <thead className={`sticky top-0 ${toneClass.head} backdrop-blur-sm`}>
@@ -378,7 +378,7 @@ function OrdersDetail({
           </table>
         </div>
         {filtered.length > 500 && (
-          <p className="border-t border-neutral-800 bg-[#1d293d] py-2 text-center text-xs text-neutral-500">
+          <p className="border-t border-neutral-800 bg-[#0a0a0a] py-2 text-center text-xs text-neutral-500">
             Showing first 500 of {filtered.length}. Narrow your search to see more.
           </p>
         )}
@@ -409,7 +409,7 @@ function SummaryStat({
     rose: "from-rose-600 to-pink-600",
   }[tone];
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+    <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
       <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
       <p className={`mt-1 bg-gradient-to-r ${accent} bg-clip-text text-2xl font-bold text-transparent tabular-nums`}>
         {value}
@@ -428,7 +428,7 @@ function Panel({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
+    <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
         {icon && <span className="text-neutral-500">{icon}</span>}
         {title}

@@ -80,14 +80,14 @@ function SyncStatusPanel({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <div className="border-t border-slate-800 px-3 py-3 space-y-2">
+    <div className="border-t border-neutral-800 px-3 py-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
           Last sync
         </span>
         <button
           onClick={fetchStatus}
-          className="p-1 rounded hover:bg-slate-900 text-slate-400"
+          className="p-1 rounded hover:bg-neutral-900 text-neutral-400"
           aria-label="Refresh sync status"
           title="Refresh"
         >
@@ -96,14 +96,14 @@ function SyncStatusPanel({ collapsed }: { collapsed: boolean }) {
       </div>
       <div className="space-y-1.5 text-xs">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-slate-400">Shopify</span>
-          <span className="tabular-nums text-slate-500 truncate" title={status?.shopify?.lastSyncAt ?? "never"}>
+          <span className="text-neutral-400">Shopify</span>
+          <span className="tabular-nums text-neutral-500 truncate" title={status?.shopify?.lastSyncAt ?? "never"}>
             {timeAgo(status?.shopify?.lastSyncAt)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-slate-400">Meta</span>
-          <span className="tabular-nums text-slate-500 truncate" title={status?.meta?.lastSyncAt ?? "never"}>
+          <span className="text-neutral-400">Meta</span>
+          <span className="tabular-nums text-neutral-500 truncate" title={status?.meta?.lastSyncAt ?? "never"}>
             {timeAgo(status?.meta?.lastSyncAt)}
           </span>
         </div>
@@ -215,10 +215,10 @@ export function Sidebar({ username }: { username: string }) {
     <>
       {/* Mobile-only top bar with hamburger button.
           Hidden on lg+ (desktop) where the sidebar is always visible. */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-black border-b border-slate-800 px-4 py-3">
+      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between bg-black border-b border-neutral-800 px-4 py-3">
         <button
           onClick={() => setMobileOpen(true)}
-          className="p-2 -ml-2 rounded-lg text-slate-300 hover:bg-slate-900"
+          className="p-2 -ml-2 rounded-lg text-neutral-300 hover:bg-neutral-900"
           aria-label="Open menu"
         >
           <Menu size={20} />
@@ -243,9 +243,8 @@ export function Sidebar({ username }: { username: string }) {
           - On mobile: fixed slide-out drawer, w-[280px], transform translates it offscreen when closed
           - On lg+: sticky, behaves like before (collapsed icon mode optional) */}
       <aside
-        style={{ background: "#0a0e1a" }}
         className={`
-          flex flex-col border-r border-slate-800
+          flex flex-col bg-black border-r border-neutral-800
           fixed lg:sticky inset-y-0 left-0 z-50 lg:z-auto
           h-screen lg:top-0
           w-[280px] ${desktopWidthClass}
@@ -254,7 +253,7 @@ export function Sidebar({ username }: { username: string }) {
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800">
           {collapsed ? (
             <div className="hidden lg:flex w-full justify-center">
               <WaterfulZeroMark size={32} />
@@ -271,7 +270,7 @@ export function Sidebar({ username }: { username: string }) {
           {/* Close button (mobile only) */}
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1 rounded hover:bg-slate-900 text-slate-500"
+            className="lg:hidden p-1 rounded hover:bg-neutral-900 text-neutral-500"
             aria-label="Close menu"
           >
             <X size={20} />
@@ -279,7 +278,7 @@ export function Sidebar({ username }: { username: string }) {
           {/* Collapse button (desktop only) */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:block p-1 rounded hover:bg-slate-900 text-slate-400"
+            className="hidden lg:block p-1 rounded hover:bg-neutral-900 text-neutral-400"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -288,7 +287,7 @@ export function Sidebar({ username }: { username: string }) {
 
         {/* Search — hidden when desktop-collapsed */}
         <div className={`px-3 py-3 ${collapsed ? "lg:hidden" : ""}`}>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400">
             <Search size={16} />
             <span className="text-sm">Search...</span>
           </div>
@@ -306,7 +305,7 @@ export function Sidebar({ username }: { username: string }) {
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isChildActive
                         ? "bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/30"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                        : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
                     } ${collapsed ? "lg:justify-center" : ""}`}
                   >
                     {item.icon ? (
@@ -337,8 +336,8 @@ export function Sidebar({ username }: { username: string }) {
                                 onClick={() => toggleMenu(subKey)}
                                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                   isSubActive
-                                    ? "bg-slate-900 text-white"
-                                    : "text-slate-500 hover:bg-[#1d293d] hover:text-slate-300"
+                                    ? "bg-neutral-900 text-white"
+                                    : "text-neutral-500 hover:bg-[#0a0a0a] hover:text-neutral-300"
                                 }`}
                               >
                                 <span className="flex-1 text-left">{child.label}</span>
@@ -357,8 +356,8 @@ export function Sidebar({ username }: { username: string }) {
                                         href={leaf.href}
                                         className={`block px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
                                           isActive
-                                            ? "bg-slate-900 text-white"
-                                            : "text-slate-500 hover:bg-[#1d293d] hover:text-slate-300"
+                                            ? "bg-neutral-900 text-white"
+                                            : "text-neutral-500 hover:bg-[#0a0a0a] hover:text-neutral-300"
                                         }`}
                                       >
                                         {leaf.label}
@@ -379,8 +378,8 @@ export function Sidebar({ username }: { username: string }) {
                             href={child.href}
                             className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                               isActive
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-500 hover:bg-[#1d293d] hover:text-slate-300"
+                                ? "bg-neutral-900 text-white"
+                                : "text-neutral-500 hover:bg-[#0a0a0a] hover:text-neutral-300"
                             }`}
                           >
                             {child.label}
@@ -400,8 +399,8 @@ export function Sidebar({ username }: { username: string }) {
                 href={item.href!}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-500 hover:bg-[#1d293d] hover:text-slate-300"
+                    ? "bg-neutral-900 text-white"
+                    : "text-neutral-500 hover:bg-[#0a0a0a] hover:text-neutral-300"
                 } ${collapsed ? "lg:justify-center" : ""}`}
               >
                 {item.icon ? (
@@ -421,14 +420,14 @@ export function Sidebar({ username }: { username: string }) {
         <SyncStatusPanel collapsed={collapsed} />
 
         {/* User */}
-        <div className="border-t border-slate-800 px-3 py-3">
+        <div className="border-t border-neutral-800 px-3 py-3">
           <div
             className={`flex items-center gap-3 px-3 py-2 ${
               collapsed ? "lg:justify-center" : ""
             }`}
           >
             <div className="relative">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-slate-400 text-xs font-semibold">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900 text-neutral-400 text-xs font-semibold">
                 {initials}
               </div>
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white" />

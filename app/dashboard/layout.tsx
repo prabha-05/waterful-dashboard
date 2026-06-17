@@ -16,13 +16,19 @@ export default async function DashboardLayout({
   const username = session.user.name || "User";
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen" style={{ background: "#07090f" }}>
+    <div className="flex flex-col lg:flex-row min-h-screen bg-black">
       <Sidebar username={username} />
       {/* min-w-0 prevents flex items (charts/tables) from forcing horizontal overflow */}
-      <main
-        className="flex-1 min-h-screen min-w-0"
-        style={{ background: "#07090f", color: "#e5e7eb" }}
-      >
+      <main className="flex-1 bg-black min-h-screen min-w-0 text-white relative">
+        {/* Rainbow accent strip — brand mark at the top of every page */}
+        <div
+          className="sticky top-0 z-20 h-[2px] w-full"
+          style={{
+            background:
+              "linear-gradient(90deg, #ff2b2b 0%, #ff8a00 18%, #ffd400 36%, #22c55e 54%, #22c5ff 72%, #a855f7 100%)",
+          }}
+          aria-hidden="true"
+        />
         {children}
       </main>
     </div>

@@ -5,12 +5,12 @@ import { IndianRupee, Target, ShoppingCart, MousePointerClick, Users } from "luc
 import { PeriodPicker, formatDateParam, type Unit } from "@/components/ui/period-picker";
 
 const INK = "#ffffff";
-const MUTED = "#90a1b9";
+const MUTED = "#9ca3af";
 const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const CREAM = "#f1e7d3";
-const BORDER = "#314158";
+const BORDER = "#1a1a1a";
 
 type AdSet = {
   name: string;
@@ -102,7 +102,7 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#1d293d", borderColor: BORDER }}
+      style={{ background: "#0a0a0a", borderColor: BORDER }}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -143,7 +143,7 @@ function BudgetHeadroom({
   return (
     <section
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#1d293d", borderColor: BORDER }}
+      style={{ background: "#0a0a0a", borderColor: BORDER }}
     >
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold" style={{ color: INK }}>
@@ -291,7 +291,7 @@ export function MetaAdSets() {
       {/* Ad Set table */}
       <section
         className="rounded-2xl border shadow-sm overflow-hidden"
-        style={{ background: "#1d293d", borderColor: BORDER }}
+        style={{ background: "#0a0a0a", borderColor: BORDER }}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
           <h2 className="text-lg font-semibold" style={{ color: INK }}>
@@ -304,7 +304,7 @@ export function MetaAdSets() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: "#1d293d" }}>
+              <tr style={{ background: "#0a0a0a" }}>
                 {[
                   { label: "Ad Set", align: "left" },
                   { label: "Campaign", align: "left" },

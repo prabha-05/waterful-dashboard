@@ -2,7 +2,7 @@ import { RetentionFirstTimers } from "@/components/ui/retention-first-timers";
 
 export default function FirstTimersPage() {
   return (
-    <div className="relative min-h-full" style={{ background: "#07090f" }}>
+    <div className="relative min-h-full" style={{ background: "#000000" }}>
       <div className="space-y-2 p-8">
         <h1
           className="text-3xl font-bold"
@@ -10,7 +10,7 @@ export default function FirstTimersPage() {
         >
           First Timers
         </h1>
-        <p className="mb-6 text-sm italic" style={{ color: "#90a1b9" }}>
+        <p className="mb-6 text-sm italic" style={{ color: "#9ca3af" }}>
           The newcomers — how many showed up and what they spent on day one.
         </p>
         <RetentionFirstTimers />

@@ -12,7 +12,7 @@ import {
   Database,
 } from "lucide-react";
 
-const PAPER = "#07090f";
+const PAPER = "#000000";
 const ROSE = "#d97777";
 const SAGE = "#7a9471";
 const AMBER = "#22c5ff";
@@ -252,7 +252,7 @@ export default function AdminImportPage() {
         {/* ───── Shopify Sync ──────────────────────────────────────────── */}
         <section
           className="mb-6 rounded-2xl border p-6 shadow-sm"
-          style={{ borderColor: BORDER, background: "#1d293d" }}
+          style={{ borderColor: BORDER, background: "#0a0a0a" }}
         >
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
@@ -280,10 +280,10 @@ export default function AdminImportPage() {
           {syncStatus && (
             <div
               className="mb-4 grid gap-3 rounded-xl border p-4 md:grid-cols-3"
-              style={{ borderColor: BORDER, background: "#07090f" }}
+              style={{ borderColor: BORDER, background: "#000000" }}
             >
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                   Last sync
                 </div>
                 <div className="mt-0.5 text-sm font-semibold" style={{ color: INK }}>
@@ -304,7 +304,7 @@ export default function AdminImportPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                   Shopify orders in DB
                 </div>
                 <div className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: INK }}>
@@ -312,7 +312,7 @@ export default function AdminImportPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                   Last result
                 </div>
                 <div className="mt-0.5 text-sm tabular-nums" style={{ color: INK }}>
@@ -333,13 +333,13 @@ export default function AdminImportPage() {
           <div className="mb-3">
             <label
               className="mb-1 block text-[11px] font-semibold uppercase tracking-wider"
-              style={{ color: "#90a1b9" }}
+              style={{ color: "#9ca3af" }}
             >
               CRON_SECRET
             </label>
             <div
               className="flex items-center gap-2 rounded-xl border px-3 py-2"
-              style={{ borderColor: BORDER, background: "#07090f" }}
+              style={{ borderColor: BORDER, background: "#000000" }}
             >
               <Lock size={14} style={{ color: SAGE }} />
               <input
@@ -369,7 +369,7 @@ export default function AdminImportPage() {
               onClick={() => triggerSync(true)}
               disabled={syncing || mirroring || !syncToken}
               className="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50"
-              style={{ borderColor: BORDER, color: INK, background: "#1d293d" }}
+              style={{ borderColor: BORDER, color: INK, background: "#0a0a0a" }}
               title="Re-fetch every order from Shopify (~10 min)"
             >
               <RefreshCw size={14} />
@@ -379,7 +379,7 @@ export default function AdminImportPage() {
               onClick={triggerMirror}
               disabled={syncing || mirroring || !syncToken}
               className="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50"
-              style={{ borderColor: BORDER, color: INK, background: "#1d293d" }}
+              style={{ borderColor: BORDER, color: INK, background: "#0a0a0a" }}
               title="Rebuild dashboard rows from existing Shopify data (no API call)"
             >
               <Database size={14} />
@@ -441,7 +441,7 @@ export default function AdminImportPage() {
 
         <section
           className="rounded-2xl border p-6 shadow-sm"
-          style={{ borderColor: BORDER, background: "#1d293d" }}
+          style={{ borderColor: BORDER, background: "#0a0a0a" }}
         >
           <div
             className="mb-5 flex items-start gap-3 rounded-xl border p-4"
@@ -461,7 +461,7 @@ export default function AdminImportPage() {
             <div>
               <label
                 className="mb-1 block text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "#90a1b9" }}
+                style={{ color: "#9ca3af" }}
               >
                 CSV file
               </label>
@@ -487,13 +487,13 @@ export default function AdminImportPage() {
             <div>
               <label
                 className="mb-1 block text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "#90a1b9" }}
+                style={{ color: "#9ca3af" }}
               >
                 Admin password
               </label>
               <div
                 className="flex items-center gap-2 rounded-xl border px-3 py-2"
-                style={{ borderColor: BORDER, background: "#07090f" }}
+                style={{ borderColor: BORDER, background: "#000000" }}
               >
                 <Lock size={14} style={{ color: ROSE }} />
                 <input
@@ -512,7 +512,7 @@ export default function AdminImportPage() {
                 onClick={() => doUpload(true)}
                 disabled={loading || !file || !password}
                 className="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50"
-                style={{ borderColor: BORDER, color: INK, background: "#1d293d" }}
+                style={{ borderColor: BORDER, color: INK, background: "#0a0a0a" }}
               >
                 <Upload size={14} /> {loading && !preview ? "Parsing…" : "Preview"}
               </button>
@@ -560,7 +560,7 @@ export default function AdminImportPage() {
         {preview && (
           <section
             className="mt-5 rounded-2xl border p-6 shadow-sm"
-            style={{ borderColor: BORDER, background: "#1d293d" }}
+            style={{ borderColor: BORDER, background: "#0a0a0a" }}
           >
             <h2
               className="mb-4 text-lg font-semibold"
@@ -606,7 +606,7 @@ export default function AdminImportPage() {
             <div className="mt-4">
               <p
                 className="mb-2 text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: "#90a1b9" }}
+                style={{ color: "#9ca3af" }}
               >
                 Sample rows
               </p>
@@ -658,8 +658,8 @@ export default function AdminImportPage() {
 
 function Tile({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border p-3" style={{ borderColor: BORDER, background: "#1d293d" }}>
-      <div className="text-[10px] uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+    <div className="rounded-xl border p-3" style={{ borderColor: BORDER, background: "#0a0a0a" }}>
+      <div className="text-[10px] uppercase tracking-wider" style={{ color: "#9ca3af" }}>
         {label}
       </div>
       <p

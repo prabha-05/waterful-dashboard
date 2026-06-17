@@ -137,7 +137,7 @@ function DeltaPill({
     return (
       <span
         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-        style={{ background: "#f5efe3", color: "#90a1b9" }}
+        style={{ background: "#f5efe3", color: "#9ca3af" }}
         title={tip}
       >
         new
@@ -208,7 +208,7 @@ function HealthCard({
   return (
     <div
       className="relative overflow-hidden rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#1d293d", borderColor: "#314158" }}
+      style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
       title={cardTip || undefined}
     >
       <div
@@ -219,7 +219,7 @@ function HealthCard({
         <div className="min-w-0">
           <p
             className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "#90a1b9" }}
+            style={{ color: "#9ca3af" }}
           >
             {label}
           </p>
@@ -262,10 +262,10 @@ function HealthCard({
             <span className="flex items-center gap-1 tabular-nums">
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: NEW_COLOR }} />
               <span className="font-semibold" style={{ color: NEW_COLOR }}>{ftValue.toLocaleString()}</span>
-              <span style={{ color: "#90a1b9" }}>new</span>
+              <span style={{ color: "#9ca3af" }}>new</span>
             </span>
             <span className="flex items-center gap-1 tabular-nums">
-              <span style={{ color: "#90a1b9" }}>repeat</span>
+              <span style={{ color: "#9ca3af" }}>repeat</span>
               <span className="font-semibold" style={{ color: REPEAT_COLOR }}>{repeatValue.toLocaleString()}</span>
               <span className="h-1.5 w-1.5 rounded-full" style={{ background: REPEAT_COLOR }} />
             </span>
@@ -297,13 +297,13 @@ function ChartTooltip({ active, payload, label, mode }: any) {
   return (
     <div
       className="rounded-xl border p-3 shadow-lg text-xs"
-      style={{ background: "#1d293d", borderColor: "#314158" }}
+      style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
     >
       <p className="font-semibold mb-2" style={{ color: INK }}>{label}</p>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center gap-2 py-0.5">
           <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
-          <span style={{ color: "#90a1b9" }}>{p.name}:</span>
+          <span style={{ color: "#9ca3af" }}>{p.name}:</span>
           <span className="font-bold" style={{ color: INK }}>
             {isPctKey(String(p.dataKey))
               ? `${Number(p.value).toFixed(1)}%`
@@ -374,13 +374,13 @@ function MonthGridPicker({
               style={
                 isSelected
                   ? { background: INK, color: "white" }
-                  : { color: INK, background: isFuture ? "transparent" : "#1d293d" }
+                  : { color: INK, background: isFuture ? "transparent" : "#0a0a0a" }
               }
               onMouseEnter={(e) => {
                 if (!isSelected && !isFuture) e.currentTarget.style.background = `${AMBER}22`;
               }}
               onMouseLeave={(e) => {
-                if (!isSelected && !isFuture) e.currentTarget.style.background = "#1d293d";
+                if (!isSelected && !isFuture) e.currentTarget.style.background = "#0a0a0a";
               }}
             >
               {m}
@@ -754,9 +754,9 @@ export function DashboardOverview() {
       <div className="flex flex-wrap items-center gap-4">
         <div
           className="inline-flex items-center rounded-xl border overflow-hidden"
-          style={{ borderColor: "#314158", background: "#1d293d" }}
+          style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}
         >
-          <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-[#1d293d]" style={{ color: INK }}>
+          <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-[#0a0a0a]" style={{ color: INK }}>
             <Minus size={16} />
           </button>
           <input
@@ -779,14 +779,14 @@ export function DashboardOverview() {
               }
             }}
             className="w-14 py-2.5 text-sm font-bold tabular-nums text-center border-x outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            style={{ color: INK, borderColor: "#314158" }}
+            style={{ color: INK, borderColor: "#1a1a1a" }}
           />
-          <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-[#1d293d]" style={{ color: INK }}>
+          <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-[#0a0a0a]" style={{ color: INK }}>
             <Plus size={16} />
           </button>
         </div>
 
-        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#314158" }}>
+        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#1a1a1a" }}>
           {UNITS.map((u) => (
             <button
               key={u}
@@ -806,8 +806,8 @@ export function DashboardOverview() {
           <div className="relative inline-block">
             <button
               onClick={() => setShowPicker(!showPicker)}
-              className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-[#1d293d]/80"
-              style={{ background: "#1d293d", borderColor: "#314158", color: INK }}
+              className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-[#0a0a0a]/80"
+              style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: INK }}
             >
               <Calendar size={16} style={{ color: AMBER }} />
               {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
@@ -815,7 +815,7 @@ export function DashboardOverview() {
             {showPicker && (
               <div
                 className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
-                style={{ background: "#1d293d", borderColor: "#314158" }}
+                style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
               >
                 <MonthGridPicker selectedDate={startDate} onPick={pickMonth} />
                 <button
@@ -831,7 +831,7 @@ export function DashboardOverview() {
         ) : (
           <div className="inline-flex items-center gap-2">
             <Calendar size={14} style={{ color: AMBER }} />
-            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+            <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
               Date
             </label>
             <input
@@ -844,12 +844,12 @@ export function DashboardOverview() {
                 setStartDate(new Date(y, m - 1, d));
               }}
               className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
-              style={{ borderColor: "#314158", color: INK, background: "#1d293d" }}
+              style={{ borderColor: "#1a1a1a", color: INK, background: "#0a0a0a" }}
             />
           </div>
         )}
 
-        <p className="text-sm" style={{ color: "#90a1b9" }}>
+        <p className="text-sm" style={{ color: "#9ca3af" }}>
           <span className="font-bold" style={{ color: INK }}>
             {count} {unitLabel(unit).toLowerCase()}
           </span>{" "}
@@ -870,9 +870,9 @@ export function DashboardOverview() {
       {data && splits && (
         <div
           className="flex flex-wrap items-center gap-5 rounded-xl border px-4 py-3 shadow-sm"
-          style={{ background: "#1d293d", borderColor: "#314158" }}
+          style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
         >
-          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
             Line guide
           </span>
           <span className="flex items-center gap-1.5 text-xs">
@@ -887,7 +887,7 @@ export function DashboardOverview() {
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: REPEAT_COLOR }} />
             <span className="font-medium" style={{ color: INK }}>Repeat</span>
           </span>
-          <span className="ml-auto text-xs italic" style={{ color: "#90a1b9" }}>
+          <span className="ml-auto text-xs italic" style={{ color: "#9ca3af" }}>
             Same code across every chart.
           </span>
         </div>
@@ -907,7 +907,7 @@ export function DashboardOverview() {
         <>
           {/* Chart mode toggle — horizontal scroll on narrow screens */}
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
-            <div className="inline-flex rounded-xl border overflow-hidden whitespace-nowrap" style={{ borderColor: "#314158" }}>
+            <div className="inline-flex rounded-xl border overflow-hidden whitespace-nowrap" style={{ borderColor: "#1a1a1a" }}>
               {(["revenue", "orders", "customers", "aov", "products", "payment", "discountCodes"] as const).map((m) => (
                 <button
                   key={m}
@@ -935,7 +935,7 @@ export function DashboardOverview() {
             ) : !salesData || salesData.totalOrders === 0 ? (
               <div
                 className="rounded-2xl border p-8 text-center text-sm"
-                style={{ background: "#1d293d", borderColor: "#314158", color: "#90a1b9" }}
+                style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: "#9ca3af" }}
               >
                 No payment data for this window.
               </div>
@@ -946,32 +946,32 @@ export function DashboardOverview() {
                 {topPaymentMethods.length > 0 && (
                   <div
                     className="rounded-2xl border overflow-hidden"
-                    style={{ background: "#1d293d", borderColor: "#314158" }}
+                    style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
                   >
                     <div
                       className="px-4 py-3 border-b"
-                      style={{ borderColor: "#f1e7d3", background: "#1d293d" }}
+                      style={{ borderColor: "#f1e7d3", background: "#0a0a0a" }}
                     >
                       <h3 className="text-sm font-bold" style={{ color: INK }}>Payment Method — Period Breakdown</h3>
-                      <p className="text-[11px] italic mt-0.5" style={{ color: "#90a1b9" }}>
+                      <p className="text-[11px] italic mt-0.5" style={{ color: "#9ca3af" }}>
                         Revenue per payment method, by {unit}.
                       </p>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr style={{ background: "#1d293d" }}>
-                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#90a1b9" }}>Period</th>
+                          <tr style={{ background: "#0a0a0a" }}>
+                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9ca3af" }}>Period</th>
                             {topPaymentMethods.map((m) => (
                               <th
                                 key={m}
                                 className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                                style={{ color: "#90a1b9" }}
+                                style={{ color: "#9ca3af" }}
                               >
                                 {m}
                               </th>
                             ))}
-                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#90a1b9" }}>Total</th>
+                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9ca3af" }}>Total</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -990,7 +990,7 @@ export function DashboardOverview() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t-2" style={{ borderColor: "#314158", background: "#1d293d" }}>
+                          <tr className="border-t-2" style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}>
                             <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
                             {topPaymentMethods.map((m) => (
                               <td key={m} className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
@@ -1019,7 +1019,7 @@ export function DashboardOverview() {
             ) : !salesData || salesData.totalOrders === 0 ? (
               <div
                 className="rounded-2xl border p-8 text-center text-sm"
-                style={{ background: "#1d293d", borderColor: "#314158", color: "#90a1b9" }}
+                style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: "#9ca3af" }}
               >
                 No discount-code data for this window.
               </div>
@@ -1030,32 +1030,32 @@ export function DashboardOverview() {
                 {topDiscountCodes.length > 0 && (
                   <div
                     className="rounded-2xl border overflow-hidden"
-                    style={{ background: "#1d293d", borderColor: "#314158" }}
+                    style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
                   >
                     <div
                       className="px-4 py-3 border-b"
-                      style={{ borderColor: "#f1e7d3", background: "#1d293d" }}
+                      style={{ borderColor: "#f1e7d3", background: "#0a0a0a" }}
                     >
                       <h3 className="text-sm font-bold" style={{ color: INK }}>Discount Codes — Period Breakdown</h3>
-                      <p className="text-[11px] italic mt-0.5" style={{ color: "#90a1b9" }}>
+                      <p className="text-[11px] italic mt-0.5" style={{ color: "#9ca3af" }}>
                         Revenue attributed to each code, by {unit}.
                       </p>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr style={{ background: "#1d293d" }}>
-                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#90a1b9" }}>Period</th>
+                          <tr style={{ background: "#0a0a0a" }}>
+                            <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9ca3af" }}>Period</th>
                             {topDiscountCodes.map((c) => (
                               <th
                                 key={c}
                                 className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-                                style={{ color: "#90a1b9" }}
+                                style={{ color: "#9ca3af" }}
                               >
                                 {c}
                               </th>
                             ))}
-                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#90a1b9" }}>Total</th>
+                            <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: "#9ca3af" }}>Total</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1074,7 +1074,7 @@ export function DashboardOverview() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t-2" style={{ borderColor: "#314158", background: "#1d293d" }}>
+                          <tr className="border-t-2" style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}>
                             <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
                             {topDiscountCodes.map((c) => (
                               <td key={c} className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>
@@ -1103,7 +1103,7 @@ export function DashboardOverview() {
             ) : productBlocks.length === 0 ? (
               <div
                 className="rounded-2xl border p-8 text-center text-sm"
-                style={{ background: "#1d293d", borderColor: "#314158", color: "#90a1b9" }}
+                style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: "#9ca3af" }}
               >
                 No product data for this window.
               </div>
@@ -1113,7 +1113,7 @@ export function DashboardOverview() {
                   <div
                     key={pb.product}
                     className="space-y-4 rounded-2xl border p-5 shadow-sm"
-                    style={{ background: "#1d293d", borderColor: "#314158" }}
+                    style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
                   >
                     {/* Product header */}
                     <div className="flex flex-wrap items-baseline justify-between gap-3 border-b pb-3" style={{ borderColor: "#f1e7d3" }}>
@@ -1128,11 +1128,11 @@ export function DashboardOverview() {
                       </div>
                       <div className="flex flex-wrap items-baseline gap-5">
                         <div>
-                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>Total qty</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>Total qty</span>
                           <span className="ml-2 text-xl font-bold tabular-nums" style={{ color: AMBER }}>{pb.totals.qty.toLocaleString()}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>Repeat %</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>Repeat %</span>
                           <span className="ml-2 text-xl font-bold tabular-nums" style={{ color: REPEAT_COLOR }}>{pb.repeatPct}%</span>
                         </div>
                       </div>
@@ -1143,7 +1143,7 @@ export function DashboardOverview() {
                       {/* 1. Sales (total / new / repeat orders) */}
                       <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
                         <div className="mb-2 flex items-baseline justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                             Sales
                           </p>
                           <p className="text-xs tabular-nums font-semibold" style={{ color: INK }}>
@@ -1152,17 +1152,17 @@ export function DashboardOverview() {
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
                           <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                             <XAxis
                               dataKey="label"
                               tick={{ fill: "#ffffff", fontSize: 11, fontWeight: 500 }}
-                              axisLine={{ stroke: "#314158" }}
+                              axisLine={{ stroke: "#1a1a1a" }}
                               tickLine={false}
                               interval="preserveStartEnd"
                               minTickGap={20}
                             />
                             <YAxis
-                              tick={{ fill: "#90a1b9", fontSize: 11 }}
+                              tick={{ fill: "#9ca3af", fontSize: 11 }}
                               axisLine={false}
                               tickLine={false}
                               width={34}
@@ -1178,7 +1178,7 @@ export function DashboardOverview() {
                       {/* 2. Sales repeat % trend */}
                       <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
                         <div className="mb-2 flex items-baseline justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                             Repeat % — sales
                           </p>
                           <p className="text-xs tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>
@@ -1187,17 +1187,17 @@ export function DashboardOverview() {
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
                           <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                             <XAxis
                               dataKey="label"
                               tick={{ fill: "#ffffff", fontSize: 11, fontWeight: 500 }}
-                              axisLine={{ stroke: "#314158" }}
+                              axisLine={{ stroke: "#1a1a1a" }}
                               tickLine={false}
                               interval="preserveStartEnd"
                               minTickGap={20}
                             />
                             <YAxis
-                              tick={{ fill: "#90a1b9", fontSize: 11 }}
+                              tick={{ fill: "#9ca3af", fontSize: 11 }}
                               axisLine={false}
                               tickLine={false}
                               domain={[0, 100]}
@@ -1206,7 +1206,7 @@ export function DashboardOverview() {
                             />
                             <Tooltip
                               formatter={(v: any) => [`${Number(v).toFixed(1)}%`, "Repeat share"]}
-                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #314158" }}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #1a1a1a" }}
                             />
                             <Line
                               type="monotone"
@@ -1224,7 +1224,7 @@ export function DashboardOverview() {
                       {/* 3. Volume (total / new / repeat qty) */}
                       <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
                         <div className="mb-2 flex items-baseline justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                             Volume
                           </p>
                           <p className="text-xs tabular-nums font-semibold" style={{ color: AMBER }}>
@@ -1233,17 +1233,17 @@ export function DashboardOverview() {
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
                           <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                             <XAxis
                               dataKey="label"
                               tick={{ fill: "#ffffff", fontSize: 11, fontWeight: 500 }}
-                              axisLine={{ stroke: "#314158" }}
+                              axisLine={{ stroke: "#1a1a1a" }}
                               tickLine={false}
                               interval="preserveStartEnd"
                               minTickGap={20}
                             />
                             <YAxis
-                              tick={{ fill: "#90a1b9", fontSize: 11 }}
+                              tick={{ fill: "#9ca3af", fontSize: 11 }}
                               axisLine={false}
                               tickLine={false}
                               allowDecimals={false}
@@ -1258,7 +1258,7 @@ export function DashboardOverview() {
                                   : String(n);
                                 return [Number(v).toLocaleString(), label];
                               }}
-                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #314158" }}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #1a1a1a" }}
                             />
                             <Line type="monotone" dataKey="qty" name="Total volume" stroke={AMBER} strokeWidth={2.5} dot={{ fill: AMBER, r: 2.5 }} activeDot={{ r: 5 }} />
                             <Line type="monotone" dataKey="qtyNew" name="Volume · new" stroke={NEW_COLOR} strokeWidth={2} dot={{ fill: NEW_COLOR, r: 2.5 }} activeDot={{ r: 4 }} />
@@ -1270,7 +1270,7 @@ export function DashboardOverview() {
                       {/* 4. Volume repeat % trend */}
                       <div className="rounded-xl border p-4" style={{ borderColor: "#f1e7d3" }}>
                         <div className="mb-2 flex items-baseline justify-between gap-2">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+                          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                             Repeat % — volume
                           </p>
                           <p className="text-xs tabular-nums font-semibold" style={{ color: REPEAT_COLOR }}>
@@ -1279,17 +1279,17 @@ export function DashboardOverview() {
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
                           <LineChart data={pb.series} margin={{ top: 8, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                             <XAxis
                               dataKey="label"
                               tick={{ fill: "#ffffff", fontSize: 11, fontWeight: 500 }}
-                              axisLine={{ stroke: "#314158" }}
+                              axisLine={{ stroke: "#1a1a1a" }}
                               tickLine={false}
                               interval="preserveStartEnd"
                               minTickGap={20}
                             />
                             <YAxis
-                              tick={{ fill: "#90a1b9", fontSize: 11 }}
+                              tick={{ fill: "#9ca3af", fontSize: 11 }}
                               axisLine={false}
                               tickLine={false}
                               domain={[0, 100]}
@@ -1298,7 +1298,7 @@ export function DashboardOverview() {
                             />
                             <Tooltip
                               formatter={(v: any) => [`${Number(v).toFixed(1)}%`, "Vol repeat share"]}
-                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #314158" }}
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #1a1a1a" }}
                             />
                             <Line
                               type="monotone"
@@ -1318,7 +1318,7 @@ export function DashboardOverview() {
                     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#f1e7d3" }}>
                       <div
                         className={`flex items-center justify-between gap-3 px-4 py-2.5${expandedTables.has(pb.product) ? " border-b" : ""}`}
-                        style={{ borderColor: "#f1e7d3", background: "#1d293d" }}
+                        style={{ borderColor: "#f1e7d3", background: "#0a0a0a" }}
                       >
                         <button
                           onClick={() => {
@@ -1330,7 +1330,7 @@ export function DashboardOverview() {
                             });
                           }}
                           className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider transition-colors hover:opacity-80"
-                          style={{ color: "#90a1b9" }}
+                          style={{ color: "#9ca3af" }}
                           title={expandedTables.has(pb.product) ? "Hide period breakdown" : "Show period breakdown"}
                         >
                           {expandedTables.has(pb.product) ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -1375,8 +1375,8 @@ export function DashboardOverview() {
                             document.body.removeChild(link);
                             URL.revokeObjectURL(url);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[#1d293d]"
-                          style={{ background: "#1d293d", borderColor: "#314158", color: INK }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[#0a0a0a]"
+                          style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: INK }}
                           title={`Download ${pb.product} breakdown as CSV`}
                         >
                           <Download size={13} />
@@ -1387,7 +1387,7 @@ export function DashboardOverview() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr style={{ background: "#1d293d" }}>
+                            <tr style={{ background: "#0a0a0a" }}>
                               {[
                                 "Period",
                                 "Total sales",
@@ -1403,7 +1403,7 @@ export function DashboardOverview() {
                                   key={h}
                                   className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
                                   style={{
-                                    color: "#90a1b9",
+                                    color: "#9ca3af",
                                     textAlign: hi === 0 ? "left" : "right",
                                   }}
                                 >
@@ -1432,7 +1432,7 @@ export function DashboardOverview() {
                             })}
                           </tbody>
                           <tfoot>
-                            <tr className="border-t-2" style={{ borderColor: "#314158", background: "#1d293d" }}>
+                            <tr className="border-t-2" style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}>
                               <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: INK }}>Total</td>
                               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: INK }}>{pb.totals.total.toLocaleString()}</td>
                               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: NEW_COLOR }}>{pb.totals.ftOrders.toLocaleString()}</td>
@@ -1458,21 +1458,21 @@ export function DashboardOverview() {
           <div className={`grid gap-6 ${chartMode !== "aov" && repeatTrend.length > 0 ? "lg:grid-cols-2" : "grid-cols-1"}`}>
           <div
             className="rounded-2xl border p-5 shadow-sm"
-            style={{ background: "#1d293d", borderColor: "#314158" }}
+            style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
           >
             <ResponsiveContainer width="100%" height={360}>
               <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                 <XAxis
                   dataKey="label"
                   tick={{ fill: "#ffffff", fontSize: 12, fontWeight: 500 }}
-                  axisLine={{ stroke: "#314158" }}
+                  axisLine={{ stroke: "#1a1a1a" }}
                   tickLine={false}
                   interval="preserveStartEnd"
                   minTickGap={24}
                 />
                 <YAxis
-                  tick={{ fill: "#90a1b9", fontSize: 12 }}
+                  tick={{ fill: "#9ca3af", fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) =>
@@ -1515,13 +1515,13 @@ export function DashboardOverview() {
           {chartMode !== "aov" && repeatTrend.length > 0 && (
             <div
               className="rounded-2xl border p-5 shadow-sm"
-              style={{ background: "#1d293d", borderColor: "#314158" }}
+              style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p
                     className="text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: "#90a1b9" }}
+                    style={{ color: "#9ca3af" }}
                   >
                     Repeat Share Trend
                   </p>
@@ -1533,23 +1533,23 @@ export function DashboardOverview() {
                   <p className="text-3xl font-bold tabular-nums" style={{ color: REPEAT_COLOR }}>
                     {overallRepeatPct}%
                   </p>
-                  <span className="text-xs" style={{ color: "#90a1b9" }}>overall</span>
+                  <span className="text-xs" style={{ color: "#9ca3af" }}>overall</span>
                 </div>
               </div>
               <div className="mt-4">
                 <ResponsiveContainer width="100%" height={360}>
                   <LineChart data={repeatTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#314158" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
                     <XAxis
                       dataKey="label"
                       tick={{ fill: "#ffffff", fontSize: 12, fontWeight: 500 }}
-                      axisLine={{ stroke: "#314158" }}
+                      axisLine={{ stroke: "#1a1a1a" }}
                       tickLine={false}
                       interval="preserveStartEnd"
                       minTickGap={24}
                     />
                     <YAxis
-                      tick={{ fill: "#90a1b9", fontSize: 12 }}
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
                       domain={[0, 100]}
@@ -1560,7 +1560,7 @@ export function DashboardOverview() {
                       contentStyle={{
                         fontSize: 12,
                         borderRadius: 8,
-                        border: "1px solid #314158",
+                        border: "1px solid #1a1a1a",
                       }}
                     />
                     <Line
@@ -1586,13 +1586,13 @@ export function DashboardOverview() {
           {chartMode !== "products" && chartMode !== "payment" && chartMode !== "discountCodes" && (
           <div
             className="rounded-2xl border shadow-sm overflow-hidden"
-            style={{ background: "#1d293d", borderColor: "#314158" }}
+            style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}
           >
             <div
               className="flex items-center justify-between gap-3 px-5 py-4 border-b"
-              style={{ borderColor: "#314158" }}
+              style={{ borderColor: "#1a1a1a" }}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
                 Period Breakdown
               </p>
               <button
@@ -1632,8 +1632,8 @@ export function DashboardOverview() {
                   document.body.removeChild(link);
                   URL.revokeObjectURL(url);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[#1d293d]"
-                style={{ background: "#1d293d", borderColor: "#314158", color: INK }}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[#0a0a0a]"
+                style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: INK }}
                 title="Download table as CSV"
               >
                 <Download size={13} />
@@ -1643,12 +1643,12 @@ export function DashboardOverview() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ background: "#1d293d" }}>
+                  <tr style={{ background: "#0a0a0a" }}>
                     {tableCfg && ["Period", tableCfg.title, "First Time", "Repeat", tableCfg.pctColumnLabel].map((h) => (
                       <th
                         key={h}
                         className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                        style={{ color: "#90a1b9" }}
+                        style={{ color: "#9ca3af" }}
                       >
                         {h}
                       </th>
@@ -1675,7 +1675,7 @@ export function DashboardOverview() {
                   <tfoot>
                     <tr
                       className="border-t-2"
-                      style={{ borderColor: "#314158", background: "#1d293d" }}
+                      style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}
                     >
                       <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: INK }}>
                         Total
@@ -1707,7 +1707,7 @@ export function DashboardOverview() {
                 <div>
                   <p
                     className="text-[11px] font-semibold uppercase tracking-wider"
-                    style={{ color: "#90a1b9" }}
+                    style={{ color: "#9ca3af" }}
                   >
                     Order Health
                   </p>
@@ -1715,7 +1715,7 @@ export function DashboardOverview() {
                     orders that didn&apos;t make it — cancelled or returned
                   </p>
                 </div>
-                <p className="text-[11px] tabular-nums" style={{ color: "#90a1b9" }}>
+                <p className="text-[11px] tabular-nums" style={{ color: "#9ca3af" }}>
                   {data.totals.orders.toLocaleString()} total orders in view
                 </p>
               </div>

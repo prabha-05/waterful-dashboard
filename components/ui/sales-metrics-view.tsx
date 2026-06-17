@@ -122,7 +122,7 @@ export function SalesMetricsView({
                 </summary>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {data.unmappedCities.map((c) => (
-                    <span key={c.city} className="bg-[#1d293d] px-2 py-1 rounded">
+                    <span key={c.city} className="bg-[#0a0a0a] px-2 py-1 rounded">
                       {c.city} ({c.count})
                     </span>
                   ))}
@@ -234,7 +234,7 @@ export function SalesMetricsView({
               {data.productsSold.length > 10 && (
                 <button
                   onClick={() => setShowAllProducts((v) => !v)}
-                  className="rounded-lg border border-neutral-800 bg-[#1d293d] px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-[#1d293d]"
+                  className="rounded-lg border border-neutral-800 bg-[#0a0a0a] px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-[#0a0a0a]"
                 >
                   {showAllProducts ? "Show top 10" : `Show all ${data.productsSold.length}`}
                 </button>
