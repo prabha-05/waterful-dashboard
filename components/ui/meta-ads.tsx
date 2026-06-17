@@ -1168,8 +1168,14 @@ export function MetaAds() {
                             label: string;
                             count: number;
                             benchmark?: { good: number; decent: number; label: string };
+                            prevOverride?: number;
                           }[] = [
-                            { label: "Clicks", count: ad.clicks },
+                            {
+                              label: "Clicks",
+                              count: ad.clicks,
+                              benchmark: { good: 2, decent: 1, label: "1–2% of impressions" },
+                              prevOverride: ad.impressions,
+                            },
                             {
                               label: "Landing Page",
                               count: ad.landingPageViews,
@@ -1195,7 +1201,7 @@ export function MetaAds() {
                           // Per-stage quality + identify the weakest transition
                           type StageQuality = "good" | "decent" | "poor" | "na";
                           const qualities: StageQuality[] = stages.map((s, i) => {
-                            const prev = i > 0 ? stages[i - 1].count : null;
+                            const prev = i > 0 ? stages[i - 1].count : (s.prevOverride ?? null);
                             if (prev == null || prev === 0 || !s.benchmark) return "na";
                             const pct = (s.count / prev) * 100;
                             if (pct >= s.benchmark.good) return "good";
@@ -1209,10 +1215,10 @@ export function MetaAds() {
                           // Find weakest transition (lowest ratio of pct to benchmark.good)
                           let weakestIdx = -1;
                           let weakestRatio = Infinity;
-                          for (let i = 1; i < stages.length; i++) {
-                            const prev = stages[i - 1].count;
+                          for (let i = 0; i < stages.length; i++) {
+                            const prev = i > 0 ? stages[i - 1].count : stages[i].prevOverride;
                             const bm = stages[i].benchmark;
-                            if (!bm || prev === 0) continue;
+                            if (!bm || prev == null || prev === 0) continue;
                             const pct = (stages[i].count / prev) * 100;
                             const ratio = pct / bm.good;
                             if (ratio < weakestRatio) {
@@ -1236,20 +1242,36 @@ export function MetaAds() {
                             verdict.tone === "bad" ? ROSE : MUTED;
 
                           // Build comparison data: industry benchmark (midpoint of good/decent
-                          // range) vs our actual % at each transition. Stage 0 (Clicks) is the
-                          // starting point — only stages 1..4 get bars.
-                          const comparisonStages = stages.slice(1).map((s, idx) => {
-                            const prev = stages[idx].count;
-                            const ours = prev > 0 ? (s.count / prev) * 100 : 0;
+                          // range) vs our actual % at each transition. All 5 stages get bars
+                          // — Clicks is now CTR vs impressions. Each bar also shows the
+                          // absolute count next to its percentage:
+                          //   - Industry bar: count we'd HAVE at this stage if we matched
+                          //     the benchmark % (helps user see "industry would give us 240
+                          //     here, we have 100").
+                          //   - Our bar: actual count we have.
+                          const comparisonStages = stages.map((s, idx) => {
+                            const prev = idx > 0 ? stages[idx - 1].count : s.prevOverride;
+                            const ours = prev != null && prev > 0 ? (s.count / prev) * 100 : 0;
                             const bm = s.benchmark;
                             // Industry standard = midpoint between decent and good thresholds.
                             const industry = bm ? (bm.good + bm.decent) / 2 : 0;
-                            const q = qualities[idx + 1];
+                            const industryExpectedCount = prev != null && prev > 0
+                              ? Math.round((industry / 100) * prev)
+                              : 0;
+                            const q = qualities[idx];
                             const ourColor =
                               q === "good" ? SAGE :
                               q === "decent" ? AMBER :
                               q === "poor" ? ROSE : MUTED;
-                            return { label: s.label, count: s.count, ours, industry, color: ourColor, q };
+                            return {
+                              label: s.label,
+                              count: s.count,
+                              ours,
+                              industry,
+                              industryExpectedCount,
+                              color: ourColor,
+                              q,
+                            };
                           });
                           const maxRate = Math.max(
                             ...comparisonStages.flatMap((c) => [c.industry, c.ours]),
@@ -1259,13 +1281,13 @@ export function MetaAds() {
 
                           return (
                             <div className="space-y-3">
-                              {/* Starting point — clicks */}
+                              {/* Starting point — impressions */}
                               <div className="flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
                                 <span>Starting from</span>
                                 <span className="font-bold tabular-nums" style={{ color: INK }}>
-                                  {stages[0].count.toLocaleString("en-IN")}
+                                  {ad.impressions.toLocaleString("en-IN")}
                                 </span>
-                                <span>clicks</span>
+                                <span>impressions</span>
                               </div>
 
                               {/* Bar chart — 4 stage groups, 2 bars each (industry vs us) */}
@@ -1278,11 +1300,11 @@ export function MetaAds() {
                                   const oursH = (s.ours / maxRate) * BAR_AREA;
                                   return (
                                     <div key={s.label} className="flex-1 flex flex-col items-center">
-                                      <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA + 24 }}>
-                                        {/* Industry bar */}
-                                        <div className="flex flex-col items-center" style={{ width: 36 }}>
-                                          <span className="text-[10px] font-bold tabular-nums mb-1" style={{ color: "#5b8def" }}>
-                                            {s.industry.toFixed(0)}%
+                                      <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA + 28 }}>
+                                        {/* Industry bar — "%  ·  count" inline above the bar */}
+                                        <div className="flex flex-col items-center" style={{ width: 56 }}>
+                                          <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: "#5b8def" }}>
+                                            {s.industry.toFixed(0)}% · {s.industryExpectedCount.toLocaleString("en-IN")}
                                           </span>
                                           <div
                                             className="w-full rounded-t-md"
@@ -1290,26 +1312,23 @@ export function MetaAds() {
                                               height: industryH,
                                               background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
                                             }}
-                                            title={`Industry standard: ${s.industry.toFixed(0)}%`}
+                                            title={`Industry standard: ${s.industry.toFixed(0)}% (would give ~${s.industryExpectedCount} here)`}
                                           />
                                         </div>
-                                        {/* Our bar */}
-                                        <div className="flex flex-col items-center" style={{ width: 36 }}>
-                                          <span className="text-[10px] font-bold tabular-nums mb-1" style={{ color: s.color }}>
-                                            {s.ours.toFixed(0)}%
+                                        {/* Our bar — "%  ·  count" inline */}
+                                        <div className="flex flex-col items-center" style={{ width: 56 }}>
+                                          <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: s.color }}>
+                                            {s.ours.toFixed(0)}% · {s.count.toLocaleString("en-IN")}
                                           </span>
                                           <div
                                             className="w-full rounded-t-md"
                                             style={{ height: oursH, background: s.color }}
-                                            title={`Our actual: ${s.ours.toFixed(1)}%`}
+                                            title={`Our actual: ${s.ours.toFixed(1)}% (${s.count.toLocaleString("en-IN")})`}
                                           />
                                         </div>
                                       </div>
                                       <div className="mt-2 text-center">
                                         <p className="text-xs font-semibold leading-tight" style={{ color: INK }}>{s.label}</p>
-                                        <p className="text-[10px] tabular-nums" style={{ color: MUTED }}>
-                                          {s.count.toLocaleString("en-IN")}
-                                        </p>
                                       </div>
                                     </div>
                                   );
