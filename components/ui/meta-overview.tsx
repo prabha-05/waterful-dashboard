@@ -653,63 +653,112 @@ export function MetaOverview() {
         );
       })()}
 
-      {/* Funnel */}
-      <section
-        className="rounded-2xl border p-5 shadow-sm"
-        style={{ background: "white", borderColor: BORDER }}
-      >
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold" style={{ color: INK }}>
-            Acquisition Funnel
-          </h2>
-          <p className="text-xs italic" style={{ color: MUTED }}>
-            How many drop off between each step
-          </p>
-        </div>
-        <div className="flex items-stretch gap-4 overflow-x-auto">
-          <FunnelStage label="Impressions" count={t.impressions} color={MUTED} />
-          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
-            →
-          </div>
-          <FunnelStage
-            label="Clicks"
-            count={t.clicks}
-            rateFromPrev={clickRate}
-            color={SAGE}
-            benchmark={{ good: 2, decent: 1 }}
-          />
-          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
-            →
-          </div>
-          <FunnelStage
-            label="Add to Cart"
-            count={t.addToCart}
-            rateFromPrev={atcRate}
-            color={SAGE}
-            benchmark={{ good: 10, decent: 5 }}
-          />
-          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
-            →
-          </div>
-          <FunnelStage
-            label="Checkout"
-            count={t.initiateCheckout}
-            rateFromPrev={checkoutRate}
-            color={SAGE}
-            benchmark={{ good: 70, decent: 50 }}
-          />
-          <div className="flex items-center text-2xl" style={{ color: MUTED }}>
-            →
-          </div>
-          <FunnelStage
-            label="Purchases"
-            count={t.purchases}
-            rateFromPrev={purchaseRate}
-            color={SAGE}
-            benchmark={{ good: 70, decent: 50 }}
-          />
-        </div>
-      </section>
+      {/* Funnel — industry benchmark vs our actual % at each stage */}
+      {(() => {
+        const stages = [
+          { label: "Landing page", count: t.clicks, ours: clickRate, industry: 1.5, unit: "% of impressions" },
+          { label: "Add to cart", count: t.addToCart, ours: atcRate, industry: 7.5, unit: "% of clicks" },
+          { label: "Checkout", count: t.initiateCheckout, ours: checkoutRate, industry: 60, unit: "% of carts" },
+          { label: "Purchase", count: t.purchases, ours: purchaseRate, industry: 60, unit: "% of checkouts" },
+        ];
+        // Shared y-axis scale across all bars so cross-stage comparison is meaningful
+        const maxRate = Math.max(...stages.flatMap((s) => [s.industry, s.ours]), 1);
+        const BAR_AREA_HEIGHT = 220; // px
+        return (
+          <section
+            className="rounded-2xl border p-5 shadow-sm"
+            style={{ background: "white", borderColor: BORDER }}
+          >
+            <div className="mb-4 flex items-baseline justify-between">
+              <h2 className="text-lg font-semibold" style={{ color: INK }}>
+                Acquisition Funnel
+              </h2>
+              <p className="text-xs italic" style={{ color: MUTED }}>
+                Industry benchmark vs our actual % at each stage
+              </p>
+            </div>
+            {/* Bar chart */}
+            <div
+              className="flex items-end gap-6 px-2 pt-2"
+              style={{ height: BAR_AREA_HEIGHT + 50, borderBottom: `1px solid ${BORDER}` }}
+            >
+              {stages.map((s) => {
+                const ahead = s.ours >= s.industry;
+                const ourColor = ahead ? SAGE : ROSE;
+                const industryHeight = (s.industry / maxRate) * BAR_AREA_HEIGHT;
+                const oursHeight = (s.ours / maxRate) * BAR_AREA_HEIGHT;
+                return (
+                  <div key={s.label} className="flex-1 flex flex-col items-center">
+                    {/* Two bars side by side */}
+                    <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA_HEIGHT + 30 }}>
+                      {/* Industry */}
+                      <div className="flex flex-col items-center" style={{ width: 44 }}>
+                        <span className="text-[11px] font-bold tabular-nums mb-1" style={{ color: "#5b8def" }}>
+                          {s.industry.toFixed(1)}%
+                        </span>
+                        <div
+                          className="w-full rounded-t-md"
+                          style={{
+                            height: industryHeight,
+                            background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
+                          }}
+                          title={`Industry standard: ${s.industry}% ${s.unit}`}
+                        />
+                      </div>
+                      {/* Us */}
+                      <div className="flex flex-col items-center" style={{ width: 44 }}>
+                        <span className="text-[11px] font-bold tabular-nums mb-1" style={{ color: ourColor }}>
+                          {s.ours.toFixed(1)}%
+                        </span>
+                        <div
+                          className="w-full rounded-t-md"
+                          style={{
+                            height: oursHeight,
+                            background: ourColor,
+                          }}
+                          title={`Our actual: ${s.ours.toFixed(2)}% ${s.unit} · ${formatNumber(s.count)} ${s.label.toLowerCase()}`}
+                        />
+                      </div>
+                    </div>
+                    {/* Stage label + absolute count */}
+                    <div className="mt-2 text-center">
+                      <p className="text-xs font-semibold" style={{ color: INK }}>{s.label}</p>
+                      <p className="text-[10px] tabular-nums" style={{ color: MUTED }}>
+                        {formatNumber(s.count)} {s.unit.replace("% of ", "from ")}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Legend */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="inline-block h-3 w-4 rounded"
+                  style={{ background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)" }}
+                />
+                <span style={{ color: MUTED }}>Industry standard</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
+                <span style={{ color: MUTED }}>Our number (ahead of industry)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-4 rounded" style={{ background: ROSE }} />
+                <span style={{ color: MUTED }}>Our number (behind industry)</span>
+              </div>
+            </div>
+            {/* Absolute totals strip */}
+            <div className="mt-4 pt-4 border-t flex items-center justify-between text-xs" style={{ borderColor: BORDER }}>
+              <span style={{ color: MUTED }}>Top of funnel:</span>
+              <span className="font-semibold tabular-nums" style={{ color: INK }}>
+                {formatNumber(t.impressions)} impressions
+              </span>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Health flag */}
       {roas > 0 && roas < 1 && (
