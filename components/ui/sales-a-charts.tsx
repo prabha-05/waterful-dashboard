@@ -46,7 +46,7 @@ export function SalesAContent({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-[#0a0a0a] rounded-lg p-4 border border-neutral-800"
+              className="bg-[#1d293d] rounded-lg p-4 border border-neutral-800"
             >
               <p className="text-sm text-neutral-500">{kpi.label}</p>
               <p className="text-2xl font-bold text-white mt-1">{kpi.value}</p>

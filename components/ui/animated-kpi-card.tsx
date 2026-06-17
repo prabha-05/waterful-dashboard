@@ -121,7 +121,7 @@ export function AnimatedKpiCard({
               </span>
             )}
             {href && (
-              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a0a0a]/70 text-neutral-500 transition-all group-hover:bg-[#0a0a0a] group-hover:text-white group-hover:shadow-sm`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-[#1d293d]/70 text-neutral-500 transition-all group-hover:bg-[#1d293d] group-hover:text-white group-hover:shadow-sm`}>
                 <ArrowUpRight size={14} />
               </span>
             )}

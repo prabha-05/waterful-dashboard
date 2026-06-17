@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { Clock, Download, RotateCcw, Package, Repeat, AlertTriangle } from "lucide-react";
 
 const INK = "#ffffff";
-const MUTED = "#9ca3af";
+const MUTED = "#90a1b9";
 const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
-const BORDER = "#1a1a1a";
+const BORDER = "#314158";
 
 type AttentionShipment = {
   awb: string;
@@ -107,14 +107,14 @@ export function DtdcNeedsAttention() {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#0a0a0a", borderColor: BORDER, color: MUTED }}>
+      <div className="rounded-2xl border p-8 text-center text-sm italic" style={{ background: "#1d293d", borderColor: BORDER, color: MUTED }}>
         Loading…
       </div>
     );
   }
   if (error) {
     return (
-      <div className="rounded-2xl border p-6 text-sm" style={{ background: "#0a0a0a", borderColor: BORDER, color: ROSE }}>
+      <div className="rounded-2xl border p-6 text-sm" style={{ background: "#1d293d", borderColor: BORDER, color: ROSE }}>
         Failed to load: {error}
       </div>
     );
@@ -217,7 +217,7 @@ function Section({
   filename: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0a0a0a", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#1d293d", borderColor: BORDER }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {icon}
@@ -281,7 +281,7 @@ function ActionCard({
   filename: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "#0a0a0a", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "#1d293d", borderColor: BORDER }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           {icon}
@@ -313,7 +313,7 @@ function ListCard({
   filename: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "#0a0a0a", borderColor: BORDER }}>
+    <div className="rounded-2xl border p-5 shadow-sm space-y-3" style={{ background: "#1d293d", borderColor: BORDER }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           {icon}
@@ -356,7 +356,7 @@ function DownloadBtn({ rows, filename }: { rows: AttentionShipment[]; filename: 
       onClick={() => downloadCsv(rows, filename)}
       disabled={rows.length === 0}
       className="rounded-md border p-1.5 transition-colors disabled:opacity-40 hover:bg-cyan-950/30"
-      style={{ background: "#0a0a0a", borderColor: BORDER, color: INK }}
+      style={{ background: "#1d293d", borderColor: BORDER, color: INK }}
       title={`Download ${rows.length} row${rows.length === 1 ? "" : "s"} as CSV`}
     >
       <Download size={13} />

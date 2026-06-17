@@ -2,7 +2,7 @@ import { RetentionCustomerValue } from "@/components/ui/retention-customer-value
 
 export default function CustomerValuePage() {
   return (
-    <div className="relative min-h-full" style={{ background: "#000000" }}>
+    <div className="relative min-h-full" style={{ background: "#07090f" }}>
       <div className="space-y-2 p-8">
         <h1
           className="text-3xl font-bold"
@@ -10,7 +10,7 @@ export default function CustomerValuePage() {
         >
           Customer Value
         </h1>
-        <p className="mb-6 text-sm italic" style={{ color: "#9ca3af" }}>
+        <p className="mb-6 text-sm italic" style={{ color: "#90a1b9" }}>
           LTV, ARPU, and the unit economics that matter — what each customer is really worth.
         </p>
         <RetentionCustomerValue />

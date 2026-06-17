@@ -6,8 +6,8 @@ import { Minus, Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 const INK = "#ffffff";
 const AMBER = "#22c5ff";
 const SAGE = "#7a9471";
-const BORDER = "#1a1a1a";
-const CREAM_BG = "#0a0a0a";
+const BORDER = "#314158";
+const CREAM_BG = "#1d293d";
 
 export const UNITS = ["day", "week", "month"] as const;
 export type Unit = (typeof UNITS)[number];
@@ -147,9 +147,9 @@ export function PeriodPicker({
     <div className="flex flex-wrap items-center gap-4">
       <div
         className="inline-flex items-center rounded-xl border overflow-hidden"
-        style={{ borderColor: "#1a1a1a", background: "#0a0a0a" }}
+        style={{ borderColor: "#314158", background: "#1d293d" }}
       >
-        <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-[#0a0a0a]" style={{ color: INK }}>
+        <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-[#1d293d]" style={{ color: INK }}>
           <Minus size={16} />
         </button>
         <input
@@ -162,14 +162,14 @@ export function PeriodPicker({
             if (e.key === "Enter") commit(parseInt(inputValue));
           }}
           className="w-14 py-2.5 text-sm font-bold tabular-nums text-center border-x outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          style={{ color: INK, borderColor: "#1a1a1a" }}
+          style={{ color: INK, borderColor: "#314158" }}
         />
-        <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-[#0a0a0a]" style={{ color: INK }}>
+        <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-[#1d293d]" style={{ color: INK }}>
           <Plus size={16} />
         </button>
       </div>
 
-      <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#1a1a1a" }}>
+      <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#314158" }}>
         {UNITS.map((u) => (
           <button
             key={u}
@@ -189,8 +189,8 @@ export function PeriodPicker({
         <div className="relative inline-block">
           <button
             onClick={() => setShowMonthPicker(!showMonthPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-[#0a0a0a]/80"
-            style={{ background: "#0a0a0a", borderColor: BORDER, color: INK }}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-[#1d293d]/80"
+            style={{ background: "#1d293d", borderColor: BORDER, color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
             {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
@@ -198,7 +198,7 @@ export function PeriodPicker({
           {showMonthPicker && (
             <div
               className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
-              style={{ background: "#0a0a0a", borderColor: BORDER }}
+              style={{ background: "#1d293d", borderColor: BORDER }}
             >
               <MonthGridPicker selectedDate={startDate} onPick={pickMonth} />
               <button
@@ -214,7 +214,7 @@ export function PeriodPicker({
       ) : (
         <div className="inline-flex items-center gap-2">
           <Calendar size={14} style={{ color: AMBER }} />
-          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
+          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#90a1b9" }}>
             Date
           </label>
           <input
@@ -229,7 +229,7 @@ export function PeriodPicker({
       )}
 
       {trailingLabel !== undefined && (
-        <p className="text-sm" style={{ color: "#9ca3af" }}>
+        <p className="text-sm" style={{ color: "#90a1b9" }}>
           <span className="font-bold" style={{ color: INK }}>
             {count} {unitLabel(unit).toLowerCase()}
           </span>{" "}

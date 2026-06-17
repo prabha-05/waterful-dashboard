@@ -76,7 +76,7 @@ function MetricCard({
   }[tone];
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neutral-50 to-transparent opacity-40 blur-2xl transition-opacity group-hover:opacity-70" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
@@ -277,14 +277,14 @@ function SplitDataTable({
   const grandTotal = grand.firstTime + grand.repeat;
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-800 bg-[#0a0a0a]/60 px-4 py-2.5">
+    <div className="rounded-xl border border-neutral-800 bg-[#1d293d] overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-800 bg-[#1d293d]/60 px-4 py-2.5">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
           {title} — table
         </p>
         <button
           onClick={downloadCsv}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-800 bg-[#0a0a0a] px-3 py-1.5 text-xs font-semibold text-neutral-300 transition-colors hover:bg-[#0a0a0a]"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-800 bg-[#1d293d] px-3 py-1.5 text-xs font-semibold text-neutral-300 transition-colors hover:bg-[#1d293d]"
           title="Download as CSV"
         >
           <span aria-hidden="true">⬇</span> Download CSV
@@ -293,7 +293,7 @@ function SplitDataTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-[#0a0a0a]/60">
+            <tr className="bg-[#1d293d]/60">
               {[labelHeader, "Total", "New customers", "Repeat customers", "Repeat %"].map((h, i) => (
                 <th
                   key={h}
@@ -321,7 +321,7 @@ function SplitDataTable({
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-neutral-800 bg-[#0a0a0a]/60">
+            <tr className="border-t-2 border-neutral-800 bg-[#1d293d]/60">
               <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-neutral-300">Total</td>
               <td className="px-3 py-2.5 text-right tabular-nums font-bold text-white">{grandTotal.toLocaleString()}</td>
               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: VIOLET }}>{grand.firstTime.toLocaleString()}</td>
@@ -352,7 +352,7 @@ function StackedSplitBars({
 }) {
   const max = Math.max(...data.map((d) => d.firstTime + d.repeat), 1);
   return (
-    <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-5">
+    <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-5">
       <div className="space-y-3">
         {data.map((d) => {
           const total = d.firstTime + d.repeat;
@@ -525,7 +525,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         tone="violet"
       >
         {s.productSale.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-800 bg-[#0a0a0a]/40 p-6 text-center text-sm text-neutral-400">
+          <p className="rounded-xl border border-dashed border-neutral-800 bg-[#1d293d]/40 p-6 text-center text-sm text-neutral-400">
             No products sold yet. Quiet week.
           </p>
         ) : (() => {
@@ -567,7 +567,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         tone="sky"
       >
         {s.payment.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-800 bg-[#0a0a0a]/40 p-6 text-center text-sm text-neutral-400">
+          <p className="rounded-xl border border-dashed border-neutral-800 bg-[#1d293d]/40 p-6 text-center text-sm text-neutral-400">
             No payment method data — re-import Shopify orders to populate this.
           </p>
         ) : (() => {
@@ -586,7 +586,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
                 <div className="flex-1 min-w-0">
                   <StackedSplitBars data={rows} />
                 </div>
-                <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-[#0a0a0a] p-5 md:w-72">
+                <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-[#1d293d] p-5 md:w-72">
                   <MultiSlicePie
                     slices={pieSlices}
                     total={pieTotal}
@@ -631,7 +631,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
                 <div className="flex-1 min-w-0">
                   <StackedSplitBars data={rows} />
                 </div>
-                <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-[#0a0a0a] p-5 md:w-72">
+                <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-[#1d293d] p-5 md:w-72">
                   <MultiSlicePie
                     slices={pieSlices}
                     total={pieTotal}
@@ -657,7 +657,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         icon={<Sparkles size={18} />}
         tone="rose"
       >
-        <div className="rounded-2xl border border-neutral-800 bg-[#0a0a0a] p-5 shadow-sm">
+        <div className="rounded-2xl border border-neutral-800 bg-[#1d293d] p-5 shadow-sm">
           <IndiaHeatmap points={metrics.heatmapPoints} />
           <p className="mt-2 text-xs text-neutral-400">
             Dot size reflects order count. Hover a city for top product and pincodes.

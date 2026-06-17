@@ -49,7 +49,7 @@ export function RetentionAContent({
     if (value >= 20) return "bg-yellow-100 text-yellow-800";
     if (value >= 10) return "bg-orange-100 text-orange-800";
     if (value > 0) return "bg-red-100 text-red-800";
-    return "bg-[#0a0a0a] text-neutral-300";
+    return "bg-[#1d293d] text-neutral-300";
   }
 
   return (
@@ -60,7 +60,7 @@ export function RetentionAContent({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-[#0a0a0a] rounded-lg p-4 border border-neutral-800"
+              className="bg-[#1d293d] rounded-lg p-4 border border-neutral-800"
             >
               <p className="text-sm text-neutral-500">{kpi.label}</p>
               <p className="text-2xl font-bold text-white mt-1">{kpi.value}</p>

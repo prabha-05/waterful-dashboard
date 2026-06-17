@@ -2,17 +2,17 @@ import { DtdcNeedsAttention } from "@/components/ui/dtdc-needs-attention";
 
 export default function DtdcNeedsAttentionPage() {
   return (
-    <div className="relative min-h-full" style={{ background: "#000000" }}>
+    <div className="relative min-h-full" style={{ background: "#07090f" }}>
       <div className="space-y-2 p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-bold" style={{ color: "#ffffff" }}>
           DTDC — Needs Attention
         </h1>
-        <p className="mb-4 text-sm italic" style={{ color: "#9ca3af" }}>
+        <p className="mb-4 text-sm italic" style={{ color: "#90a1b9" }}>
           Shipments stuck, RTOs, late deliveries — the ones to look at today.
         </p>
         <div
           className="mb-6 rounded-xl border px-4 py-3 text-[12px] leading-relaxed"
-          style={{ background: "#fffaf0", borderColor: "#1a1a1a", color: "#6b5849" }}
+          style={{ background: "#fffaf0", borderColor: "#314158", color: "#6b5849" }}
         >
           <span className="font-semibold" style={{ color: "#ffffff" }}>How this updates:</span>{" "}
           Covers every DTDC shipment booked from <span className="font-semibold">May 1, 2026</span> onwards.

@@ -22,7 +22,7 @@ export function IndiaHeatmap({ points }: { points: HeatmapPoint[] }) {
 
   if (points.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[400px] bg-[#0a0a0a] rounded-lg text-neutral-400 text-sm">
+      <div className="flex items-center justify-center h-[400px] bg-[#1d293d] rounded-lg text-neutral-400 text-sm">
         No orders mapped for this period.
       </div>
     );
@@ -164,7 +164,7 @@ export function IndiaHeatmap({ points }: { points: HeatmapPoint[] }) {
 
       {hovered && (
         <div
-          className="absolute z-20 bg-[#0a0a0a] border border-neutral-800 rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[200px]"
+          className="absolute z-20 bg-[#1d293d] border border-neutral-800 rounded-lg shadow-lg p-3 text-xs pointer-events-none min-w-[200px]"
           style={{
             left: Math.min(mousePos.x + 12, 500),
             top: mousePos.y + 12,

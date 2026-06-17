@@ -7,10 +7,10 @@ import { SalesSummaryPanels } from "./sales-summary-panels";
 import type { SalesMetrics } from "@/lib/sales-aggregations";
 
 const INK = "#ffffff";
-const MUTED = "#9ca3af";
+const MUTED = "#90a1b9";
 const AMBER = "#22c5ff";
-const BORDER = "#1a1a1a";
-const CREAM_BG = "#0a0a0a";
+const BORDER = "#314158";
+const CREAM_BG = "#1d293d";
 
 type RangeData = SalesMetrics & { from: string; to: string };
 
@@ -82,7 +82,7 @@ export function SalesSummary() {
       {/* FROM / TO range picker (cream + amber styling) */}
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "#0a0a0a", borderColor: BORDER }}
+        style={{ background: "#1d293d", borderColor: BORDER }}
       >
         <div className="flex items-center gap-2">
           <Calendar size={14} style={{ color: AMBER }} />
@@ -120,7 +120,7 @@ export function SalesSummary() {
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-xl border border-neutral-800 bg-[#0a0a0a] p-8 text-center">
+        <div className="rounded-xl border border-neutral-800 bg-[#1d293d] p-8 text-center">
           <p className="text-sm text-neutral-500">No orders found in this range.</p>
         </div>
       )}
