@@ -20,14 +20,14 @@ import {
 } from "lucide-react";
 import { PeriodPicker, formatDateParam, type Unit } from "@/components/ui/period-picker";
 
-const INK = "#ffffff";
-const MUTED = "#9ca3af";
-const AMBER = "#22c5ff";
+const INK = "#4a3a2e";
+const MUTED = "#9a8571";
+const AMBER = "#c99954";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const CREAM = "#f1e7d3";
-const CREAM_BG = "#0a0a0a";
-const BORDER = "#1a1a1a";
+const CREAM_BG = "#faf6ef";
+const BORDER = "#e8dfd0";
 
 type ChurnPoint = { month: string; label: string; active: number; retention: number; churn: number };
 type WinBackPoint = { month: string; label: string; dormantBase: number; wonBack: number; rate: number };
@@ -72,7 +72,7 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#0a0a0a", borderColor: BORDER }}
+      style={{ background: "white", borderColor: BORDER }}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -241,7 +241,7 @@ export function RetentionAnalytics() {
         </div>
         <div
           className="rounded-2xl border overflow-x-auto shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <table className="w-full text-xs">
             <thead>
@@ -274,7 +274,7 @@ export function RetentionAnalytics() {
                 <tr key={row.cohort} className="border-t" style={{ borderColor: CREAM }}>
                   <td
                     className="px-3 py-2 font-medium whitespace-nowrap sticky left-0"
-                    style={{ color: INK, background: "#0a0a0a" }}
+                    style={{ color: INK, background: "white" }}
                   >
                     {row.label}
                   </td>
@@ -315,7 +315,7 @@ export function RetentionAnalytics() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <h3 className="text-sm font-semibold mb-1" style={{ color: INK }}>
             Monthly Retention Trend
@@ -358,7 +358,7 @@ export function RetentionAnalytics() {
 
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <h3 className="text-sm font-semibold mb-1" style={{ color: INK }}>
             Win-Back Rate (monthly)
@@ -406,7 +406,7 @@ export function RetentionAnalytics() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <div className="flex items-baseline justify-between mb-1">
             <h3 className="text-sm font-semibold" style={{ color: INK }}>
@@ -447,7 +447,7 @@ export function RetentionAnalytics() {
 
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <div className="flex items-baseline justify-between mb-1">
             <h3 className="text-sm font-semibold" style={{ color: INK }}>
@@ -491,7 +491,7 @@ export function RetentionAnalytics() {
       <section className="grid gap-4 lg:grid-cols-2">
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <h3 className="text-sm font-semibold mb-1" style={{ color: INK }}>
             Retention by First Product
@@ -548,7 +548,7 @@ export function RetentionAnalytics() {
 
         <div
           className="rounded-2xl border p-5 shadow-sm"
-          style={{ background: "#0a0a0a", borderColor: BORDER }}
+          style={{ background: "white", borderColor: BORDER }}
         >
           <h3 className="text-sm font-semibold mb-1" style={{ color: INK }}>
             Retention by State

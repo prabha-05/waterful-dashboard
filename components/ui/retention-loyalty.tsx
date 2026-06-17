@@ -14,11 +14,11 @@ import {
   BarChart3,
 } from "lucide-react";
 
-const PAPER = "#000000";
+const PAPER = "#fdfaf4";
 const ROSE = "#d97777";
 const SAGE = "#7a9471";
-const AMBER = "#22c5ff";
-const INK = "#ffffff";
+const AMBER = "#c99954";
+const INK = "#4a3a2e";
 
 type Metrics = {
   repeatCustomers: number;
@@ -65,24 +65,24 @@ function KpiCard({
   label: string; value: string; subtitle?: string; icon: React.ReactNode; color: string; note?: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}>
+    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "white", borderColor: "#e8dfd0" }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>{label}</p>
           {subtitle && <p className="mt-0.5 text-[10px] italic" style={{ color: "#b5a48e" }}>{subtitle}</p>}
         </div>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}18`, color }}>{icon}</span>
       </div>
       <p className="mt-4 text-3xl font-bold tabular-nums" style={{ color: INK }}>{value}</p>
-      {note && <p className="mt-1.5 text-xs" style={{ color: "#9ca3af" }}>{note}</p>}
+      {note && <p className="mt-1.5 text-xs" style={{ color: "#9a8571" }}>{note}</p>}
     </div>
   );
 }
 
 function StatRow({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "#1a1a1a" }}>
-      <span className="text-sm" style={{ color: "#9ca3af" }}>{label}</span>
+    <div className="flex items-center justify-between rounded-xl border p-4" style={{ borderColor: "#e8dfd0" }}>
+      <span className="text-sm" style={{ color: "#9a8571" }}>{label}</span>
       <span className="text-lg font-bold tabular-nums" style={{ color }}>{value}</span>
     </div>
   );
@@ -94,8 +94,8 @@ function RetentionFunnel({ total, repeat, dropOff }: { total: number; repeat: nu
   const dropPct = total > 0 ? dropOff : 0;
 
   return (
-    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}>
-      <p className="mb-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9ca3af" }}>
+    <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: "#e8dfd0" }}>
+      <p className="mb-4 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
         Retention Funnel
       </p>
       <div className="space-y-3">
@@ -128,7 +128,7 @@ function RetentionFunnel({ total, repeat, dropOff }: { total: number; repeat: nu
           </div>
         </div>
       </div>
-      <p className="mt-4 text-[11px] italic" style={{ color: "#9ca3af" }}>
+      <p className="mt-4 text-[11px] italic" style={{ color: "#9a8571" }}>
         Of everyone who bought, how many came back for a second order?
       </p>
     </div>
@@ -255,7 +255,7 @@ export function RetentionLoyalty() {
     <div className="space-y-6">
       {/* Mode toggle + Date picker */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#1a1a1a" }}>
+        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#e8dfd0" }}>
           <button
             onClick={() => switchMode("single")}
             className="px-4 py-2 text-sm font-medium transition-colors"
@@ -275,8 +275,8 @@ export function RetentionLoyalty() {
         <div className="relative inline-block">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-[#0a0a0a]/80"
-            style={{ background: "#0a0a0a", borderColor: "#1a1a1a", color: INK }}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
+            style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
             {mode === "single"
@@ -287,7 +287,7 @@ export function RetentionLoyalty() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border p-4 shadow-xl" style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border p-4 shadow-xl" style={{ background: "white", borderColor: "#e8dfd0" }}>
               {mode === "single" ? (
                 <DayPicker
                   mode="single"
@@ -302,7 +302,7 @@ export function RetentionLoyalty() {
                   <DayPicker mode="range" selected={range} onSelect={setRange} endMonth={new Date()} startMonth={new Date(2022, 0)} captionLayout="dropdown" />
                   <div className="mt-3 flex flex-wrap gap-2">
                     {PRESETS.map((p) => (
-                      <button key={p.days} onClick={() => applyPreset(p.days)} className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-cyan-950/30" style={{ borderColor: "#1a1a1a", color: INK }}>{p.label}</button>
+                      <button key={p.days} onClick={() => applyPreset(p.days)} className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-amber-50" style={{ borderColor: "#e8dfd0", color: INK }}>{p.label}</button>
                     ))}
                   </div>
                   <button onClick={applyRange} className="mt-3 w-full rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm" style={{ background: SAGE }}>Apply range</button>
@@ -345,8 +345,8 @@ export function RetentionLoyalty() {
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-2xl border p-8 text-center" style={{ background: "#0a0a0a", borderColor: "#1a1a1a" }}>
-          <p className="text-sm" style={{ color: "#9ca3af" }}>No orders found for this date range.</p>
+        <div className="rounded-2xl border p-8 text-center" style={{ background: "white", borderColor: "#e8dfd0" }}>
+          <p className="text-sm" style={{ color: "#9a8571" }}>No orders found for this date range.</p>
         </div>
       )}
     </div>
