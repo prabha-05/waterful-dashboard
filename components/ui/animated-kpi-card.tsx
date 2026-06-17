@@ -121,7 +121,7 @@ export function AnimatedKpiCard({
               </span>
             )}
             {href && (
-              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900/70 text-neutral-500 transition-all group-hover:bg-neutral-900 group-hover:text-neutral-100 group-hover:shadow-sm`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-white/70 text-neutral-500 transition-all group-hover:bg-white group-hover:text-neutral-900 group-hover:shadow-sm`}>
                 <ArrowUpRight size={14} />
               </span>
             )}
@@ -137,7 +137,7 @@ export function AnimatedKpiCard({
           <p className="mt-1 text-[11px] text-neutral-500">{sublabel}</p>
         )}
         {href && (
-          <p className="mt-2 text-[11px] font-medium text-neutral-500 group-hover:text-neutral-300">
+          <p className="mt-2 text-[11px] font-medium text-neutral-500 group-hover:text-neutral-700">
             View details →
           </p>
         )}
@@ -145,7 +145,7 @@ export function AnimatedKpiCard({
     </>
   );
 
-  const base = `group relative block overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-br ${c.bg} shadow-sm transition-all duration-300`;
+  const base = `group relative block overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-br ${c.bg} shadow-sm transition-all duration-300`;
 
   if (href) {
     return (

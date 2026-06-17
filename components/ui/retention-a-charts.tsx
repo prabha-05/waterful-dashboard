@@ -49,7 +49,7 @@ export function RetentionAContent({
     if (value >= 20) return "bg-yellow-100 text-yellow-800";
     if (value >= 10) return "bg-orange-100 text-orange-800";
     if (value > 0) return "bg-red-100 text-red-800";
-    return "bg-neutral-900 text-neutral-300";
+    return "bg-neutral-50 text-neutral-300";
   }
 
   return (
@@ -60,10 +60,10 @@ export function RetentionAContent({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-neutral-900 rounded-lg p-4 border border-neutral-800"
+              className="bg-neutral-50 rounded-lg p-4 border border-neutral-100"
             >
               <p className="text-sm text-neutral-500">{kpi.label}</p>
-              <p className="text-2xl font-bold text-neutral-100 mt-1">{kpi.value}</p>
+              <p className="text-2xl font-bold text-neutral-900 mt-1">{kpi.value}</p>
             </div>
           ))}
         </div>
@@ -74,23 +74,23 @@ export function RetentionAContent({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-800">
-                <th className="text-left py-3 px-3 font-semibold text-neutral-400">Cohort</th>
-                <th className="text-right py-3 px-3 font-semibold text-neutral-400">Users</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M0</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M1</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M2</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M3</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M4</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M5</th>
-                <th className="text-center py-3 px-2 font-semibold text-neutral-400">M6</th>
+              <tr className="border-b border-neutral-200">
+                <th className="text-left py-3 px-3 font-semibold text-neutral-600">Cohort</th>
+                <th className="text-right py-3 px-3 font-semibold text-neutral-600">Users</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M0</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M1</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M2</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M3</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M4</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M5</th>
+                <th className="text-center py-3 px-2 font-semibold text-neutral-600">M6</th>
               </tr>
             </thead>
             <tbody>
               {data.cohortTable.map((row) => (
-                <tr key={row.cohort} className="border-b border-neutral-800">
-                  <td className="py-2 px-3 font-medium text-neutral-100">{row.cohort}</td>
-                  <td className="py-2 px-3 text-right text-neutral-400">{row.customers}</td>
+                <tr key={row.cohort} className="border-b border-neutral-100">
+                  <td className="py-2 px-3 font-medium text-neutral-900">{row.cohort}</td>
+                  <td className="py-2 px-3 text-right text-neutral-600">{row.customers}</td>
                   {["M0", "M1", "M2", "M3", "M4", "M5", "M6"].map((m) => {
                     const val = row[m as keyof typeof row] as number;
                     return (

@@ -65,7 +65,7 @@ type CustomerResponse =
 const ROSE = "#d97777";
 const SAGE = "#7a9471";
 const AMBER = "#c99954";
-const INK = "#f5f5f5";
+const INK = "#4a3a2e";
 const CARD = "white";
 const BORDER = "#e8dcc8";
 
@@ -98,7 +98,7 @@ function statusStyle(s: Profile["status"]): { bg: string; fg: string; Icon: type
     case "At-risk":
       return { bg: `${ROSE}22`, fg: ROSE, Icon: AlertTriangle };
     case "Dormant":
-      return { bg: "#a3a3a322", fg: "#7a6551", Icon: Moon };
+      return { bg: "#9a857122", fg: "#7a6551", Icon: Moon };
   }
 }
 
@@ -154,7 +154,7 @@ export function CustomerLookup() {
       <div className="flex flex-wrap items-center gap-2">
         <div
           className="flex items-center gap-2 rounded-xl border px-3 py-2"
-          style={{ borderColor: BORDER, background: "#0a0a0a" }}
+          style={{ borderColor: BORDER, background: "#fdfaf4" }}
         >
           <Phone size={14} style={{ color: ROSE }} />
           <input
@@ -402,7 +402,7 @@ function StatTile({
 }) {
   return (
     <div className="rounded-xl border p-3" style={{ borderColor: BORDER, background: CARD }}>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider" style={{ color: "#a3a3a3" }}>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider" style={{ color: "#9a8571" }}>
         {icon}
         {label}
       </div>
@@ -413,7 +413,7 @@ function StatTile({
         {value}
       </p>
       {caption && (
-        <p className="text-[10px]" style={{ color: "#a3a3a3" }}>
+        <p className="text-[10px]" style={{ color: "#9a8571" }}>
           {caption}
         </p>
       )}
@@ -443,7 +443,7 @@ function Card({
           {title}
         </p>
         {subtitle && (
-          <span className="text-[11px] italic" style={{ color: "#a3a3a3" }}>
+          <span className="text-[11px] italic" style={{ color: "#9a8571" }}>
             {subtitle}
           </span>
         )}

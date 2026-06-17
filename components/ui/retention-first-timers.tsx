@@ -14,11 +14,11 @@ import {
 } from "lucide-react";
 
 /* ─── palette ─── */
-const PAPER = "#0a0a0a";
+const PAPER = "#fdfaf4";
 const ROSE = "#d97777";
 const SAGE = "#7a9471";
 const AMBER = "#c99954";
-const INK = "#f5f5f5";
+const INK = "#4a3a2e";
 
 type Metrics = {
   ftOrders: number;
@@ -74,13 +74,13 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-      style={{ background: "#171717", borderColor: "#262626" }}
+      style={{ background: "white", borderColor: "#e8dfd0" }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p
             className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "#a3a3a3" }}
+            style={{ color: "#9a8571" }}
           >
             {label}
           </p>
@@ -104,7 +104,7 @@ function KpiCard({
         {value}
       </p>
       {note && (
-        <p className="mt-1.5 text-xs" style={{ color: "#a3a3a3" }}>
+        <p className="mt-1.5 text-xs" style={{ color: "#9a8571" }}>
           {note}
         </p>
       )}
@@ -117,11 +117,11 @@ function InsightCard({ title, children }: { title: string; children: React.React
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#171717", borderColor: "#262626" }}
+      style={{ background: "white", borderColor: "#e8dfd0" }}
     >
       <p
         className="mb-3 text-[11px] font-semibold uppercase tracking-wider"
-        style={{ color: "#a3a3a3" }}
+        style={{ color: "#9a8571" }}
       >
         {title}
       </p>
@@ -278,7 +278,7 @@ export function RetentionFirstTimers() {
     <div className="space-y-6">
       {/* Mode toggle + Date picker */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#262626" }}>
+        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#e8dfd0" }}>
           <button
             onClick={() => switchMode("single")}
             className="px-4 py-2 text-sm font-medium transition-colors"
@@ -298,8 +298,8 @@ export function RetentionFirstTimers() {
         <div className="relative inline-block">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-neutral-900/80"
-            style={{ background: "#171717", borderColor: "#262626", color: INK }}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
+            style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
             {mode === "single"
@@ -312,7 +312,7 @@ export function RetentionFirstTimers() {
           {showPicker && (
             <div
               className="absolute z-50 mt-2 rounded-xl border p-4 shadow-xl"
-              style={{ background: "#171717", borderColor: "#262626" }}
+              style={{ background: "white", borderColor: "#e8dfd0" }}
             >
               {mode === "single" ? (
                 <DayPicker
@@ -338,8 +338,8 @@ export function RetentionFirstTimers() {
                       <button
                         key={p.days}
                         onClick={() => applyPreset(p.days)}
-                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-amber-950/30"
-                        style={{ borderColor: "#262626", color: INK }}
+                        className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-amber-50"
+                        style={{ borderColor: "#e8dfd0", color: INK }}
                       >
                         {p.label}
                       </button>
@@ -413,7 +413,7 @@ export function RetentionFirstTimers() {
                 <GaugeBar label="Share of orders" pct={ftPctOfOrders} color={SAGE} />
                 <GaugeBar label="Share of revenue" pct={ftPctOfRevenue} color={AMBER} />
               </div>
-              <p className="mt-4 text-[11px] italic" style={{ color: "#a3a3a3" }}>
+              <p className="mt-4 text-[11px] italic" style={{ color: "#9a8571" }}>
                 How much of your business comes from first-timers vs. returning customers.
               </p>
             </InsightCard>
@@ -425,7 +425,7 @@ export function RetentionFirstTimers() {
                     <TrendingUp size={16} style={{ color: ROSE, marginTop: 2 }} />
                     <div>
                       <p className="text-sm font-medium" style={{ color: INK }}>Acquisition-heavy</p>
-                      <p className="mt-0.5 text-xs" style={{ color: "#a3a3a3" }}>
+                      <p className="mt-0.5 text-xs" style={{ color: "#9a8571" }}>
                         Over 80% of your customers are first-timers. Great at getting new people in the door, but retention needs attention.
                       </p>
                     </div>
@@ -435,7 +435,7 @@ export function RetentionFirstTimers() {
                     <TrendingUp size={16} style={{ color: SAGE, marginTop: 2 }} />
                     <div>
                       <p className="text-sm font-medium" style={{ color: INK }}>Balanced mix</p>
-                      <p className="mt-0.5 text-xs" style={{ color: "#a3a3a3" }}>
+                      <p className="mt-0.5 text-xs" style={{ color: "#9a8571" }}>
                         A healthy split between new and returning buyers. Keep nurturing both channels.
                       </p>
                     </div>
@@ -445,14 +445,14 @@ export function RetentionFirstTimers() {
                     <TrendingUp size={16} style={{ color: AMBER, marginTop: 2 }} />
                     <div>
                       <p className="text-sm font-medium" style={{ color: INK }}>Retention-strong</p>
-                      <p className="mt-0.5 text-xs" style={{ color: "#a3a3a3" }}>
+                      <p className="mt-0.5 text-xs" style={{ color: "#9a8571" }}>
                         Most revenue comes from repeat buyers. Your retention game is solid, but don&apos;t forget acquisition.
                       </p>
                     </div>
                   </div>
                 )}
-                <div className="rounded-xl border p-3" style={{ borderColor: "#262626" }}>
-                  <p className="text-xs" style={{ color: "#a3a3a3" }}>
+                <div className="rounded-xl border p-3" style={{ borderColor: "#e8dfd0" }}>
+                  <p className="text-xs" style={{ color: "#9a8571" }}>
                     <span className="font-semibold" style={{ color: INK }}>FT AOV of {formatCurrency(data.ftAov)}</span> tells
                     you what a new customer spends on their very first order. Compare with Total AOV to see if first-timers spend more or less.
                   </p>
@@ -466,9 +466,9 @@ export function RetentionFirstTimers() {
       {!loading && data && data.totalOrders === 0 && (
         <div
           className="rounded-2xl border p-8 text-center"
-          style={{ background: "#171717", borderColor: "#262626" }}
+          style={{ background: "white", borderColor: "#e8dfd0" }}
         >
-          <p className="text-sm" style={{ color: "#a3a3a3" }}>No orders found for this date range.</p>
+          <p className="text-sm" style={{ color: "#9a8571" }}>No orders found for this date range.</p>
         </div>
       )}
     </div>

@@ -21,7 +21,7 @@ export default function FinalSpecificCustomerPage() {
           </p>
           <h1
             className="mt-1 text-4xl font-bold"
-            style={{ fontFamily: "Georgia, serif", color: "#f5f5f5" }}
+            style={{ fontFamily: "Georgia, serif", color: "#4a3a2e" }}
           >
             Specific Customer
           </h1>

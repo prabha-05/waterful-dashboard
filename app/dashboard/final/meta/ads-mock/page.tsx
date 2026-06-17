@@ -27,16 +27,16 @@ import {
 // ─────────────────────────────────────────────────────────────────
 // Color palette — matches the rest of the dashboard
 // ─────────────────────────────────────────────────────────────────
-const INK = "#f5f5f5";
-const MUTED = "#a3a3a3";
+const INK = "#4a3a2e";
+const MUTED = "#9a8571";
 const AMBER = "#c99954";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const VIOLET = "#8b5cf6";
 const TEAL = "#0d9488";
 const CREAM = "#f1e7d3";
-const CREAM_BG = "#171717";
-const BORDER = "#262626";
+const CREAM_BG = "#faf6ef";
+const BORDER = "#e8dfd0";
 
 // ─────────────────────────────────────────────────────────────────
 // Mock data — 6 ads with varied profiles
@@ -323,7 +323,7 @@ function ChartCard({
   return (
     <div
       className="rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md"
-      style={{ background: "#171717", borderColor: BORDER }}
+      style={{ background: "white", borderColor: BORDER }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-2">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -448,7 +448,7 @@ export default function AdsMockPage() {
   );
 
   return (
-    <div className="relative min-h-full" style={{ background: "#0a0a0a" }}>
+    <div className="relative min-h-full" style={{ background: "#fdfaf4" }}>
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div>
@@ -464,7 +464,7 @@ export default function AdsMockPage() {
         </div>
 
         {/* Date filter */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm" style={{ background: "#171717", borderColor: BORDER }}>
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
           <div className="flex items-center gap-2">
             <Calendar size={14} style={{ color: AMBER }} />
             <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>From</label>
@@ -492,7 +492,7 @@ export default function AdsMockPage() {
         </div>
 
         {/* Top spend strip */}
-        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#171717", borderColor: BORDER }}>
+        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
           <div className="flex items-baseline justify-between mb-2">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>Total spend</p>
@@ -520,7 +520,7 @@ export default function AdsMockPage() {
         </div>
 
         {/* Ads table */}
-        <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#171717", borderColor: BORDER }}>
+        <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
           <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
             <h2 className="text-lg font-semibold" style={{ color: INK }}>Ads with spend</h2>
             <p className="text-xs italic mt-1" style={{ color: MUTED }}>
@@ -607,7 +607,7 @@ export default function AdsMockPage() {
           const totals = sumWindow({ ...selected, daily: dailyInWindow });
           const roasColor = totals.roas >= 2 ? SAGE : totals.roas >= 1 ? AMBER : ROSE;
           return (
-            <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#171717", borderColor: BORDER }}>
+            <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
               <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
                 <h2 className="text-lg font-semibold" style={{ color: INK }}>Drill-down</h2>
                 <span className="text-xs italic" style={{ color: MUTED }}>showing daily breakdown for selected ad</span>

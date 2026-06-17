@@ -21,14 +21,14 @@ import {
   Calendar,
 } from "lucide-react";
 
-const INK = "#f5f5f5";
-const MUTED = "#a3a3a3";
+const INK = "#4a3a2e";
+const MUTED = "#9a8571";
 const AMBER = "#c99954";
 const SAGE = "#7a9471";
 const ROSE = "#d97777";
 const CREAM = "#f1e7d3";
-const CREAM_BG = "#171717";
-const BORDER = "#262626";
+const CREAM_BG = "#faf6ef";
+const BORDER = "#e8dfd0";
 
 function formatDateParam(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -189,7 +189,7 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "#171717", borderColor: BORDER }}
+      style={{ background: "white", borderColor: BORDER }}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -330,7 +330,7 @@ export function MetaOverview() {
   const picker = (
     <div
       className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-      style={{ background: "#171717", borderColor: BORDER }}
+      style={{ background: "white", borderColor: BORDER }}
     >
       <div className="flex items-center gap-2">
         <Calendar size={14} style={{ color: AMBER }} />
@@ -526,7 +526,7 @@ export function MetaOverview() {
       {/* Daily Spend Trend */}
       <section
         className="rounded-2xl border p-5 shadow-sm"
-        style={{ background: "#171717", borderColor: BORDER }}
+        style={{ background: "white", borderColor: BORDER }}
       >
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-lg font-semibold" style={{ color: INK }}>
@@ -592,7 +592,7 @@ export function MetaOverview() {
         return (
           <section
             className="rounded-2xl border p-5 shadow-sm"
-            style={{ background: "#171717", borderColor: BORDER }}
+            style={{ background: "white", borderColor: BORDER }}
           >
             <div className="mb-4 flex items-baseline justify-between">
               <h2 className="text-lg font-semibold" style={{ color: INK }}>
@@ -656,7 +656,7 @@ export function MetaOverview() {
       {/* Funnel */}
       <section
         className="rounded-2xl border p-5 shadow-sm"
-        style={{ background: "#171717", borderColor: BORDER }}
+        style={{ background: "white", borderColor: BORDER }}
       >
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-lg font-semibold" style={{ color: INK }}>

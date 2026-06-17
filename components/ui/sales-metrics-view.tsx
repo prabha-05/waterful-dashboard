@@ -117,12 +117,12 @@ export function SalesMetricsView({
             </p>
             {data.unmappedCities.length > 0 && (
               <details className="mt-3 text-xs text-neutral-500">
-                <summary className="cursor-pointer hover:text-neutral-300">
+                <summary className="cursor-pointer hover:text-neutral-700">
                   {data.unmappedCities.reduce((s, c) => s + c.count, 0)} orders from unmapped cities
                 </summary>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {data.unmappedCities.map((c) => (
-                    <span key={c.city} className="bg-neutral-900 px-2 py-1 rounded">
+                    <span key={c.city} className="bg-neutral-50 px-2 py-1 rounded">
                       {c.city} ({c.count})
                     </span>
                   ))}
@@ -165,14 +165,14 @@ export function SalesMetricsView({
               <div className="mt-3 space-y-1 text-sm">
                 {data.paymentDistribution.map((p, i) => (
                   <div key={p.method} className="flex justify-between border-b border-neutral-50 py-1">
-                    <span className="flex items-center gap-2 text-neutral-300">
+                    <span className="flex items-center gap-2 text-neutral-700">
                       <span
                         className="inline-block h-2 w-2 rounded-full"
                         style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
                       />
                       {p.method}
                     </span>
-                    <span className="font-medium text-neutral-100">₹{p.revenue.toLocaleString()}</span>
+                    <span className="font-medium text-neutral-900">₹{p.revenue.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -189,30 +189,30 @@ export function SalesMetricsView({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-neutral-800">
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-400">#</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-400">Customer</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-400">Product</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-400">City</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-400">Pincode</th>
-                  <th className="px-4 py-3 text-right font-semibold text-neutral-400">Qty</th>
-                  <th className="px-4 py-3 text-right font-semibold text-neutral-400">Total</th>
+                <tr className="border-b border-neutral-200">
+                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">#</th>
+                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Customer</th>
+                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Product</th>
+                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">City</th>
+                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Pincode</th>
+                  <th className="px-4 py-3 text-right font-semibold text-neutral-600">Qty</th>
+                  <th className="px-4 py-3 text-right font-semibold text-neutral-600">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {data.top5Orders.map((o, i) => (
-                  <tr key={i} className="border-b border-neutral-800 transition-colors hover:bg-emerald-50/40">
+                  <tr key={i} className="border-b border-neutral-100 transition-colors hover:bg-emerald-50/40">
                     <td className="px-4 py-3">
                       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-xs font-bold text-white">
                         {i + 1}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-neutral-100">{o.customerName}</td>
-                    <td className="px-4 py-3 text-neutral-400">{o.flavour}</td>
-                    <td className="px-4 py-3 text-neutral-400">{o.city}</td>
-                    <td className="px-4 py-3 text-neutral-400">{o.pincode}</td>
-                    <td className="px-4 py-3 text-right text-neutral-400">{o.qty}</td>
-                    <td className="px-4 py-3 text-right font-medium text-neutral-100">₹{o.total.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-neutral-900">{o.customerName}</td>
+                    <td className="px-4 py-3 text-neutral-600">{o.flavour}</td>
+                    <td className="px-4 py-3 text-neutral-600">{o.city}</td>
+                    <td className="px-4 py-3 text-neutral-600">{o.pincode}</td>
+                    <td className="px-4 py-3 text-right text-neutral-600">{o.qty}</td>
+                    <td className="px-4 py-3 text-right font-medium text-neutral-900">₹{o.total.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -229,12 +229,12 @@ export function SalesMetricsView({
           <>
             <div className="mb-3 flex items-center justify-between">
               <p className="text-xs text-neutral-500">
-                Showing <span className="font-semibold text-neutral-100">{productsToShow.length}</span> of {data.productsSold.length} products
+                Showing <span className="font-semibold text-neutral-900">{productsToShow.length}</span> of {data.productsSold.length} products
               </p>
               {data.productsSold.length > 10 && (
                 <button
                   onClick={() => setShowAllProducts((v) => !v)}
-                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-900"
+                  className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   {showAllProducts ? "Show top 10" : `Show all ${data.productsSold.length}`}
                 </button>
@@ -305,9 +305,9 @@ function RankRow({
         >
           {rank}
         </span>
-        <span className="text-sm text-neutral-300">{label}</span>
+        <span className="text-sm text-neutral-700">{label}</span>
       </div>
-      <span className="rounded-full bg-neutral-800 px-3 py-1 text-sm font-medium text-neutral-100">
+      <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-900">
         {count} orders
       </span>
     </div>
