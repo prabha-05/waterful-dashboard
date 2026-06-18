@@ -1273,11 +1273,7 @@ export function MetaAds() {
                               q,
                             };
                           });
-                          const maxRate = Math.max(
-                            ...comparisonStages.flatMap((c) => [c.industry, c.ours]),
-                            1,
-                          );
-                          const BAR_AREA = 180; // px
+                          const MINI_BAR_AREA = 130; // px — height for each mini chart
 
                           return (
                             <div className="space-y-3">
@@ -1290,25 +1286,42 @@ export function MetaAds() {
                                 <span>impressions</span>
                               </div>
 
-                              {/* Bar chart — 4 stage groups, 2 bars each (industry vs us) */}
-                              <div
-                                className="flex items-end gap-4 px-2 pt-2"
-                                style={{ height: BAR_AREA + 80, borderBottom: `1px solid ${BORDER}` }}
-                              >
+                              {/* One mini bar chart per stage — bars are sized by ABSOLUTE COUNTS
+                                  with each chart having its own independent y-scale */}
+                              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${comparisonStages.length}, minmax(0, 1fr))` }}>
                                 {comparisonStages.map((s) => {
-                                  const industryH = (s.industry / maxRate) * BAR_AREA;
-                                  const oursH = (s.ours / maxRate) * BAR_AREA;
-                                  // Clicks is shown without an industry benchmark bar —
-                                  // CTR comparison adds noise; user just wants the count.
+                                  // Clicks is shown without an industry benchmark bar
                                   const hideIndustry = s.label === "Clicks";
+                                  // Each mini chart has its own scale based on its own counts
+                                  const stageMax = Math.max(
+                                    hideIndustry ? 0 : s.industryExpectedCount,
+                                    s.count,
+                                    1,
+                                  );
+                                  const industryH = (s.industryExpectedCount / stageMax) * MINI_BAR_AREA;
+                                  const oursH = (s.count / stageMax) * MINI_BAR_AREA;
                                   return (
-                                    <div key={s.label} className="flex-1 flex flex-col items-center">
-                                      <div className="flex items-end justify-center gap-2 w-full" style={{ height: BAR_AREA + 28 }}>
-                                        {/* Industry bar — hidden for Clicks */}
+                                    <div
+                                      key={s.label}
+                                      className="rounded-xl border p-3 flex flex-col"
+                                      style={{ background: CREAM_BG, borderColor: BORDER }}
+                                    >
+                                      {/* Stage title */}
+                                      <p className="text-[11px] font-semibold text-center mb-2" style={{ color: INK }}>
+                                        {s.label}
+                                      </p>
+                                      {/* Bars */}
+                                      <div
+                                        className="flex items-end justify-center gap-2 pt-6"
+                                        style={{ height: MINI_BAR_AREA + 40 }}
+                                      >
                                         {!hideIndustry && (
-                                          <div className="flex flex-col items-center" style={{ width: 56 }}>
-                                            <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: "#5b8def" }}>
-                                              {s.industry.toFixed(0)}% · {s.industryExpectedCount.toLocaleString("en-IN")}
+                                          <div className="flex flex-col items-center" style={{ width: 50 }}>
+                                            <span
+                                              className="text-[10px] font-bold tabular-nums leading-tight mb-1"
+                                              style={{ color: "#5b8def" }}
+                                            >
+                                              {s.industryExpectedCount.toLocaleString("en-IN")}
                                             </span>
                                             <div
                                               className="w-full rounded-t-md"
@@ -1316,24 +1329,32 @@ export function MetaAds() {
                                                 height: industryH,
                                                 background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
                                               }}
-                                              title={`Industry standard: ${s.industry.toFixed(0)}% (would give ~${s.industryExpectedCount} here)`}
+                                              title={`Industry standard would give ~${s.industryExpectedCount} ${s.label.toLowerCase()} (${s.industry.toFixed(0)}%)`}
                                             />
                                           </div>
                                         )}
-                                        {/* Our bar — "%  ·  count" inline */}
-                                        <div className="flex flex-col items-center" style={{ width: 56 }}>
-                                          <span className="text-[10px] font-bold tabular-nums leading-tight mb-1 whitespace-nowrap" style={{ color: s.color }}>
-                                            {s.ours.toFixed(0)}% · {s.count.toLocaleString("en-IN")}
+                                        <div className="flex flex-col items-center" style={{ width: 50 }}>
+                                          <span
+                                            className="text-[10px] font-bold tabular-nums leading-tight mb-1"
+                                            style={{ color: s.color }}
+                                          >
+                                            {s.count.toLocaleString("en-IN")}
                                           </span>
                                           <div
                                             className="w-full rounded-t-md"
                                             style={{ height: oursH, background: s.color }}
-                                            title={`Our actual: ${s.ours.toFixed(1)}% (${s.count.toLocaleString("en-IN")})`}
+                                            title={`Our actual: ${s.count} ${s.label.toLowerCase()} (${s.ours.toFixed(1)}%)`}
                                           />
                                         </div>
                                       </div>
-                                      <div className="mt-2 text-center">
-                                        <p className="text-xs font-semibold leading-tight" style={{ color: INK }}>{s.label}</p>
+                                      {/* Sub-line: rates */}
+                                      <div className="mt-2 pt-2 border-t flex items-center justify-around text-[10px]" style={{ borderColor: BORDER }}>
+                                        {!hideIndustry && (
+                                          <span style={{ color: "#5b8def" }}>std {s.industry.toFixed(0)}%</span>
+                                        )}
+                                        <span className="font-semibold" style={{ color: s.color }}>
+                                          us {s.ours.toFixed(1)}%
+                                        </span>
                                       </div>
                                     </div>
                                   );
@@ -1347,7 +1368,7 @@ export function MetaAds() {
                                     className="inline-block h-3 w-4 rounded"
                                     style={{ background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)" }}
                                   />
-                                  <span style={{ color: MUTED }}>Industry standard</span>
+                                  <span style={{ color: MUTED }}>Industry standard (expected count)</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
