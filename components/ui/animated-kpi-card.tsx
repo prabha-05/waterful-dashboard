@@ -121,23 +121,23 @@ export function AnimatedKpiCard({
               </span>
             )}
             {href && (
-              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-white/70 text-neutral-500 transition-all group-hover:bg-white group-hover:text-neutral-900 group-hover:shadow-sm`}>
+              <span className={`flex h-7 w-7 items-center justify-center rounded-lg bg-slate-900/70 text-slate-400 transition-all group-hover:bg-slate-900 group-hover:text-white group-hover:shadow-sm`}>
                 <ArrowUpRight size={14} />
               </span>
             )}
           </div>
         </div>
-        <p className="mt-4 text-xs font-medium uppercase tracking-wider text-neutral-500">
+        <p className="mt-4 text-xs font-medium uppercase tracking-wider text-slate-400">
           {label}
         </p>
         <p className={`mt-1 bg-gradient-to-r ${c.text} bg-clip-text text-3xl font-bold text-transparent tabular-nums`}>
           {display}
         </p>
         {sublabel && (
-          <p className="mt-1 text-[11px] text-neutral-500">{sublabel}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{sublabel}</p>
         )}
         {href && (
-          <p className="mt-2 text-[11px] font-medium text-neutral-500 group-hover:text-neutral-700">
+          <p className="mt-2 text-[11px] font-medium text-slate-400 group-hover:text-slate-200">
             View details →
           </p>
         )}
@@ -145,7 +145,7 @@ export function AnimatedKpiCard({
     </>
   );
 
-  const base = `group relative block overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-br ${c.bg} shadow-sm transition-all duration-300`;
+  const base = `group relative block overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br ${c.bg} shadow-sm transition-all duration-300`;
 
   if (href) {
     return (

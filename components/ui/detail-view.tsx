@@ -91,15 +91,15 @@ function SalesDetail({ metrics }: { metrics: SalesMetrics }) {
           {metrics.paymentDistribution.map((p) => (
             <div
               key={p.method}
-              className="rounded-xl border border-neutral-200 bg-gradient-to-br from-emerald-50 to-white p-4"
+              className="rounded-xl border border-slate-800 bg-gradient-to-br from-emerald-50 to-white p-4"
             >
-              <p className="text-xs uppercase tracking-wide text-neutral-500">{p.method}</p>
-              <p className="mt-1 text-xl font-bold text-neutral-900">{p.count}</p>
-              <p className="text-xs text-neutral-500">₹{p.revenue.toLocaleString()}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-400">{p.method}</p>
+              <p className="mt-1 text-xl font-bold text-white">{p.count}</p>
+              <p className="text-xs text-slate-400">₹{p.revenue.toLocaleString()}</p>
             </div>
           ))}
           {metrics.paymentDistribution.length === 0 && (
-            <p className="col-span-full text-sm text-neutral-400">No payment method data.</p>
+            <p className="col-span-full text-sm text-slate-500">No payment method data.</p>
           )}
         </div>
       </Panel>
@@ -139,15 +139,15 @@ function CustomersDetail({ customers }: { customers: CustomerDetail[] }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-neutral-600">
-          Showing <span className="font-semibold text-neutral-900">{filtered.length}</span> of{" "}
+        <p className="text-sm text-slate-300">
+          Showing <span className="font-semibold text-white">{filtered.length}</span> of{" "}
           {customers.length}
         </p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, phone, city, pincode…"
-          className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
         />
       </div>
 
@@ -157,7 +157,7 @@ function CustomersDetail({ customers }: { customers: CustomerDetail[] }) {
         ))}
       </div>
       {filtered.length > 300 && (
-        <p className="text-center text-xs text-neutral-400">
+        <p className="text-center text-xs text-slate-500">
           Showing first 300. Narrow your search to see more.
         </p>
       )}
@@ -180,13 +180,13 @@ function CustomerCard({ customer }: { customer: CustomerDetail }) {
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900 p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-gradient-to-br from-violet-100 to-fuchsia-100 opacity-50 blur-xl transition-opacity group-hover:opacity-80" />
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold text-neutral-900">{customer.name}</p>
-            <p className="truncate text-xs text-neutral-500">
+            <p className="truncate font-semibold text-white">{customer.name}</p>
+            <p className="truncate text-xs text-slate-400">
               {customer.city}
               {customer.pincode && <> · {customer.pincode}</>}
             </p>
@@ -204,7 +204,7 @@ function CustomerCard({ customer }: { customer: CustomerDetail }) {
           <span className="flex-1">{customer.phone || "—"}</span>
           <button
             onClick={copy}
-            className="rounded p-1 text-violet-500 hover:bg-white hover:text-violet-900"
+            className="rounded p-1 text-violet-500 hover:bg-slate-900 hover:text-violet-900"
             title="Copy"
           >
             <Copy size={12} />
@@ -215,7 +215,7 @@ function CustomerCard({ customer }: { customer: CustomerDetail }) {
         )}
 
         <div className="mt-3 flex items-center justify-between text-xs">
-          <span className="text-neutral-500">Lifetime spend</span>
+          <span className="text-slate-400">Lifetime spend</span>
           <span className="bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text font-bold text-transparent">
             ₹{customer.totalSpent.toLocaleString()}
           </span>
@@ -251,15 +251,15 @@ function OrdersDetail({
     },
     amber: {
       chip: "from-amber-100 to-orange-100 text-amber-800",
-      head: "bg-amber-50",
-      hover: "hover:bg-amber-50/40",
+      head: "bg-orange-950/30",
+      hover: "hover:bg-orange-950/30/40",
       focus: "focus:border-amber-400 focus:ring-amber-100",
       accent: "from-amber-600 to-orange-600",
     },
     rose: {
       chip: "from-rose-100 to-pink-100 text-rose-800",
-      head: "bg-rose-50",
-      hover: "hover:bg-rose-50/40",
+      head: "bg-red-950/30",
+      hover: "hover:bg-red-950/30/40",
       focus: "focus:border-rose-400 focus:ring-rose-100",
       accent: "from-rose-600 to-pink-600",
     },
@@ -295,7 +295,7 @@ function OrdersDetail({
         />
       </div>
       {isLossView && (
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-slate-500">
           RTO/Cancelled rows have zero total in the source data. Values are estimated per row using, in order of preference: (1) the same customer&apos;s price for the same product, (2) their average spend per unit, (3) the period&apos;s average price for that product.
         </p>
       )}
@@ -316,57 +316,57 @@ function OrdersDetail({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-neutral-600">
-          Showing <span className="font-semibold text-neutral-900">{filtered.length}</span> of {orders.length}
+        <p className="text-sm text-slate-300">
+          Showing <span className="font-semibold text-white">{filtered.length}</span> of {orders.length}
         </p>
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, phone, city, product, order #…"
-          className={`w-full max-w-sm rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 ${toneClass.focus}`}
+          className={`w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 ${toneClass.focus}`}
         />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
         <div className="max-h-[640px] overflow-auto">
           <table className="w-full text-sm">
             <thead className={`sticky top-0 ${toneClass.head} backdrop-blur-sm`}>
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">Order</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">Product</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">City / Pin</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-600">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-neutral-600">Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-neutral-600">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">Order</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">Product</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">City / Pin</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-300">Status</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-300">Qty</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-300">Total</th>
               </tr>
             </thead>
             <tbody>
               {filtered.slice(0, 500).map((o, i) => (
-                <tr key={i} className={`border-t border-neutral-100 ${toneClass.hover}`}>
-                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">#{o.orderId}</td>
-                  <td className="px-4 py-3 font-medium text-neutral-900">{o.customerName}</td>
+                <tr key={i} className={`border-t border-slate-800 ${toneClass.hover}`}>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-400">#{o.orderId}</td>
+                  <td className="px-4 py-3 font-medium text-white">{o.customerName}</td>
                   <td className="px-4 py-3">
                     <a
                       href={`tel:${o.phone}`}
-                      className="inline-flex items-center gap-1.5 font-mono font-semibold text-neutral-800 hover:underline"
+                      className="inline-flex items-center gap-1.5 font-mono font-semibold text-slate-100 hover:underline"
                     >
-                      <Phone size={12} className="text-neutral-400" />
+                      <Phone size={12} className="text-slate-500" />
                       {o.phone || "—"}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-neutral-600">{o.product}</td>
-                  <td className="px-4 py-3 text-neutral-600">
+                  <td className="px-4 py-3 text-slate-300">{o.product}</td>
+                  <td className="px-4 py-3 text-slate-300">
                     {o.city}
-                    {o.pincode && <span className="text-neutral-400"> · {o.pincode}</span>}
+                    {o.pincode && <span className="text-slate-500"> · {o.pincode}</span>}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full bg-gradient-to-r ${toneClass.chip} px-2 py-0.5 text-[11px] font-medium`}>
                       {o.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-neutral-600">{o.qty}</td>
+                  <td className="px-4 py-3 text-right text-slate-300">{o.qty}</td>
                   <td className={`px-4 py-3 text-right font-semibold`}>
                     <span className={`bg-gradient-to-r ${toneClass.accent} bg-clip-text text-transparent`}>
                       ₹{o.total.toLocaleString()}
@@ -378,12 +378,12 @@ function OrdersDetail({
           </table>
         </div>
         {filtered.length > 500 && (
-          <p className="border-t border-neutral-100 bg-neutral-50 py-2 text-center text-xs text-neutral-500">
+          <p className="border-t border-slate-800 bg-slate-900 py-2 text-center text-xs text-slate-400">
             Showing first 500 of {filtered.length}. Narrow your search to see more.
           </p>
         )}
         {filtered.length === 0 && (
-          <p className="py-12 text-center text-sm text-neutral-400">No matching orders.</p>
+          <p className="py-12 text-center text-sm text-slate-500">No matching orders.</p>
         )}
       </div>
     </div>
@@ -409,8 +409,8 @@ function SummaryStat({
     rose: "from-rose-600 to-pink-600",
   }[tone];
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
       <p className={`mt-1 bg-gradient-to-r ${accent} bg-clip-text text-2xl font-bold text-transparent tabular-nums`}>
         {value}
       </p>
@@ -428,9 +428,9 @@ function Panel({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-900">
-        {icon && <span className="text-neutral-500">{icon}</span>}
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+        {icon && <span className="text-slate-400">{icon}</span>}
         {title}
       </h3>
       {children}
@@ -460,12 +460,12 @@ function BarRow({
   return (
     <div className="text-sm">
       <div className="mb-1 flex items-center justify-between">
-        <span className="truncate text-neutral-700">{label}</span>
-        <span className="ml-2 shrink-0 font-medium text-neutral-900">
-          {right} <span className="text-xs text-neutral-400">· {pct}%</span>
+        <span className="truncate text-slate-200">{label}</span>
+        <span className="ml-2 shrink-0 font-medium text-white">
+          {right} <span className="text-xs text-slate-500">· {pct}%</span>
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-neutral-100">
+      <div className="h-2 overflow-hidden rounded-full bg-slate-800">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${gradient[tone]} transition-all duration-500`}
           style={{ width: `${Math.min(100, pct)}%` }}

@@ -112,17 +112,17 @@ export function SalesMetricsView({
         <div className="xl:col-span-2">
           <CollapsibleCard title="Order Heat Map — India">
             <IndiaHeatmap points={data.heatmapPoints} />
-            <p className="mt-2 text-xs text-neutral-400">
+            <p className="mt-2 text-xs text-slate-500">
               Dot size reflects order count. Hover a city for top product and pincodes.
             </p>
             {data.unmappedCities.length > 0 && (
-              <details className="mt-3 text-xs text-neutral-500">
-                <summary className="cursor-pointer hover:text-neutral-700">
+              <details className="mt-3 text-xs text-slate-400">
+                <summary className="cursor-pointer hover:text-slate-200">
                   {data.unmappedCities.reduce((s, c) => s + c.count, 0)} orders from unmapped cities
                 </summary>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {data.unmappedCities.map((c) => (
-                    <span key={c.city} className="bg-neutral-50 px-2 py-1 rounded">
+                    <span key={c.city} className="bg-slate-900 px-2 py-1 rounded">
                       {c.city} ({c.count})
                     </span>
                   ))}
@@ -135,8 +135,8 @@ export function SalesMetricsView({
         <CollapsibleCard title="Payment Distribution">
           {data.paymentDistribution.length === 0 ? (
             <div className="flex h-[300px] flex-col items-center justify-center text-center">
-              <p className="text-sm text-neutral-400">Payment data not available.</p>
-              <p className="mt-1 text-xs text-neutral-400">
+              <p className="text-sm text-slate-500">Payment data not available.</p>
+              <p className="mt-1 text-xs text-slate-500">
                 Re-import Shopify orders with payment method to populate this chart.
               </p>
             </div>
@@ -165,14 +165,14 @@ export function SalesMetricsView({
               <div className="mt-3 space-y-1 text-sm">
                 {data.paymentDistribution.map((p, i) => (
                   <div key={p.method} className="flex justify-between border-b border-neutral-50 py-1">
-                    <span className="flex items-center gap-2 text-neutral-700">
+                    <span className="flex items-center gap-2 text-slate-200">
                       <span
                         className="inline-block h-2 w-2 rounded-full"
                         style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
                       />
                       {p.method}
                     </span>
-                    <span className="font-medium text-neutral-900">₹{p.revenue.toLocaleString()}</span>
+                    <span className="font-medium text-white">₹{p.revenue.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -184,35 +184,35 @@ export function SalesMetricsView({
       {/* Top 5 Orders */}
       <CollapsibleCard title="Top 5 Orders">
         {data.top5Orders.length === 0 ? (
-          <p className="py-4 text-sm text-neutral-400">No orders.</p>
+          <p className="py-4 text-sm text-slate-500">No orders.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-neutral-200">
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">#</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Customer</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Product</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">City</th>
-                  <th className="px-4 py-3 text-left font-semibold text-neutral-600">Pincode</th>
-                  <th className="px-4 py-3 text-right font-semibold text-neutral-600">Qty</th>
-                  <th className="px-4 py-3 text-right font-semibold text-neutral-600">Total</th>
+                <tr className="border-b border-slate-800">
+                  <th className="px-4 py-3 text-left font-semibold text-slate-300">#</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-300">Customer</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-300">Product</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-300">City</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-300">Pincode</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-300">Qty</th>
+                  <th className="px-4 py-3 text-right font-semibold text-slate-300">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {data.top5Orders.map((o, i) => (
-                  <tr key={i} className="border-b border-neutral-100 transition-colors hover:bg-emerald-50/40">
+                  <tr key={i} className="border-b border-slate-800 transition-colors hover:bg-emerald-50/40">
                     <td className="px-4 py-3">
                       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 text-xs font-bold text-white">
                         {i + 1}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-neutral-900">{o.customerName}</td>
-                    <td className="px-4 py-3 text-neutral-600">{o.flavour}</td>
-                    <td className="px-4 py-3 text-neutral-600">{o.city}</td>
-                    <td className="px-4 py-3 text-neutral-600">{o.pincode}</td>
-                    <td className="px-4 py-3 text-right text-neutral-600">{o.qty}</td>
-                    <td className="px-4 py-3 text-right font-medium text-neutral-900">₹{o.total.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-white">{o.customerName}</td>
+                    <td className="px-4 py-3 text-slate-300">{o.flavour}</td>
+                    <td className="px-4 py-3 text-slate-300">{o.city}</td>
+                    <td className="px-4 py-3 text-slate-300">{o.pincode}</td>
+                    <td className="px-4 py-3 text-right text-slate-300">{o.qty}</td>
+                    <td className="px-4 py-3 text-right font-medium text-white">₹{o.total.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -224,17 +224,17 @@ export function SalesMetricsView({
       {/* Products Sold */}
       <CollapsibleCard title="Products Sold">
         {data.productsSold.length === 0 ? (
-          <p className="py-4 text-sm text-neutral-400">No products sold.</p>
+          <p className="py-4 text-sm text-slate-500">No products sold.</p>
         ) : (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs text-neutral-500">
-                Showing <span className="font-semibold text-neutral-900">{productsToShow.length}</span> of {data.productsSold.length} products
+              <p className="text-xs text-slate-400">
+                Showing <span className="font-semibold text-white">{productsToShow.length}</span> of {data.productsSold.length} products
               </p>
               {data.productsSold.length > 10 && (
                 <button
                   onClick={() => setShowAllProducts((v) => !v)}
-                  className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                  className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-900"
                 >
                   {showAllProducts ? "Show top 10" : `Show all ${data.productsSold.length}`}
                 </button>
@@ -305,9 +305,9 @@ function RankRow({
         >
           {rank}
         </span>
-        <span className="text-sm text-neutral-700">{label}</span>
+        <span className="text-sm text-slate-200">{label}</span>
       </div>
-      <span className="rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-900">
+      <span className="rounded-full bg-slate-800 px-3 py-1 text-sm font-medium text-white">
         {count} orders
       </span>
     </div>

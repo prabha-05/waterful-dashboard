@@ -14,7 +14,7 @@ export default function SalesTrendingPage() {
         <h1 className="bg-gradient-to-r from-rose-700 via-indigo-800 to-slate-900 bg-clip-text text-3xl font-bold text-transparent">
           Sales Trending
         </h1>
-        <p className="mb-6 text-neutral-500">
+        <p className="mb-6 text-slate-400">
           Pick a date range to see how revenue, orders, and customers move over time.
         </p>
         <SalesTrending />

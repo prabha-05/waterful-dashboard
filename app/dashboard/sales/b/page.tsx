@@ -6,8 +6,8 @@ export default async function SalesBPage() {
 
   return (
     <div className="p-8 space-y-2">
-      <h1 className="text-3xl font-bold text-neutral-900">Customers & Products</h1>
-      <p className="text-neutral-500 mb-6">Analyze customer behavior and product performance.</p>
+      <h1 className="text-3xl font-bold text-white">Customers & Products</h1>
+      <p className="text-slate-400 mb-6">Analyze customer behavior and product performance.</p>
       <SalesBContent data={data} />
     </div>
   );

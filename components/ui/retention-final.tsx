@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { Percent, BarChart3, Gauge, Wallet, TrendingUp, Heart, Sparkles } from "lucide-react";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
-const SAGE = "#7a9471";
-const ROSE = "#d97777";
-const CREAM = "#f1e7d3";
+const INK = "#ffffff";
+const MUTED = "#94a3b8";
+const AMBER = "#f97316";
+const SAGE = "#10b981";
+const ROSE = "#ef4444";
+const CREAM = "#1e293b";
 
 type Summary = {
   totalCustomers: number;
@@ -45,7 +45,7 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm flex flex-col justify-between"
-      style={{ background: "white", borderColor: "#e8dfd0" }}
+      style={{ background: "#0f172a", borderColor: "#1e293b" }}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -199,7 +199,7 @@ export function RetentionFinal() {
       {/* Retention Funnel */}
       <div
         className="rounded-2xl border p-6 shadow-sm"
-        style={{ background: "white", borderColor: "#e8dfd0" }}
+        style={{ background: "#0f172a", borderColor: "#1e293b" }}
       >
         <p
           className="text-[11px] font-semibold uppercase tracking-wider mb-5"

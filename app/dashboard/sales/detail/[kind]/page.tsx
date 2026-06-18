@@ -91,11 +91,11 @@ export default async function SalesDetailPage({
       <div className="p-8">
         <Link
           href="/dashboard/sales/specific-day"
-          className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900"
+          className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-white"
         >
           <ArrowLeft size={16} /> Back
         </Link>
-        <p className="mt-6 rounded-xl border border-neutral-200 bg-white p-8 text-center text-neutral-500">
+        <p className="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
           Missing date range. Open this page from a KPI card.
         </p>
       </div>
@@ -119,7 +119,7 @@ export default async function SalesDetailPage({
           <div>
             <Link
               href={backHref}
-              className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900"
+              className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"
             >
               <ArrowLeft size={14} /> Back
             </Link>
@@ -128,10 +128,10 @@ export default async function SalesDetailPage({
             >
               {meta.title}
             </h1>
-            <p className="text-neutral-500">{meta.sub}</p>
+            <p className="text-slate-400">{meta.sub}</p>
           </div>
           {rangeLabel && (
-            <span className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm">
+            <span className="rounded-full border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 shadow-sm">
               {rangeLabel}
             </span>
           )}

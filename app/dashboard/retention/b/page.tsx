@@ -6,8 +6,8 @@ export default async function RetentionBPage() {
 
   return (
     <div className="p-8 space-y-2">
-      <h1 className="text-3xl font-bold text-neutral-900">Customer Lifetime</h1>
-      <p className="text-neutral-500 mb-6">Analyze customer lifetime value and purchase frequency.</p>
+      <h1 className="text-3xl font-bold text-white">Customer Lifetime</h1>
+      <p className="text-slate-400 mb-6">Analyze customer lifetime value and purchase frequency.</p>
       <RetentionBContent data={data} />
     </div>
   );

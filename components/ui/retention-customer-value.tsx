@@ -14,11 +14,11 @@ import {
   Crown,
 } from "lucide-react";
 
-const PAPER = "#fdfaf4";
-const ROSE = "#d97777";
-const SAGE = "#7a9471";
-const AMBER = "#c99954";
-const INK = "#4a3a2e";
+const PAPER = "#080d1a";
+const ROSE = "#ef4444";
+const SAGE = "#10b981";
+const AMBER = "#f97316";
+const INK = "#ffffff";
 
 type Metrics = {
   totalAov: number;
@@ -65,16 +65,16 @@ function KpiCard({
   label: string; value: string; subtitle?: string; icon: React.ReactNode; color: string; note?: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "white", borderColor: "#e8dfd0" }}>
+    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</p>
           {subtitle && <p className="mt-0.5 text-[10px] italic" style={{ color: "#b5a48e" }}>{subtitle}</p>}
         </div>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}18`, color }}>{icon}</span>
       </div>
       <p className="mt-4 text-3xl font-bold tabular-nums" style={{ color: INK }}>{value}</p>
-      {note && <p className="mt-1.5 text-xs" style={{ color: "#9a8571" }}>{note}</p>}
+      {note && <p className="mt-1.5 text-xs" style={{ color: "#94a3b8" }}>{note}</p>}
     </div>
   );
 }
@@ -86,10 +86,10 @@ function FormulaCard({
   title: string; result: string; formula: string; variables: { name: string; value: string }[]; color: string;
 }) {
   return (
-    <div className="rounded-2xl border p-6 shadow-sm" style={{ background: "white", borderColor: "#e8dfd0" }}>
+    <div className="rounded-2xl border p-6 shadow-sm" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
       <div className="flex items-center gap-3 mb-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-sm font-bold" style={{ background: color }}>f</span>
-        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>{title}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{title}</p>
       </div>
       <p className="text-4xl font-bold tabular-nums mb-4" style={{ color: INK }}>{result}</p>
       <div className="rounded-xl p-4 mb-3" style={{ background: PAPER }}>
@@ -98,7 +98,7 @@ function FormulaCard({
       <div className="space-y-2">
         {variables.map((v) => (
           <div key={v.name} className="flex items-center justify-between text-xs">
-            <span style={{ color: "#9a8571" }}>{v.name}</span>
+            <span style={{ color: "#94a3b8" }}>{v.name}</span>
             <span className="font-bold tabular-nums" style={{ color: INK }}>{v.value}</span>
           </div>
         ))}
@@ -231,7 +231,7 @@ export function RetentionCustomerValue() {
     <div className="space-y-6">
       {/* Mode toggle + Date picker */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#e8dfd0" }}>
+        <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#1e293b" }}>
           <button
             onClick={() => switchMode("single")}
             className="px-4 py-2 text-sm font-medium transition-colors"
@@ -251,8 +251,8 @@ export function RetentionCustomerValue() {
         <div className="relative inline-block">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
-            style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-slate-900/80"
+            style={{ background: "#0f172a", borderColor: "#1e293b", color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
             {mode === "single"
@@ -263,7 +263,7 @@ export function RetentionCustomerValue() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border p-4 shadow-xl" style={{ background: "white", borderColor: "#e8dfd0" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border p-4 shadow-xl" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
               {mode === "single" ? (
                 <DayPicker
                   mode="single"
@@ -278,7 +278,7 @@ export function RetentionCustomerValue() {
                   <DayPicker mode="range" selected={range} onSelect={setRange} endMonth={new Date()} startMonth={new Date(2022, 0)} captionLayout="dropdown" />
                   <div className="mt-3 flex flex-wrap gap-2">
                     {PRESETS.map((p) => (
-                      <button key={p.days} onClick={() => applyPreset(p.days)} className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-amber-50" style={{ borderColor: "#e8dfd0", color: INK }}>{p.label}</button>
+                      <button key={p.days} onClick={() => applyPreset(p.days)} className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-orange-950/30" style={{ borderColor: "#1e293b", color: INK }}>{p.label}</button>
                     ))}
                   </div>
                   <button onClick={applyRange} className="mt-3 w-full rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm" style={{ background: SAGE }}>Apply range</button>
@@ -331,32 +331,32 @@ export function RetentionCustomerValue() {
 
           {/* Drop-off + summary */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: "#e8dfd0" }}>
+            <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
               <div className="flex items-center gap-3 mb-4">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${ROSE}18`, color: ROSE }}>
                   <TrendingDown size={20} />
                 </span>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>Drop-Off Rate</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Drop-Off Rate</p>
                   <p className="text-[10px] italic" style={{ color: "#b5a48e" }}>one-and-done customers</p>
                 </div>
               </div>
               <p className="text-4xl font-bold tabular-nums" style={{ color: ROSE }}>{data.dropOff}%</p>
-              <div className="mt-3 h-3 w-full overflow-hidden rounded-full" style={{ background: "#f1e7d3" }}>
+              <div className="mt-3 h-3 w-full overflow-hidden rounded-full" style={{ background: "#1e293b" }}>
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(data.dropOff, 100)}%`, background: ROSE }} />
               </div>
-              <p className="mt-3 text-xs" style={{ color: "#9a8571" }}>
+              <p className="mt-3 text-xs" style={{ color: "#94a3b8" }}>
                 First-time customers who never placed a second order. Lower is better.
               </p>
             </div>
 
-            <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "white", borderColor: "#e8dfd0" }}>
+            <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
               <div className="flex items-center gap-3 mb-4">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${AMBER}18`, color: AMBER }}>
                   <Crown size={20} />
                 </span>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>The Takeaway</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>The Takeaway</p>
                   <p className="text-[10px] italic" style={{ color: "#b5a48e" }}>what the numbers say</p>
                 </div>
               </div>
@@ -382,8 +382,8 @@ export function RetentionCustomerValue() {
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-2xl border p-8 text-center" style={{ background: "white", borderColor: "#e8dfd0" }}>
-          <p className="text-sm" style={{ color: "#9a8571" }}>No orders found for this date range.</p>
+        <div className="rounded-2xl border p-8 text-center" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
+          <p className="text-sm" style={{ color: "#94a3b8" }}>No orders found for this date range.</p>
         </div>
       )}
     </div>

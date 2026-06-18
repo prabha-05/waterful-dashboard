@@ -34,10 +34,10 @@ function SplitBar({ split }: { split: BuyerSplit }) {
   const ftPct = pct(split.firstTime, split.total);
   const rpPct = 100 - ftPct;
   if (split.total <= 0) {
-    return <div className="h-1.5 w-full rounded-full bg-neutral-100" />;
+    return <div className="h-1.5 w-full rounded-full bg-slate-800" />;
   }
   return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
       <div
         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
         style={{ width: `${ftPct}%` }}
@@ -69,26 +69,26 @@ function MetricCard({
   const toneMap = {
     emerald: { accent: "from-emerald-600 to-teal-600", icon: "bg-emerald-50 text-emerald-600" },
     sky: { accent: "from-sky-600 to-indigo-600", icon: "bg-sky-50 text-sky-600" },
-    rose: { accent: "from-rose-600 to-pink-600", icon: "bg-rose-50 text-rose-600" },
-    amber: { accent: "from-amber-600 to-orange-600", icon: "bg-amber-50 text-amber-600" },
+    rose: { accent: "from-rose-600 to-pink-600", icon: "bg-red-950/30 text-rose-600" },
+    amber: { accent: "from-amber-600 to-orange-600", icon: "bg-orange-950/30 text-amber-600" },
     indigo: { accent: "from-indigo-600 to-violet-600", icon: "bg-indigo-50 text-indigo-600" },
     violet: { accent: "from-violet-600 to-fuchsia-600", icon: "bg-violet-50 text-violet-600" },
   }[tone];
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neutral-50 to-transparent opacity-40 blur-2xl transition-opacity group-hover:opacity-70" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500">{label}</p>
-            {tagline && <p className="mt-0.5 text-[10px] italic text-neutral-400">{tagline}</p>}
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
+            {tagline && <p className="mt-0.5 text-[10px] italic text-slate-500">{tagline}</p>}
           </div>
           <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${toneMap.icon}`}>
             {icon}
           </span>
         </div>
-        <div className={`mt-3 rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white px-4 py-3 shadow-inner`}>
+        <div className={`mt-3 rounded-xl border border-slate-800 bg-gradient-to-br from-neutral-50 to-white px-4 py-3 shadow-inner`}>
           <p
             className={`bg-gradient-to-r ${toneMap.accent} bg-clip-text text-3xl font-bold tabular-nums text-transparent`}
           >
@@ -98,7 +98,7 @@ function MetricCard({
             {/* New users — left */}
             <div>
               <p className="text-base font-bold tabular-nums text-violet-700">{format(split.firstTime)}</p>
-              <p className="text-xs tabular-nums text-neutral-500">
+              <p className="text-xs tabular-nums text-slate-400">
                 <span className="font-semibold text-violet-600">{pct(split.firstTime, split.total)}%</span>{" "}
                 new
               </p>
@@ -106,7 +106,7 @@ function MetricCard({
             {/* Repeat — right */}
             <div className="text-right">
               <p className="text-base font-bold tabular-nums text-emerald-700">{format(split.repeat)}</p>
-              <p className="text-xs tabular-nums text-neutral-500">
+              <p className="text-xs tabular-nums text-slate-400">
                 repeat{" "}
                 <span className="font-semibold text-emerald-600">{pct(split.repeat, split.total)}%</span>
               </p>
@@ -197,8 +197,8 @@ function MultiSlicePie({
           <circle cx={cx} cy={cy} r={innerR} fill="white" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[10px] uppercase tracking-wider text-neutral-400">Total</span>
-          <span className="text-base font-bold tabular-nums text-neutral-900">{totalFormatter(total)}</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">Total</span>
+          <span className="text-base font-bold tabular-nums text-white">{totalFormatter(total)}</span>
         </div>
       </div>
       {/* Legend: one row per slice with value + % */}
@@ -207,12 +207,12 @@ function MultiSlicePie({
           const pct = Math.round((p.value / total) * 100);
           return (
             <div key={i} className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-neutral-700 truncate" title={p.name}>
+              <span className="flex items-center gap-1.5 text-slate-200 truncate" title={p.name}>
                 <span className="inline-block h-3 w-3 rounded-sm shrink-0" style={{ background: p.color }} />
                 <span className="truncate">{p.name}</span>
               </span>
-              <span className="shrink-0 tabular-nums text-neutral-600">
-                {totalFormatter(p.value)} <span className="text-neutral-400">· {pct}%</span>
+              <span className="shrink-0 tabular-nums text-slate-300">
+                {totalFormatter(p.value)} <span className="text-slate-500">· {pct}%</span>
               </span>
             </div>
           );
@@ -277,14 +277,14 @@ function SplitDataTable({
   const grandTotal = grand.firstTime + grand.repeat;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50/60 px-4 py-2.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+    <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60 px-4 py-2.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {title} — table
         </p>
         <button
           onClick={downloadCsv}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-900"
           title="Download as CSV"
         >
           <span aria-hidden="true">⬇</span> Download CSV
@@ -293,11 +293,11 @@ function SplitDataTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-neutral-50/60">
+            <tr className="bg-slate-900/60">
               {[labelHeader, "Total", "New customers", "Repeat customers", "Repeat %"].map((h, i) => (
                 <th
                   key={h}
-                  className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 whitespace-nowrap"
+                  className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap"
                   style={{ textAlign: i === 0 ? "left" : "right" }}
                 >
                   {h}
@@ -310,9 +310,9 @@ function SplitDataTable({
               const total = r.firstTime + r.repeat;
               const repPct = total > 0 ? (r.repeat / total) * 100 : 0;
               return (
-                <tr key={r.name} className="border-t border-neutral-100">
-                  <td className="px-3 py-2.5 text-neutral-700">{r.name}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-medium text-neutral-900">{total.toLocaleString()}</td>
+                <tr key={r.name} className="border-t border-slate-800">
+                  <td className="px-3 py-2.5 text-slate-200">{r.name}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-medium text-white">{total.toLocaleString()}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: VIOLET }}>{r.firstTime.toLocaleString()}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums" style={{ color: EMERALD }}>{r.repeat.toLocaleString()}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: EMERALD }}>{repPct.toFixed(1)}%</td>
@@ -321,9 +321,9 @@ function SplitDataTable({
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-neutral-200 bg-neutral-50/60">
-              <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-neutral-700">Total</td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-bold text-neutral-900">{grandTotal.toLocaleString()}</td>
+            <tr className="border-t-2 border-slate-800 bg-slate-900/60">
+              <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-200">Total</td>
+              <td className="px-3 py-2.5 text-right tabular-nums font-bold text-white">{grandTotal.toLocaleString()}</td>
               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: VIOLET }}>{grand.firstTime.toLocaleString()}</td>
               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: EMERALD }}>{grand.repeat.toLocaleString()}</td>
               <td className="px-3 py-2.5 text-right tabular-nums font-bold" style={{ color: EMERALD }}>
@@ -352,7 +352,7 @@ function StackedSplitBars({
 }) {
   const max = Math.max(...data.map((d) => d.firstTime + d.repeat), 1);
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5">
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
       <div className="space-y-3">
         {data.map((d) => {
           const total = d.firstTime + d.repeat;
@@ -363,7 +363,7 @@ function StackedSplitBars({
             <div key={d.name} className="flex items-center gap-3">
               {/* Label on the left */}
               <p
-                className="w-64 shrink-0 text-sm text-neutral-700 truncate"
+                className="w-64 shrink-0 text-sm text-slate-200 truncate"
                 title={d.name}
               >
                 {d.name}
@@ -386,7 +386,7 @@ function StackedSplitBars({
               </div>
 
               {/* Total count on the right */}
-              <span className="w-10 shrink-0 text-right text-sm font-bold tabular-nums text-neutral-900">
+              <span className="w-10 shrink-0 text-right text-sm font-bold tabular-nums text-white">
                 {total.toLocaleString()}
               </span>
             </div>
@@ -396,11 +396,11 @@ function StackedSplitBars({
 
       {/* Legend */}
       <div className="mt-5 flex items-center justify-center gap-5 text-xs">
-        <span className="flex items-center gap-1.5 text-neutral-600">
+        <span className="flex items-center gap-1.5 text-slate-300">
           <span className="inline-block h-3 w-3 rounded-sm" style={{ background: VIOLET }} />
           New customers
         </span>
-        <span className="flex items-center gap-1.5 text-neutral-600">
+        <span className="flex items-center gap-1.5 text-slate-300">
           <span className="inline-block h-3 w-3 rounded-sm" style={{ background: EMERALD }} />
           Repeat customers
         </span>
@@ -441,8 +441,8 @@ function Section({
           {icon}
         </span>
         <div>
-          <h2 className="text-lg font-bold text-neutral-900">{title}</h2>
-          <p className="text-xs italic text-neutral-400">{tagline}</p>
+          <h2 className="text-lg font-bold text-white">{title}</h2>
+          <p className="text-xs italic text-slate-500">{tagline}</p>
         </div>
       </div>
       {children}
@@ -525,7 +525,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         tone="violet"
       >
         {s.productSale.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 p-6 text-center text-sm text-neutral-400">
+          <p className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-6 text-center text-sm text-slate-500">
             No products sold yet. Quiet week.
           </p>
         ) : (() => {
@@ -567,7 +567,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         tone="sky"
       >
         {s.payment.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/40 p-6 text-center text-sm text-neutral-400">
+          <p className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-6 text-center text-sm text-slate-500">
             No payment method data — re-import Shopify orders to populate this.
           </p>
         ) : (() => {
@@ -586,7 +586,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
                 <div className="flex-1 min-w-0">
                   <StackedSplitBars data={rows} />
                 </div>
-                <div className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white p-5 md:w-72">
+                <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 p-5 md:w-72">
                   <MultiSlicePie
                     slices={pieSlices}
                     total={pieTotal}
@@ -613,7 +613,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         tone="amber"
       >
         {s.discountCodes.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-neutral-200 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-6 text-center text-sm text-neutral-500">
+          <p className="rounded-xl border border-dashed border-slate-800 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-6 text-center text-sm text-slate-400">
             No discount codes used in this period.
           </p>
         ) : (() => {
@@ -631,7 +631,7 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
                 <div className="flex-1 min-w-0">
                   <StackedSplitBars data={rows} />
                 </div>
-                <div className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white p-5 md:w-72">
+                <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 p-5 md:w-72">
                   <MultiSlicePie
                     slices={pieSlices}
                     total={pieTotal}
@@ -657,9 +657,9 @@ export function SalesSummaryPanels({ metrics }: { metrics: SalesMetrics }) {
         icon={<Sparkles size={18} />}
         tone="rose"
       >
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
           <IndiaHeatmap points={metrics.heatmapPoints} />
-          <p className="mt-2 text-xs text-neutral-400">
+          <p className="mt-2 text-xs text-slate-500">
             Dot size reflects order count. Hover a city for top product and pincodes.
           </p>
         </div>

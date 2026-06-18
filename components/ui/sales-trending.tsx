@@ -94,8 +94,8 @@ const LINE_COLORS = {
 const TONE_MAP = {
   emerald: { accent: "from-emerald-600 to-teal-600", icon: "bg-emerald-50 text-emerald-600" },
   sky: { accent: "from-sky-600 to-indigo-600", icon: "bg-sky-50 text-sky-600" },
-  rose: { accent: "from-rose-600 to-pink-600", icon: "bg-rose-50 text-rose-600" },
-  amber: { accent: "from-amber-600 to-orange-600", icon: "bg-amber-50 text-amber-600" },
+  rose: { accent: "from-rose-600 to-pink-600", icon: "bg-red-950/30 text-rose-600" },
+  amber: { accent: "from-amber-600 to-orange-600", icon: "bg-orange-950/30 text-amber-600" },
   indigo: { accent: "from-indigo-600 to-violet-600", icon: "bg-indigo-50 text-indigo-600" },
   violet: { accent: "from-violet-600 to-fuchsia-600", icon: "bg-violet-50 text-violet-600" },
 } as const;
@@ -119,9 +119,9 @@ function pct(part: number, total: number) {
 function SplitBar({ split }: { split: BuyerSplit }) {
   const ftPct = pct(split.firstTime, split.total);
   const rpPct = 100 - ftPct;
-  if (split.total <= 0) return <div className="h-1.5 w-full rounded-full bg-neutral-100" />;
+  if (split.total <= 0) return <div className="h-1.5 w-full rounded-full bg-slate-800" />;
   return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
       <div
         className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
         style={{ width: `${ftPct}%` }}
@@ -143,19 +143,19 @@ function MetricCard({
 }) {
   const tone = TONE_MAP[cfg.tone];
   return (
-    <div className="group relative h-full overflow-hidden rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+    <div className="group relative h-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
       <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neutral-50 to-transparent opacity-40 blur-2xl" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] uppercase tracking-wider text-neutral-500">{cfg.label}</p>
-            <p className="mt-0.5 text-[10px] italic text-neutral-400">{cfg.tagline}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">{cfg.label}</p>
+            <p className="mt-0.5 text-[10px] italic text-slate-500">{cfg.tagline}</p>
           </div>
           <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tone.icon}`}>
             {cfg.icon}
           </span>
         </div>
-        <div className="mt-3 rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white px-4 py-3 shadow-inner">
+        <div className="mt-3 rounded-xl border border-slate-800 bg-gradient-to-br from-neutral-50 to-white px-4 py-3 shadow-inner">
           <p
             className={`bg-gradient-to-r ${tone.accent} bg-clip-text text-3xl font-bold tabular-nums text-transparent`}
           >
@@ -164,10 +164,10 @@ function MetricCard({
           <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
             <span className="flex items-center gap-1.5">
               <span className="font-bold tabular-nums text-violet-700">{cfg.fmt(split.firstTime)}</span>
-              <span className="text-neutral-600">new users</span>
+              <span className="text-slate-300">new users</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="text-neutral-600">repeat</span>
+              <span className="text-slate-300">repeat</span>
               <span className="font-bold tabular-nums text-emerald-700">{cfg.fmt(split.repeat)}</span>
             </span>
           </div>
@@ -200,14 +200,14 @@ function TrendChart({
   const overallRepeatPct = totals.total > 0 ? Math.round((totals.repeat / totals.total) * 1000) / 10 : 0;
 
   return (
-    <div className="h-full min-h-[260px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <div className="h-full min-h-[260px] rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+              tick={{ fontSize: 11, fill: "#ffffff", fontWeight: 500 }}
               interval="preserveStartEnd"
               minTickGap={24}
             />
@@ -234,9 +234,9 @@ function TrendChart({
       </div>
 
       {/* % distribution strip */}
-      <div className="mt-3 flex items-center gap-4 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5">
+      <div className="mt-3 flex items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Mix</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mix</span>
           <div className="flex h-2 w-28 overflow-hidden rounded-full bg-neutral-200">
             <div className="h-full" style={{ width: `${overallNewPct}%`, background: LINE_COLORS.new }} />
             <div className="h-full" style={{ width: `${overallRepeatPct}%`, background: LINE_COLORS.repeat }} />
@@ -246,12 +246,12 @@ function TrendChart({
           <span className="flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: LINE_COLORS.new }} />
             <span className="font-semibold" style={{ color: LINE_COLORS.new }}>{overallNewPct}%</span>
-            <span className="text-neutral-500">new</span>
+            <span className="text-slate-400">new</span>
           </span>
           <span className="flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: LINE_COLORS.repeat }} />
             <span className="font-semibold" style={{ color: LINE_COLORS.repeat }}>{overallRepeatPct}%</span>
-            <span className="text-neutral-500">repeat</span>
+            <span className="text-slate-400">repeat</span>
           </span>
         </div>
         <div className="ml-auto h-8 w-24">
@@ -261,7 +261,7 @@ function TrendChart({
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-400">New % trend</span>
+        <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500">New % trend</span>
       </div>
     </div>
   );
@@ -269,7 +269,7 @@ function TrendChart({
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 text-neutral-600">
+    <span className="flex items-center gap-1.5 text-slate-300">
       <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
       <span className="font-medium">{label}</span>
     </span>
@@ -344,7 +344,7 @@ export function SalesTrending() {
         <div className="relative">
           <button
             onClick={() => setShowPicker(!showPicker)}
-            className="flex items-center gap-2.5 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50"
+            className="flex items-center gap-2.5 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-sm transition-colors hover:bg-slate-900"
           >
             <Calendar size={16} className="text-rose-500" />
             {range?.from && range?.to
@@ -353,7 +353,7 @@ export function SalesTrending() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border border-neutral-200 bg-white p-3 shadow-xl">
+            <div className="absolute z-50 mt-2 rounded-xl border border-slate-800 bg-slate-900 p-3 shadow-xl">
               <DayPicker
                 mode="range"
                 selected={range}
@@ -366,7 +366,7 @@ export function SalesTrending() {
               <div className="flex justify-end gap-2 px-3 pb-2">
                 <button
                   onClick={() => setShowPicker(false)}
-                  className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-900"
                 >
                   Cancel
                 </button>
@@ -387,7 +387,7 @@ export function SalesTrending() {
             <button
               key={p.label}
               onClick={() => applyPreset(p.days)}
-              className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 transition-colors hover:border-rose-200 hover:bg-rose-50/40 hover:text-rose-700"
+              className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-rose-200 hover:bg-red-950/30/40 hover:text-rose-700"
             >
               {p.label}
             </button>
@@ -397,12 +397,12 @@ export function SalesTrending() {
 
       {/* Global legend — one place to learn the code */}
       {data && data.dailyBreakdown?.length > 0 && (
-        <div className="flex flex-wrap items-center gap-5 rounded-xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-          <span className="text-xs uppercase tracking-wider text-neutral-500">Line guide</span>
+        <div className="flex flex-wrap items-center gap-5 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 shadow-sm">
+          <span className="text-xs uppercase tracking-wider text-slate-400">Line guide</span>
           <LegendDot color={LINE_COLORS.total} label="Total" />
           <LegendDot color={LINE_COLORS.new} label="New users" />
           <LegendDot color={LINE_COLORS.repeat} label="Repeat" />
-          <span className="ml-auto text-xs italic text-neutral-400">
+          <span className="ml-auto text-xs italic text-slate-500">
             Same color code used across every chart below.
           </span>
         </div>
@@ -411,21 +411,21 @@ export function SalesTrending() {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-neutral-900" />
         </div>
       )}
 
       {/* Empty */}
       {!loading && !data && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center">
-          <p className="text-sm text-neutral-400">Pick a date range or preset to see the trend.</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-12 text-center">
+          <p className="text-sm text-slate-500">Pick a date range or preset to see the trend.</p>
         </div>
       )}
 
       {/* No data */}
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
-          <p className="text-sm text-neutral-500">No orders found in this period.</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
+          <p className="text-sm text-slate-400">No orders found in this period.</p>
         </div>
       )}
 
@@ -471,8 +471,8 @@ export function SalesTrendingDetails({ data }: { data: PeriodData }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-neutral-900">Overall Sale Trends</h2>
-        <p className="text-xs italic text-neutral-400">
+        <h2 className="text-lg font-bold text-white">Overall Sale Trends</h2>
+        <p className="text-xs italic text-slate-500">
           Daily new vs. repeat split for every headline metric.
         </p>
       </div>
@@ -525,7 +525,7 @@ function MultiSeriesChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+            tick={{ fontSize: 11, fill: "#ffffff", fontWeight: 500 }}
             interval="preserveStartEnd"
             minTickGap={24}
           />
@@ -600,7 +600,7 @@ function StackedAreaChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+            tick={{ fontSize: 11, fill: "#ffffff", fontWeight: 500 }}
             interval="preserveStartEnd"
             minTickGap={24}
           />
@@ -641,7 +641,7 @@ function StackedAreaChart({
 /* ─────── Product Sale — drill into a product + composition across top 5 ─────── */
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-gradient-to-br from-neutral-50 to-white px-3 py-2.5">
+    <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-neutral-50 to-white px-3 py-2.5">
       <p className="text-[10px] uppercase tracking-wider" style={{ color }}>{label}</p>
       <p className="mt-0.5 text-2xl font-bold tabular-nums" style={{ color }}>{value}</p>
     </div>
@@ -686,8 +686,8 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-bold text-neutral-900">Product Sale — Drill Into a Product</h2>
-        <p className="text-xs italic text-neutral-400">
+        <h2 className="text-lg font-bold text-white">Product Sale — Drill Into a Product</h2>
+        <p className="text-xs italic text-slate-500">
           Pick a product to see its orders, volume (qty), and repeat share over time.
         </p>
       </div>
@@ -703,7 +703,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                 isActive
                   ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                  : "border-neutral-200 bg-white text-neutral-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+                  : "border-slate-800 bg-slate-900 text-slate-300 hover:border-indigo-200 hover:bg-indigo-50/40"
               }`}
               title={p.product}
             >
@@ -715,11 +715,11 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
 
       {/* Detail view: stat card + line chart */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Selected product
           </p>
-          <p className="mt-1 break-words text-base font-bold text-neutral-900" title={active}>{shortName(active, 60)}</p>
+          <p className="mt-1 break-words text-base font-bold text-white" title={active}>{shortName(active, 60)}</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <StatBox label="Total orders" value={totals.total.toLocaleString()} color={LINE_COLORS.total} />
             <StatBox label="Volume (qty)" value={totals.qty.toLocaleString()} color="#f59e0b" />
@@ -727,7 +727,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
             <StatBox label="Repeat" value={totals.repeat.toLocaleString()} color={LINE_COLORS.repeat} />
           </div>
           <div className="mt-3 flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/40 px-4 py-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Repeat %
             </span>
             <span className="text-3xl font-bold tabular-nums" style={{ color: LINE_COLORS.repeat }}>
@@ -736,14 +736,14 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
           <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={detailSeries} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: "#4a3a2e", fontWeight: 500 }}
+                  tick={{ fontSize: 11, fill: "#ffffff", fontWeight: 500 }}
                   interval="preserveStartEnd"
                   minTickGap={24}
                 />
@@ -766,11 +766,11 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
             </ResponsiveContainer>
           </div>
           {/* Volume sparkline strip */}
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-neutral-100 bg-neutral-50/60 px-3 py-2.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               Volume (qty) over time
             </span>
-            <span className="text-xs font-bold tabular-nums text-neutral-900">
+            <span className="text-xs font-bold tabular-nums text-white">
               {totals.qty.toLocaleString()}
             </span>
             <div className="ml-auto h-8 w-40">
@@ -786,8 +786,8 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
 
       {/* Composition view — all top 5 products */}
       <div className="pt-2">
-        <h3 className="text-sm font-semibold text-neutral-700">All top products — composition view</h3>
-        <p className="text-xs italic text-neutral-400">
+        <h3 className="text-sm font-semibold text-slate-200">All top products — composition view</h3>
+        <p className="text-xs italic text-slate-500">
           Each chart stacks new users + repeat = total orders per day.
         </p>
       </div>
@@ -805,7 +805,7 @@ export function ProductTrend({ metrics }: { metrics: PeriodData }) {
         return (
           <div key={p.product} className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(280px,340px)_1fr]">
             <MetricCard cfg={cfg} split={split} />
-            <div className="h-full min-h-[260px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="h-full min-h-[260px] rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
               <StackedAreaChart data={compData} />
             </div>
           </div>
@@ -830,21 +830,21 @@ export function PaymentTrend({ metrics }: { metrics: PeriodData }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-bold text-neutral-900">Payment — Revenue by Method Over Time</h2>
-      <p className="text-xs italic text-neutral-400">
+      <h2 className="text-lg font-bold text-white">Payment — Revenue by Method Over Time</h2>
+      <p className="text-xs italic text-slate-500">
         Top 5 payment methods by revenue. Each line = daily revenue through that method.
       </p>
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
         <MultiSeriesChart data={chartData} keys={topMethods} isCurrency={true} />
         <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs">
           {topMethods.map((m, i) => (
-            <span key={m} className="flex items-center gap-1.5 text-neutral-700">
+            <span key={m} className="flex items-center gap-1.5 text-slate-200">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full"
                 style={{ background: SERIES_PALETTE[i % SERIES_PALETTE.length] }}
               />
               <span className="font-medium">{shortName(m)}</span>
-              <span className="tabular-nums text-neutral-400">
+              <span className="tabular-nums text-slate-500">
                 ({formatCurrency(revByMethod.get(m) || 0)})
               </span>
             </span>
@@ -861,8 +861,8 @@ export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
   if (codes.length === 0) {
     return (
       <section className="space-y-3">
-        <h2 className="text-lg font-bold text-neutral-900">Discount Codes</h2>
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/60 p-6 text-center text-sm text-neutral-500">
+        <h2 className="text-lg font-bold text-white">Discount Codes</h2>
+        <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/60 p-6 text-center text-sm text-slate-400">
           No discount codes used in this period.
         </div>
       </section>
@@ -871,11 +871,11 @@ export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
   const max = Math.max(...codes.map((c) => c.total), 1);
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-bold text-neutral-900">Discount Codes</h2>
-      <p className="text-xs italic text-neutral-400">
+      <h2 className="text-lg font-bold text-white">Discount Codes</h2>
+      <p className="text-xs italic text-slate-500">
         Top codes by revenue. Bar split shows first-time vs repeat customer share.
       </p>
-      <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
         <div className="space-y-3">
           {codes.map((c, i) => {
             const ftPct = c.total > 0 ? (c.firstTime / c.total) * 100 : 0;
@@ -885,18 +885,18 @@ export function DiscountCodes({ metrics }: { metrics: PeriodData }) {
               <div key={c.code} className="space-y-1">
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="flex items-baseline gap-2">
-                    <span className="font-mono text-xs text-neutral-400">{i + 1}.</span>
-                    <span className="font-semibold text-neutral-900">{c.code}</span>
+                    <span className="font-mono text-xs text-slate-500">{i + 1}.</span>
+                    <span className="font-semibold text-white">{c.code}</span>
                   </span>
-                  <span className="tabular-nums font-medium text-neutral-700">
+                  <span className="tabular-nums font-medium text-slate-200">
                     {formatCurrency(c.total)}
                   </span>
                 </div>
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-neutral-100" style={{ width: `${widthPct}%` }}>
+                <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-800" style={{ width: `${widthPct}%` }}>
                   <div className="h-full bg-violet-500" style={{ width: `${ftPct}%` }} />
                   <div className="h-full bg-emerald-500" style={{ width: `${repeatPct}%` }} />
                 </div>
-                <div className="flex justify-between text-[10px] tabular-nums text-neutral-500">
+                <div className="flex justify-between text-[10px] tabular-nums text-slate-400">
                   <span className="text-violet-600">FT {formatCurrency(c.firstTime)}</span>
                   <span className="text-emerald-600">Repeat {formatCurrency(c.repeat)}</span>
                 </div>

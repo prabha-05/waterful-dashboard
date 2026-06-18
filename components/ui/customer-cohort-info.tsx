@@ -45,11 +45,11 @@ function formatCurrency(value: number) {
   return `₹${value}`;
 }
 
-const PAPER = "#fdfaf4";
-const ROSE = "#d97777";
-const SAGE = "#7a9471";
-const AMBER = "#c99954";
-const INK = "#4a3a2e";
+const PAPER = "#080d1a";
+const ROSE = "#ef4444";
+const SAGE = "#10b981";
+const AMBER = "#f97316";
+const INK = "#ffffff";
 
 const PRESETS: { label: string; days: number }[] = [
   { label: "Last 30 days", days: 30 },
@@ -144,7 +144,7 @@ export function CustomerCohortInfo() {
           <button
             onClick={() => setShowPicker(!showPicker)}
             className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors"
-            style={{ background: "white", borderColor: "#e8dcc8", color: INK }}
+            style={{ background: "#0f172a", borderColor: "#e8dcc8", color: INK }}
           >
             <Calendar size={16} style={{ color: ROSE }} />
             {range?.from && range?.to
@@ -153,7 +153,7 @@ export function CustomerCohortInfo() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border bg-white p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
               <DayPicker
                 mode="range"
                 selected={range}
@@ -166,7 +166,7 @@ export function CustomerCohortInfo() {
               <div className="flex justify-end gap-2 px-3 pb-2">
                 <button
                   onClick={() => setShowPicker(false)}
-                  className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-900"
                 >
                   Cancel
                 </button>
@@ -188,7 +188,7 @@ export function CustomerCohortInfo() {
             <button
               key={p.label}
               onClick={() => applyPreset(p.days)}
-              className="rounded-lg border bg-white px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-rose-50/50"
+              className="rounded-lg border bg-slate-900 px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-red-950/30/50"
               style={{ borderColor: "#e8dcc8", color: INK }}
             >
               {p.label}
@@ -209,7 +209,7 @@ export function CustomerCohortInfo() {
       {!loading && !frequency && (
         <div
           className="rounded-2xl border border-dashed p-12 text-center"
-          style={{ borderColor: "#d9c9b0", background: "white" }}
+          style={{ borderColor: "#d9c9b0", background: "#0f172a" }}
         >
           <Sparkles className="mx-auto mb-3" size={22} style={{ color: AMBER }} />
           <p className="text-sm" style={{ color: INK }}>
@@ -221,7 +221,7 @@ export function CustomerCohortInfo() {
       {!loading && frequency && frequency.totalCustomers === 0 && (
         <div
           className="rounded-2xl border p-8 text-center"
-          style={{ borderColor: "#e8dcc8", background: "white", color: INK }}
+          style={{ borderColor: "#e8dcc8", background: "#0f172a", color: INK }}
         >
           <p className="text-sm">No customers ordered in this range.</p>
         </div>
@@ -241,7 +241,7 @@ export function CustomerCohortInfo() {
 function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
   return (
     <section
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
@@ -259,7 +259,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
             The repeat, ranked by spend
           </h3>
         </div>
-        <p className="text-xs italic" style={{ color: "#9a8571" }}>
+        <p className="text-xs italic" style={{ color: "#94a3b8" }}>
           Top {rows.length} in the selected range.
         </p>
       </div>
@@ -308,7 +308,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
               >
                 <td
                   className="whitespace-nowrap px-4 py-2.5 text-left tabular-nums"
-                  style={{ color: "#9a8571" }}
+                  style={{ color: "#94a3b8" }}
                 >
                   {i + 1}
                 </td>
@@ -318,7 +318,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
                 >
                   <div className="flex flex-col">
                     <span className="truncate max-w-[260px]">{r.name}</span>
-                    <span className="text-[11px]" style={{ color: "#9a8571" }}>
+                    <span className="text-[11px]" style={{ color: "#94a3b8" }}>
                       {r.mobile}
                     </span>
                   </div>
@@ -360,7 +360,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
   const maxPct = Math.max(...data.buckets.map((b) => b.pct), 1);
   return (
     <section
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -379,7 +379,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
           </h3>
         </div>
         <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider" style={{ color: "#9a8571" }}>
+          <p className="text-[11px] uppercase tracking-wider" style={{ color: "#94a3b8" }}>
             Total unique customers
           </p>
           <p
@@ -446,7 +446,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
                   <div className="flex items-center gap-3">
                     <div
                       className="h-2 flex-1 overflow-hidden rounded-full"
-                      style={{ background: "#f1e7d3" }}
+                      style={{ background: "#1e293b" }}
                     >
                       <div
                         className="h-full rounded-full"
@@ -488,7 +488,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
               >
                 {data.totalCustomers.toLocaleString()}
               </td>
-              <td className="px-4 py-3 text-left text-[11px]" style={{ color: "#9a8571" }}>
+              <td className="px-4 py-3 text-left text-[11px]" style={{ color: "#94a3b8" }}>
                 {data.totalOrders.toLocaleString()} orders
               </td>
               <td
@@ -509,7 +509,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs italic" style={{ color: "#9a8571" }}>
+      <p className="mt-3 text-xs italic" style={{ color: "#94a3b8" }}>
         One-and-done vs. the repeat. 4+ means 4 or more orders in this range.
       </p>
     </section>

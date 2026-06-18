@@ -15,15 +15,15 @@ export function CollapsibleCard({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+    <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-neutral-50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-900 transition-colors"
       >
-        <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
         <ChevronDown
           size={18}
-          className={`text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`text-slate-500 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
       {open && <div className="px-6 pb-6">{children}</div>}

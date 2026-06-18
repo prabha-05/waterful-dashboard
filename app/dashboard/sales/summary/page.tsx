@@ -14,7 +14,7 @@ export default function SalesSummaryPage() {
         <h1 className="bg-gradient-to-r from-slate-900 via-indigo-900 to-slate-900 bg-clip-text text-3xl font-bold text-transparent">
           Sales Summary
         </h1>
-        <p className="mb-6 text-neutral-500">
+        <p className="mb-6 text-slate-400">
           Pick a date to view that day&apos;s sales, customers, and orders.
         </p>
         <SalesSummary />

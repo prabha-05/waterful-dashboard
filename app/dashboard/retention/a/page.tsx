@@ -14,13 +14,13 @@ export default function CustomerRetentionPage() {
         <div className="mb-6">
           <p
             className="text-xs uppercase tracking-[0.3em]"
-            style={{ color: "#c99954", fontFamily: "Georgia, serif" }}
+            style={{ color: "#f97316", fontFamily: "Georgia, serif" }}
           >
             The Retention Ledger
           </p>
           <h1
             className="mt-1 text-4xl font-bold"
-            style={{ fontFamily: "Georgia, serif", color: "#4a3a2e" }}
+            style={{ fontFamily: "Georgia, serif", color: "#ffffff" }}
           >
             Customer Retention
           </h1>

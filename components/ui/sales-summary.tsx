@@ -6,11 +6,11 @@ import { Calendar } from "lucide-react";
 import { SalesSummaryPanels } from "./sales-summary-panels";
 import type { SalesMetrics } from "@/lib/sales-aggregations";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
-const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
+const INK = "#ffffff";
+const MUTED = "#94a3b8";
+const AMBER = "#f97316";
+const BORDER = "#1e293b";
+const CREAM_BG = "#0f172a";
 
 type RangeData = SalesMetrics & { from: string; to: string };
 
@@ -82,7 +82,7 @@ export function SalesSummary() {
       {/* FROM / TO range picker (cream + amber styling) */}
       <div
         className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "white", borderColor: BORDER }}
+        style={{ background: "#0f172a", borderColor: BORDER }}
       >
         <div className="flex items-center gap-2">
           <Calendar size={14} style={{ color: AMBER }} />
@@ -115,13 +115,13 @@ export function SalesSummary() {
 
       {loading && (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-neutral-900" />
         </div>
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
-          <p className="text-sm text-neutral-500">No orders found in this range.</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center">
+          <p className="text-sm text-slate-400">No orders found in this range.</p>
         </div>
       )}
 

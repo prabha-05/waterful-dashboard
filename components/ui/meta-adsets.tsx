@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { IndianRupee, Target, ShoppingCart, MousePointerClick, Users } from "lucide-react";
 import { PeriodPicker, formatDateParam, type Unit } from "@/components/ui/period-picker";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
-const SAGE = "#7a9471";
-const ROSE = "#d97777";
-const CREAM = "#f1e7d3";
-const BORDER = "#e8dfd0";
+const INK = "#ffffff";
+const MUTED = "#94a3b8";
+const AMBER = "#f97316";
+const SAGE = "#10b981";
+const ROSE = "#ef4444";
+const CREAM = "#1e293b";
+const BORDER = "#1e293b";
 
 type AdSet = {
   name: string;
@@ -102,7 +102,7 @@ function KpiCard({
   return (
     <div
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "white", borderColor: BORDER }}
+      style={{ background: "#0f172a", borderColor: BORDER }}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -143,7 +143,7 @@ function BudgetHeadroom({
   return (
     <section
       className="rounded-2xl border p-5 shadow-sm"
-      style={{ background: "white", borderColor: BORDER }}
+      style={{ background: "#0f172a", borderColor: BORDER }}
     >
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold" style={{ color: INK }}>
@@ -291,7 +291,7 @@ export function MetaAdSets() {
       {/* Ad Set table */}
       <section
         className="rounded-2xl border shadow-sm overflow-hidden"
-        style={{ background: "white", borderColor: BORDER }}
+        style={{ background: "#0f172a", borderColor: BORDER }}
       >
         <div className="px-5 py-4 border-b" style={{ borderColor: BORDER }}>
           <h2 className="text-lg font-semibold" style={{ color: INK }}>
@@ -304,7 +304,7 @@ export function MetaAdSets() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: "#faf6ef" }}>
+              <tr style={{ background: "#0f172a" }}>
                 {[
                   { label: "Ad Set", align: "left" },
                   { label: "Campaign", align: "left" },

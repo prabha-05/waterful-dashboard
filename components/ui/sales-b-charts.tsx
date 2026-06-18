@@ -43,10 +43,10 @@ export function SalesBContent({
           {kpis.map((kpi) => (
             <div
               key={kpi.label}
-              className="bg-neutral-50 rounded-lg p-4 border border-neutral-100"
+              className="bg-slate-900 rounded-lg p-4 border border-slate-800"
             >
-              <p className="text-sm text-neutral-500">{kpi.label}</p>
-              <p className="text-2xl font-bold text-neutral-900 mt-1">{kpi.value}</p>
+              <p className="text-sm text-slate-400">{kpi.label}</p>
+              <p className="text-2xl font-bold text-white mt-1">{kpi.value}</p>
             </div>
           ))}
         </div>
@@ -102,18 +102,18 @@ export function SalesBContent({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-200">
-                <th className="text-left py-3 px-4 font-semibold text-neutral-600">Customer</th>
-                <th className="text-right py-3 px-4 font-semibold text-neutral-600">Orders</th>
-                <th className="text-right py-3 px-4 font-semibold text-neutral-600">Total Spend</th>
+              <tr className="border-b border-slate-800">
+                <th className="text-left py-3 px-4 font-semibold text-slate-300">Customer</th>
+                <th className="text-right py-3 px-4 font-semibold text-slate-300">Orders</th>
+                <th className="text-right py-3 px-4 font-semibold text-slate-300">Total Spend</th>
               </tr>
             </thead>
             <tbody>
               {data.topCustomers.map((c, i) => (
-                <tr key={i} className="border-b border-neutral-100 hover:bg-neutral-50">
-                  <td className="py-3 px-4 text-neutral-900">{c.name}</td>
-                  <td className="py-3 px-4 text-right text-neutral-600">{c.orders}</td>
-                  <td className="py-3 px-4 text-right text-neutral-900 font-medium">
+                <tr key={i} className="border-b border-slate-800 hover:bg-slate-900">
+                  <td className="py-3 px-4 text-white">{c.name}</td>
+                  <td className="py-3 px-4 text-right text-slate-300">{c.orders}</td>
+                  <td className="py-3 px-4 text-right text-white font-medium">
                     ₹{c.totalSpend.toLocaleString()}
                   </td>
                 </tr>

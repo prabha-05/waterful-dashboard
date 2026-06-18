@@ -55,11 +55,11 @@ const PRESETS: { label: string; days: number }[] = [
 ];
 
 // Cute office palette
-const PAPER = "#fdfaf4";
-const ROSE = "#d97777";
-const SAGE = "#7a9471";
-const AMBER = "#c99954";
-const INK = "#4a3a2e";
+const PAPER = "#080d1a";
+const ROSE = "#ef4444";
+const SAGE = "#10b981";
+const AMBER = "#f97316";
+const INK = "#ffffff";
 
 export function CustomerRetention() {
   const router = useRouter();
@@ -132,7 +132,7 @@ export function CustomerRetention() {
           <button
             onClick={() => setShowPicker(!showPicker)}
             className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors"
-            style={{ background: "white", borderColor: "#e8dcc8", color: INK }}
+            style={{ background: "#0f172a", borderColor: "#e8dcc8", color: INK }}
           >
             <Calendar size={16} style={{ color: ROSE }} />
             {range?.from && range?.to
@@ -141,7 +141,7 @@ export function CustomerRetention() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border bg-white p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
               <DayPicker
                 mode="range"
                 selected={range}
@@ -154,7 +154,7 @@ export function CustomerRetention() {
               <div className="flex justify-end gap-2 px-3 pb-2">
                 <button
                   onClick={() => setShowPicker(false)}
-                  className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
+                  className="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-900"
                 >
                   Cancel
                 </button>
@@ -176,7 +176,7 @@ export function CustomerRetention() {
             <button
               key={p.label}
               onClick={() => applyPreset(p.days)}
-              className="rounded-lg border bg-white px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-rose-50/50"
+              className="rounded-lg border bg-slate-900 px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-red-950/30/50"
               style={{ borderColor: "#e8dcc8", color: INK }}
             >
               {p.label}
@@ -199,7 +199,7 @@ export function CustomerRetention() {
       {!loading && !data && (
         <div
           className="rounded-2xl border border-dashed p-12 text-center"
-          style={{ borderColor: "#d9c9b0", background: "white" }}
+          style={{ borderColor: "#d9c9b0", background: "#0f172a" }}
         >
           <Sparkles className="mx-auto mb-3" size={22} style={{ color: AMBER }} />
           <p className="text-sm" style={{ color: INK }}>
@@ -212,7 +212,7 @@ export function CustomerRetention() {
       {!loading && data && data.cohorts.length === 0 && (
         <div
           className="rounded-2xl border p-8 text-center"
-          style={{ borderColor: "#e8dcc8", background: "white", color: INK }}
+          style={{ borderColor: "#e8dcc8", background: "#0f172a", color: INK }}
         >
           <p className="text-sm">No new customers were acquired in this range.</p>
         </div>
@@ -303,7 +303,7 @@ function KpiTile({
 }) {
   return (
     <div
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="flex items-center gap-2" style={{ color: tone }}>
@@ -321,7 +321,7 @@ function KpiTile({
       >
         {value}
       </p>
-      <p className="mt-1 text-xs italic" style={{ color: "#9a8571" }}>
+      <p className="mt-1 text-xs italic" style={{ color: "#94a3b8" }}>
         {caption}
       </p>
     </div>
@@ -336,7 +336,7 @@ function RepeatTrendChart({ cohorts }: { cohorts: CohortMetrics[] }) {
   }));
   return (
     <section
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
@@ -346,7 +346,7 @@ function RepeatTrendChart({ cohorts }: { cohorts: CohortMetrics[] }) {
         >
           Repeat rate by cohort week
         </h3>
-        <p className="text-xs italic" style={{ color: "#9a8571" }}>
+        <p className="text-xs italic" style={{ color: "#94a3b8" }}>
           Are newer cohorts coming back more?
         </p>
       </div>
@@ -417,7 +417,7 @@ function monthLabel(weekKey: string): string {
 function CohortTable({ title, cohorts }: { title: string; cohorts: CohortMetrics[] }) {
   return (
     <section
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
@@ -427,7 +427,7 @@ function CohortTable({ title, cohorts }: { title: string; cohorts: CohortMetrics
         >
           {title}
         </h3>
-        <p className="text-xs italic" style={{ color: "#9a8571" }}>
+        <p className="text-xs italic" style={{ color: "#94a3b8" }}>
           Each row = customers acquired in that week, followed forever.
         </p>
       </div>
@@ -498,7 +498,7 @@ function ProductCohortTable({ cohorts }: { cohorts: ProductCohortMetrics[] }) {
   if (cohorts.length === 0) return null;
   return (
     <section
-      className="rounded-2xl border bg-white p-5 shadow-sm"
+      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
       style={{ borderColor: "#e8dcc8" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
@@ -508,7 +508,7 @@ function ProductCohortTable({ cohorts }: { cohorts: ProductCohortMetrics[] }) {
         >
           By Product × Cohort
         </h3>
-        <p className="text-xs italic" style={{ color: "#9a8571" }}>
+        <p className="text-xs italic" style={{ color: "#94a3b8" }}>
           Which flavour brings back the loyalists?
         </p>
       </div>

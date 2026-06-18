@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { Minus, Plus, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
-const INK = "#4a3a2e";
-const AMBER = "#c99954";
-const SAGE = "#7a9471";
-const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
+const INK = "#ffffff";
+const AMBER = "#f97316";
+const SAGE = "#10b981";
+const BORDER = "#1e293b";
+const CREAM_BG = "#0f172a";
 
 export const UNITS = ["day", "week", "month"] as const;
 export type Unit = (typeof UNITS)[number];
@@ -35,7 +35,7 @@ function MonthGridPicker({
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={() => setViewYear((y) => y - 1)}
-          className="rounded-lg p-1.5 transition-colors hover:bg-neutral-100"
+          className="rounded-lg p-1.5 transition-colors hover:bg-slate-800"
           style={{ color: INK }}
         >
           <ChevronLeft size={16} />
@@ -46,7 +46,7 @@ function MonthGridPicker({
         <button
           onClick={() => setViewYear((y) => Math.min(y + 1, currentYear))}
           disabled={viewYear >= currentYear}
-          className="rounded-lg p-1.5 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-lg p-1.5 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
           style={{ color: INK }}
         >
           <ChevronRight size={16} />
@@ -147,9 +147,9 @@ export function PeriodPicker({
     <div className="flex flex-wrap items-center gap-4">
       <div
         className="inline-flex items-center rounded-xl border overflow-hidden"
-        style={{ borderColor: "#e8dfd0", background: "white" }}
+        style={{ borderColor: "#1e293b", background: "#0f172a" }}
       >
-        <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-neutral-50" style={{ color: INK }}>
+        <button onClick={dec} className="px-3 py-2.5 transition-colors hover:bg-slate-900" style={{ color: INK }}>
           <Minus size={16} />
         </button>
         <input
@@ -162,14 +162,14 @@ export function PeriodPicker({
             if (e.key === "Enter") commit(parseInt(inputValue));
           }}
           className="w-14 py-2.5 text-sm font-bold tabular-nums text-center border-x outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          style={{ color: INK, borderColor: "#e8dfd0" }}
+          style={{ color: INK, borderColor: "#1e293b" }}
         />
-        <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-neutral-50" style={{ color: INK }}>
+        <button onClick={inc} className="px-3 py-2.5 transition-colors hover:bg-slate-900" style={{ color: INK }}>
           <Plus size={16} />
         </button>
       </div>
 
-      <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#e8dfd0" }}>
+      <div className="inline-flex rounded-xl border overflow-hidden" style={{ borderColor: "#1e293b" }}>
         {UNITS.map((u) => (
           <button
             key={u}
@@ -189,8 +189,8 @@ export function PeriodPicker({
         <div className="relative inline-block">
           <button
             onClick={() => setShowMonthPicker(!showMonthPicker)}
-            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
-            style={{ background: "white", borderColor: BORDER, color: INK }}
+            className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-slate-900/80"
+            style={{ background: "#0f172a", borderColor: BORDER, color: INK }}
           >
             <Calendar size={16} style={{ color: AMBER }} />
             {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
@@ -198,7 +198,7 @@ export function PeriodPicker({
           {showMonthPicker && (
             <div
               className="absolute z-50 mt-2 rounded-xl border p-2 shadow-xl"
-              style={{ background: "white", borderColor: BORDER }}
+              style={{ background: "#0f172a", borderColor: BORDER }}
             >
               <MonthGridPicker selectedDate={startDate} onPick={pickMonth} />
               <button
@@ -214,7 +214,7 @@ export function PeriodPicker({
       ) : (
         <div className="inline-flex items-center gap-2">
           <Calendar size={14} style={{ color: AMBER }} />
-          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>
+          <label className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
             Date
           </label>
           <input
@@ -229,7 +229,7 @@ export function PeriodPicker({
       )}
 
       {trailingLabel !== undefined && (
-        <p className="text-sm" style={{ color: "#9a8571" }}>
+        <p className="text-sm" style={{ color: "#94a3b8" }}>
           <span className="font-bold" style={{ color: INK }}>
             {count} {unitLabel(unit).toLowerCase()}
           </span>{" "}

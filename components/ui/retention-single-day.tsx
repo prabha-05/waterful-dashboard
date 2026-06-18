@@ -17,11 +17,11 @@ import {
   Rocket,
 } from "lucide-react";
 
-const PAPER = "#fdfaf4";
-const ROSE = "#d97777";
-const SAGE = "#7a9471";
-const AMBER = "#c99954";
-const INK = "#4a3a2e";
+const PAPER = "#080d1a";
+const ROSE = "#ef4444";
+const SAGE = "#10b981";
+const AMBER = "#f97316";
+const INK = "#ffffff";
 
 type Metrics = {
   date: string;
@@ -61,25 +61,25 @@ function KpiCard({
   label: string; value: string; subtitle?: string; icon: React.ReactNode; color: string; note?: string;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "white", borderColor: "#e8dfd0" }}>
+    <div className="rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#9a8571" }}>{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</p>
           {subtitle && <p className="mt-0.5 text-[10px] italic" style={{ color: "#b5a48e" }}>{subtitle}</p>}
         </div>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: `${color}18`, color }}>{icon}</span>
       </div>
       <p className="mt-4 text-3xl font-bold tabular-nums" style={{ color: INK }}>{value}</p>
-      {note && <p className="mt-1.5 text-xs" style={{ color: "#9a8571" }}>{note}</p>}
+      {note && <p className="mt-1.5 text-xs" style={{ color: "#94a3b8" }}>{note}</p>}
     </div>
   );
 }
 
 function SectionTitle({ title, tagline }: { title: string; tagline: string }) {
   return (
-    <div className="border-b pb-2" style={{ borderColor: "#e8dfd0" }}>
+    <div className="border-b pb-2" style={{ borderColor: "#1e293b" }}>
       <h2 className="text-base font-bold" style={{ color: INK }}>{title}</h2>
-      <p className="text-[11px] italic" style={{ color: "#9a8571" }}>{tagline}</p>
+      <p className="text-[11px] italic" style={{ color: "#94a3b8" }}>{tagline}</p>
     </div>
   );
 }
@@ -140,8 +140,8 @@ export function RetentionSingleDay() {
       <div className="relative inline-block">
         <button
           onClick={() => setShowPicker(!showPicker)}
-          className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-white/80"
-          style={{ background: "white", borderColor: "#e8dfd0", color: INK }}
+          className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors hover:bg-slate-900/80"
+          style={{ background: "#0f172a", borderColor: "#1e293b", color: INK }}
         >
           <Calendar size={16} style={{ color: AMBER }} />
           {selectedDate.toLocaleDateString("en-IN", {
@@ -150,7 +150,7 @@ export function RetentionSingleDay() {
         </button>
 
         {showPicker && (
-          <div className="absolute z-50 mt-2 rounded-xl border p-3 shadow-xl" style={{ background: "white", borderColor: "#e8dfd0" }}>
+          <div className="absolute z-50 mt-2 rounded-xl border p-3 shadow-xl" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
             <DayPicker
               mode="single"
               selected={selectedDate}
@@ -170,8 +170,8 @@ export function RetentionSingleDay() {
       )}
 
       {!loading && data && data.totalOrders === 0 && (
-        <div className="rounded-2xl border p-8 text-center" style={{ background: "white", borderColor: "#e8dfd0" }}>
-          <p className="text-sm" style={{ color: "#9a8571" }}>No orders found for this date.</p>
+        <div className="rounded-2xl border p-8 text-center" style={{ background: "#0f172a", borderColor: "#1e293b" }}>
+          <p className="text-sm" style={{ color: "#94a3b8" }}>No orders found for this date.</p>
         </div>
       )}
 

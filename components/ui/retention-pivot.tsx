@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Calendar, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
-const SAGE = "#7a9471";
-const ROSE = "#d97777";
-const BORDER = "#e8dfd0";
-const CREAM_BG = "#faf6ef";
+const INK = "#ffffff";
+const MUTED = "#94a3b8";
+const AMBER = "#f97316";
+const SAGE = "#10b981";
+const ROSE = "#ef4444";
+const BORDER = "#1e293b";
+const CREAM_BG = "#0f172a";
 
 type CustomerRow = {
   identity: string;
@@ -149,7 +149,7 @@ export function RetentionPivot({
       {/* Date pickers */}
       <div
         className="flex flex-wrap items-end gap-3 rounded-2xl border p-4 shadow-sm"
-        style={{ background: "white", borderColor: BORDER }}
+        style={{ background: "#0f172a", borderColor: BORDER }}
       >
         <DateField label="Start" value={start} max={end} onChange={setStart} />
         <DateField label="End" value={end} min={start} onChange={setEnd} />
@@ -182,7 +182,7 @@ export function RetentionPivot({
       {data && data.customers.length === 0 && !loading && (
         <div
           className="rounded-2xl border p-8 text-center text-sm italic"
-          style={{ background: "white", borderColor: BORDER, color: MUTED }}
+          style={{ background: "#0f172a", borderColor: BORDER, color: MUTED }}
         >
           No customers ordered in that range.
         </div>
@@ -192,11 +192,11 @@ export function RetentionPivot({
       {data && data.customers.length > 0 && (
         <div
           className="rounded-2xl border overflow-hidden"
-          style={{ background: "white", borderColor: BORDER }}
+          style={{ background: "#0f172a", borderColor: BORDER }}
         >
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: "#f1e7d3", background: CREAM_BG }}
+            style={{ borderColor: "#1e293b", background: CREAM_BG }}
           >
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -208,8 +208,8 @@ export function RetentionPivot({
             </div>
             <button
               onClick={downloadExcel}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white"
-              style={{ background: "white", borderColor: BORDER, color: INK }}
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-slate-900"
+              style={{ background: "#0f172a", borderColor: BORDER, color: INK }}
             >
               <Download size={13} />
               Download Excel
@@ -247,7 +247,7 @@ export function RetentionPivot({
               </thead>
               <tbody>
                 {data.customers.map((c) => (
-                  <tr key={c.identity} className="border-t" style={{ borderColor: "#f1e7d3" }}>
+                  <tr key={c.identity} className="border-t" style={{ borderColor: "#1e293b" }}>
                     <td className="px-3 py-2.5 font-medium" style={{ color: INK }}>{c.name}</td>
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: INK }}>{c.phone || "—"}</td>
                     <td className="px-3 py-2.5" style={{ color: INK }}>{c.email || "—"}</td>
@@ -368,7 +368,7 @@ function StatCard({
   return (
     <div
       className="rounded-2xl border p-4 shadow-sm"
-      style={{ background: "white", borderColor: BORDER }}
+      style={{ background: "#0f172a", borderColor: BORDER }}
     >
       <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</p>
       <p className="text-[10px] italic mt-0.5" style={{ color: MUTED }}>{tagline}</p>

@@ -23,16 +23,16 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-const INK = "#4a3a2e";
-const MUTED = "#9a8571";
-const AMBER = "#c99954";
-const SAGE = "#7a9471";
-const ROSE = "#d97777";
+const INK = "#ffffff";
+const MUTED = "#94a3b8";
+const AMBER = "#f97316";
+const SAGE = "#10b981";
+const ROSE = "#ef4444";
 const VIOLET = "#8b5cf6";
 const TEAL = "#0d9488";
-const CREAM = "#f1e7d3";
-const CREAM_BG = "#faf6ef";
-const BORDER = "#e8dfd0";
+const CREAM = "#1e293b";
+const CREAM_BG = "#0f172a";
+const BORDER = "#1e293b";
 
 type DailyPoint = {
   date: string;
@@ -393,7 +393,7 @@ function ChartCard({
   return (
     <div
       className="rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md"
-      style={{ background: "white", borderColor: BORDER }}
+      style={{ background: "#0f172a", borderColor: BORDER }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
@@ -659,7 +659,7 @@ export function MetaAds() {
   const filterBar = (
     <div
       className="flex flex-wrap items-center gap-3 rounded-2xl border p-4 shadow-sm"
-      style={{ background: "white", borderColor: BORDER }}
+      style={{ background: "#0f172a", borderColor: BORDER }}
     >
       <div className="flex items-center gap-2">
         <Calendar size={14} style={{ color: AMBER }} />
@@ -731,7 +731,7 @@ export function MetaAds() {
       {filterBar}
 
       {/* Ads table */}
-      <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "white", borderColor: BORDER }}>
+      <section className="rounded-2xl border shadow-sm overflow-hidden" style={{ background: "#0f172a", borderColor: BORDER }}>
         <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold" style={{ color: INK }}>Ads with spend</h2>
@@ -821,7 +821,7 @@ export function MetaAds() {
                     <th
                       key={h.label}
                       onClick={sortable ? () => toggleSort(h.key as SortKey) : undefined}
-                      className={`px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap ${sortable ? "cursor-pointer select-none hover:bg-amber-50" : ""}`}
+                      className={`px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap ${sortable ? "cursor-pointer select-none hover:bg-orange-950/30" : ""}`}
                       style={{
                         color: active ? INK : MUTED,
                         textAlign: h.align as "left" | "right",
@@ -866,7 +866,7 @@ export function MetaAds() {
                   <tr
                     key={ad.adId}
                     onClick={() => selectAndScroll(ad.adId)}
-                    className="border-t cursor-pointer transition-colors hover:bg-neutral-50"
+                    className="border-t cursor-pointer transition-colors hover:bg-slate-900"
                     style={{
                       borderColor: CREAM,
                       background: isSelected ? `${AMBER}18` : "white",
@@ -959,7 +959,7 @@ export function MetaAds() {
 
       {/* Drill-down */}
       {selected && (
-        <section ref={drillRef} className="rounded-2xl border shadow-sm overflow-hidden scroll-mt-4" style={{ background: "white", borderColor: BORDER }}>
+        <section ref={drillRef} className="rounded-2xl border shadow-sm overflow-hidden scroll-mt-4" style={{ background: "#0f172a", borderColor: BORDER }}>
           <div className="px-5 py-4 border-b flex flex-wrap items-center gap-3" style={{ borderColor: BORDER }}>
             <h2 className="text-lg font-semibold" style={{ color: INK }}>Drill-down</h2>
             <span className="text-xs italic" style={{ color: MUTED }}>showing daily breakdown for selected ad</span>
@@ -1033,15 +1033,15 @@ export function MetaAds() {
                     <div className="space-y-4">
                       {/* HEADLINE — Spend / Revenue / ROAS */}
                       <div className="grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0f172a", borderColor: BORDER }}>
                           <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Total spent</p>
                           <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(ad.spend)}</p>
                         </div>
-                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0f172a", borderColor: BORDER }}>
                           <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Revenue from this ad</p>
                           <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(ad.purchaseValue)}</p>
                         </div>
-                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "white", borderColor: BORDER }}>
+                        <div className="rounded-2xl border p-4 shadow-sm" style={{ background: "#0f172a", borderColor: BORDER }}>
                           <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>ROAS</p>
                           <p className="text-2xl font-bold tabular-nums" style={{ color: roasColor }}>{ad.roas.toFixed(2)}x</p>
                         </div>
