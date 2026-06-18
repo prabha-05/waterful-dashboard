@@ -1173,28 +1173,28 @@ export function MetaAds() {
                             {
                               label: "Clicks",
                               count: ad.clicks,
-                              benchmark: { good: 2, decent: 1, label: "1–2% of impressions" },
+                              benchmark: { good: 1.5, decent: 0.8, label: "0.8–1.5% of impressions (India)" },
                               prevOverride: ad.impressions,
                             },
                             {
                               label: "Landing Page",
                               count: ad.landingPageViews,
-                              benchmark: { good: 70, decent: 50, label: "70–80%+ of clicks" },
+                              benchmark: { good: 65, decent: 50, label: "50–65% of clicks (India)" },
                             },
                             {
                               label: "Add to Cart",
                               count: ad.addToCart,
-                              benchmark: { good: 10, decent: 5, label: "5–15% of LP" },
+                              benchmark: { good: 8, decent: 4, label: "4–8% of LP (India)" },
                             },
                             {
                               label: "Checkout",
                               count: ad.initiateCheckout,
-                              benchmark: { good: 50, decent: 30, label: "40–60% of ATC" },
+                              benchmark: { good: 45, decent: 30, label: "30–45% of ATC (India)" },
                             },
                             {
                               label: "Purchase",
                               count: ad.purchases,
-                              benchmark: { good: 60, decent: 40, label: "50–70% of checkout" },
+                              benchmark: { good: 55, decent: 35, label: "35–55% of checkout (India)" },
                             },
                           ];
 
@@ -1321,16 +1321,16 @@ export function MetaAds() {
                                         {!hideIndustry && (
                                           <div className="flex flex-col items-center" style={{ width: 52 }}>
                                             <span
-                                              className="text-[10px] font-bold tabular-nums leading-tight"
-                                              style={{ color: "#94a3b8" }}
+                                              className="text-[12px] font-bold tabular-nums leading-tight"
+                                              style={{ color: "#cbd5e1" }}
                                             >
-                                              {s.industryExpectedCount.toLocaleString("en-IN")}
+                                              {s.industry.toFixed(1)}%
                                             </span>
                                             <span
                                               className="text-[9px] tabular-nums leading-tight mb-1"
                                               style={{ color: "#64748b" }}
                                             >
-                                              {s.industry.toFixed(0)}%
+                                              {s.industryExpectedCount.toLocaleString("en-IN")}
                                             </span>
                                             {/* Outlined "target" bar with hatched top portion = gap */}
                                             <div
@@ -1357,16 +1357,16 @@ export function MetaAds() {
                                         )}
                                         <div className="flex flex-col items-center" style={{ width: 52 }}>
                                           <span
-                                            className="text-[10px] font-bold tabular-nums leading-tight"
+                                            className="text-[12px] font-bold tabular-nums leading-tight"
                                             style={{ color: s.color }}
                                           >
-                                            {s.count.toLocaleString("en-IN")}
+                                            {s.ours.toFixed(1)}%
                                           </span>
                                           <span
                                             className="text-[9px] tabular-nums leading-tight mb-1"
-                                            style={{ color: s.color, opacity: 0.85 }}
+                                            style={{ color: s.color, opacity: 0.7 }}
                                           >
-                                            {s.ours.toFixed(1)}%
+                                            {s.count.toLocaleString("en-IN")}
                                           </span>
                                           {/* Solid "actual" bar */}
                                           <div
@@ -1399,7 +1399,7 @@ export function MetaAds() {
                                         "repeating-linear-gradient(45deg, rgba(148,163,184,0.18) 0 3px, transparent 3px 6px)",
                                     }}
                                   />
-                                  <span style={{ color: MUTED }}>Industry target (hatched = gap)</span>
+                                  <span style={{ color: MUTED }}>Indian standard (hatched = gap to close)</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
