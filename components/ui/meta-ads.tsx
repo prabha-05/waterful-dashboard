@@ -1277,15 +1277,6 @@ export function MetaAds() {
 
                           return (
                             <div className="space-y-3">
-                              {/* Starting point — impressions */}
-                              <div className="flex items-center gap-2 text-[11px]" style={{ color: MUTED }}>
-                                <span>Starting from</span>
-                                <span className="font-bold tabular-nums" style={{ color: INK }}>
-                                  {ad.impressions.toLocaleString("en-IN")}
-                                </span>
-                                <span>impressions</span>
-                              </div>
-
                               {/* Compact table: Impressions box + one column per stage
                                   (STD vs US, with % and count). Stage header turns green
                                   when we're at-or-above the Indian standard, red when below. */}
