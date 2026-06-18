@@ -1158,9 +1158,18 @@ export function MetaAds() {
 
                       {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
-                          Conversion funnel — clicks to purchase
-                        </p>
+                        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+                            Conversion funnel — clicks to purchase
+                          </p>
+                          <p className="text-xs" style={{ color: MUTED }}>
+                            Starting from{" "}
+                            <span className="text-base font-bold tabular-nums" style={{ color: INK }}>
+                              {ad.impressions.toLocaleString("en-IN")}
+                            </span>{" "}
+                            impressions
+                          </p>
+                        </div>
                         {(() => {
                           // Each stage has a count and a benchmark for the *transition*
                           // INTO it (what % of the previous stage should land here).
