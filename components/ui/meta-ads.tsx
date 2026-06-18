@@ -1301,12 +1301,8 @@ export function MetaAds() {
                                 </div>
 
                                 {comparisonStages.map((s) => {
-                                  // Clicks has no industry comparison — show only US column
-                                  const hideIndustry = s.label === "Clicks";
                                   const ahead = s.ours >= s.industry;
-                                  const headerColor = hideIndustry
-                                    ? "#475569"
-                                    : ahead ? SAGE : ROSE;
+                                  const headerColor = ahead ? SAGE : ROSE;
                                   return (
                                     <div key={s.label} className="flex-1 min-w-[140px] rounded-md border overflow-hidden" style={{ borderColor: BORDER, background: "#0f172a" }}>
                                       {/* Colored header */}
@@ -1315,48 +1311,26 @@ export function MetaAds() {
                                       </div>
                                       {/* STD / US sub-header */}
                                       <div className="grid grid-cols-2 text-[10px] font-semibold uppercase tracking-wider" style={{ borderBottom: `1px solid ${BORDER}` }}>
-                                        {!hideIndustry ? (
-                                          <>
-                                            <div className="px-2 py-1 text-center" style={{ color: "#94a3b8", borderRight: `1px solid ${BORDER}` }}>STD</div>
-                                            <div className="px-2 py-1 text-center" style={{ color: "#94a3b8" }}>US</div>
-                                          </>
-                                        ) : (
-                                          <div className="col-span-2 px-2 py-1 text-center" style={{ color: "#94a3b8" }}>US</div>
-                                        )}
+                                        <div className="px-2 py-1 text-center" style={{ color: "#94a3b8", borderRight: `1px solid ${BORDER}` }}>STD</div>
+                                        <div className="px-2 py-1 text-center" style={{ color: "#94a3b8" }}>US</div>
                                       </div>
                                       {/* % row */}
                                       <div className="grid grid-cols-2 text-[12px] tabular-nums font-semibold">
-                                        {!hideIndustry ? (
-                                          <>
-                                            <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
-                                              {s.industry.toFixed(2)}%
-                                            </div>
-                                            <div className="px-2 py-1.5 text-center" style={{ color: ahead ? SAGE : ROSE }}>
-                                              {s.ours.toFixed(2)}%
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="col-span-2 px-2 py-1.5 text-center" style={{ color: INK }}>
-                                            {s.ours.toFixed(2)}%
-                                          </div>
-                                        )}
+                                        <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
+                                          {s.industry.toFixed(2)}%
+                                        </div>
+                                        <div className="px-2 py-1.5 text-center" style={{ color: ahead ? SAGE : ROSE }}>
+                                          {s.ours.toFixed(2)}%
+                                        </div>
                                       </div>
                                       {/* Count row */}
                                       <div className="grid grid-cols-2 text-[12px] tabular-nums" style={{ borderTop: `1px solid ${BORDER}` }}>
-                                        {!hideIndustry ? (
-                                          <>
-                                            <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
-                                              {s.industryExpectedCount.toLocaleString("en-IN")}
-                                            </div>
-                                            <div className="px-2 py-1.5 text-center font-semibold" style={{ color: ahead ? SAGE : ROSE }}>
-                                              {s.count.toLocaleString("en-IN")}
-                                            </div>
-                                          </>
-                                        ) : (
-                                          <div className="col-span-2 px-2 py-1.5 text-center font-semibold" style={{ color: INK }}>
-                                            {s.count.toLocaleString("en-IN")}
-                                          </div>
-                                        )}
+                                        <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
+                                          {s.industryExpectedCount.toLocaleString("en-IN")}
+                                        </div>
+                                        <div className="px-2 py-1.5 text-center font-semibold" style={{ color: ahead ? SAGE : ROSE }}>
+                                          {s.count.toLocaleString("en-IN")}
+                                        </div>
                                       </div>
                                     </div>
                                   );
