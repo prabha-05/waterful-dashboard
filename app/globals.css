@@ -57,6 +57,32 @@
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
 }
 
+/* All inputs default to dark bg + light text so contents are visible. The
+   browser otherwise renders date/number inputs with white chrome that makes
+   typed values invisible on our dark theme. Override per-input via class. */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="password"],
+textarea,
+select {
+  color: #ffffff;
+  background-color: #0f172a;
+  caret-color: #6366f1;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #64748b;
+}
+/* Style the calendar icon inside native date inputs so it's visible on dark */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) hue-rotate(180deg);
+  cursor: pointer;
+}
+
 @keyframes spotlight {
   0% {
     opacity: 0;
