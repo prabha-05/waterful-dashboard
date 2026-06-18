@@ -562,10 +562,10 @@ export default function AdsMockPage() {
                         className="border-t cursor-pointer transition-colors"
                         style={{
                           borderColor: CREAM,
-                          background: isSelected ? `${AMBER}10` : "white",
+                          background: isSelected ? `${AMBER}22` : "#0f172a",
                         }}
                         onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = CREAM_BG; }}
-                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "white"; }}
+                        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "#0f172a"; }}
                       >
                         <td className="px-3 py-3" style={{ color: INK }}>
                           <div className="flex items-center gap-2.5">

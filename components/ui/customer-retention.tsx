@@ -132,7 +132,7 @@ export function CustomerRetention() {
           <button
             onClick={() => setShowPicker(!showPicker)}
             className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors"
-            style={{ background: "#0f172a", borderColor: "#e8dcc8", color: INK }}
+            style={{ background: "#0f172a", borderColor: "#1e293b", color: INK }}
           >
             <Calendar size={16} style={{ color: ROSE }} />
             {range?.from && range?.to
@@ -141,7 +141,7 @@ export function CustomerRetention() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#1e293b" }}>
               <DayPicker
                 mode="range"
                 selected={range}
@@ -162,7 +162,7 @@ export function CustomerRetention() {
                   onClick={applyRange}
                   disabled={!range?.from || !range?.to}
                   className="rounded px-4 py-1.5 text-sm text-white disabled:opacity-50"
-                  style={{ background: INK }}
+                  style={{ background: "#6366f1" }}
                 >
                   Apply
                 </button>
@@ -177,7 +177,7 @@ export function CustomerRetention() {
               key={p.label}
               onClick={() => applyPreset(p.days)}
               className="rounded-lg border bg-slate-900 px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-red-950/30/50"
-              style={{ borderColor: "#e8dcc8", color: INK }}
+              style={{ borderColor: "#1e293b", color: INK }}
             >
               {p.label}
             </button>
@@ -190,7 +190,7 @@ export function CustomerRetention() {
         <div className="flex items-center justify-center py-20">
           <div
             className="h-8 w-8 animate-spin rounded-full border-2"
-            style={{ borderColor: "#e8dcc8", borderTopColor: INK }}
+            style={{ borderColor: "#1e293b", borderTopColor: INK }}
           />
         </div>
       )}
@@ -199,7 +199,7 @@ export function CustomerRetention() {
       {!loading && !data && (
         <div
           className="rounded-2xl border border-dashed p-12 text-center"
-          style={{ borderColor: "#d9c9b0", background: "#0f172a" }}
+          style={{ borderColor: "#334155", background: "#0f172a" }}
         >
           <Sparkles className="mx-auto mb-3" size={22} style={{ color: AMBER }} />
           <p className="text-sm" style={{ color: INK }}>
@@ -212,7 +212,7 @@ export function CustomerRetention() {
       {!loading && data && data.cohorts.length === 0 && (
         <div
           className="rounded-2xl border p-8 text-center"
-          style={{ borderColor: "#e8dcc8", background: "#0f172a", color: INK }}
+          style={{ borderColor: "#1e293b", background: "#0f172a", color: INK }}
         >
           <p className="text-sm">No new customers were acquired in this range.</p>
         </div>
@@ -304,7 +304,7 @@ function KpiTile({
   return (
     <div
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="flex items-center gap-2" style={{ color: tone }}>
         <span
@@ -337,7 +337,7 @@ function RepeatTrendChart({ cohorts }: { cohorts: CohortMetrics[] }) {
   return (
     <section
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
         <h3
@@ -418,7 +418,7 @@ function CohortTable({ title, cohorts }: { title: string; cohorts: CohortMetrics
   return (
     <section
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
         <h3
@@ -434,10 +434,10 @@ function CohortTable({ title, cohorts }: { title: string; cohorts: CohortMetrics
       <div className="-mx-5 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ background: "#f7efdf" }}>
+            <tr style={{ background: "#1e293b" }}>
               <th
                 className="sticky left-0 z-10 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                style={{ background: "#f7efdf", color: INK }}
+                style={{ background: "#1e293b", color: INK }}
               >
                 Date
               </th>
@@ -462,11 +462,11 @@ function CohortTable({ title, cohorts }: { title: string; cohorts: CohortMetrics
             {cohorts.map((c, i) => (
               <tr
                 key={c.cohortWeek}
-                style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}
+                style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}
               >
                 <td
                   className="sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 text-left font-medium"
-                  style={{ background: i % 2 === 0 ? "white" : "#fdf9f1", color: INK }}
+                  style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33", color: INK }}
                 >
                   {c.cohortLabel}
                 </td>
@@ -499,7 +499,7 @@ function ProductCohortTable({ cohorts }: { cohorts: ProductCohortMetrics[] }) {
   return (
     <section
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
         <h3
@@ -515,10 +515,10 @@ function ProductCohortTable({ cohorts }: { cohorts: ProductCohortMetrics[] }) {
       <div className="-mx-5 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ background: "#f7efdf" }}>
+            <tr style={{ background: "#1e293b" }}>
               <th
                 className="sticky left-0 z-10 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                style={{ background: "#f7efdf", color: INK }}
+                style={{ background: "#1e293b", color: INK }}
               >
                 Product
               </th>
@@ -549,12 +549,12 @@ function ProductCohortTable({ cohorts }: { cohorts: ProductCohortMetrics[] }) {
             {cohorts.map((c, i) => (
               <tr
                 key={`${c.cohortWeek}-${c.product}`}
-                style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}
+                style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}
               >
                 <td
                   className="sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 text-left font-medium"
                   style={{
-                    background: i % 2 === 0 ? "white" : "#fdf9f1",
+                    background: i % 2 === 0 ? "#0f172a" : "#131c33",
                     color: INK,
                     maxWidth: 220,
                   }}

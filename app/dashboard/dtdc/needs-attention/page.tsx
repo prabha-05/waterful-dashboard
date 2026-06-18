@@ -12,7 +12,7 @@ export default function DtdcNeedsAttentionPage() {
         </p>
         <div
           className="mb-6 rounded-xl border px-4 py-3 text-[12px] leading-relaxed"
-          style={{ background: "#fffaf0", borderColor: "#1e293b", color: "#6b5849" }}
+          style={{ background: "#0f172a", borderColor: "#1e293b", color: "#6b5849" }}
         >
           <span className="font-semibold" style={{ color: "#ffffff" }}>How this updates:</span>{" "}
           Covers every DTDC shipment booked from <span className="font-semibold">May 1, 2026</span> onwards.

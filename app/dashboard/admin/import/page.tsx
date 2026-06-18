@@ -17,7 +17,7 @@ const ROSE = "#ef4444";
 const SAGE = "#10b981";
 const AMBER = "#f97316";
 const INK = "#ffffff";
-const BORDER = "#e8dcc8";
+const BORDER = "#1e293b";
 
 type Preview = {
   fileName: string;
@@ -613,7 +613,7 @@ export default function AdminImportPage() {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                   <thead>
-                    <tr style={{ background: "#f7efdf" }}>
+                    <tr style={{ background: "#1e293b" }}>
                       {["Order ID", "Date", "Flavour", "Customer", "Total"].map((h) => (
                         <th
                           key={h}
@@ -627,7 +627,7 @@ export default function AdminImportPage() {
                   </thead>
                   <tbody>
                     {preview.sample.map((s, i) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}>
+                      <tr key={i} style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}>
                         <td className="whitespace-nowrap px-3 py-2 tabular-nums" style={{ color: "#8a7763" }}>
                           #{s.orderId}
                         </td>

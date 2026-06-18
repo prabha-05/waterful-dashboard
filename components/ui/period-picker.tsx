@@ -66,7 +66,7 @@ function MonthGridPicker({
               className="rounded-lg px-2 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-30"
               style={
                 isSelected
-                  ? { background: INK, color: "white" }
+                  ? { background: "#6366f1", color: "white" }
                   : { color: INK, background: isFuture ? "transparent" : CREAM_BG }
               }
               onMouseEnter={(e) => {
@@ -176,7 +176,7 @@ export function PeriodPicker({
             onClick={() => onUnitChange(u)}
             className="px-4 py-2.5 text-sm font-medium transition-colors capitalize"
             style={{
-              background: unit === u ? INK : "white",
+              background: unit === u ? "#6366f1" : "#0f172a",
               color: unit === u ? "white" : INK,
             }}
           >

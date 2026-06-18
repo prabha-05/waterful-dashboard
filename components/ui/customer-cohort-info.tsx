@@ -144,7 +144,7 @@ export function CustomerCohortInfo() {
           <button
             onClick={() => setShowPicker(!showPicker)}
             className="flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-colors"
-            style={{ background: "#0f172a", borderColor: "#e8dcc8", color: INK }}
+            style={{ background: "#0f172a", borderColor: "#1e293b", color: INK }}
           >
             <Calendar size={16} style={{ color: ROSE }} />
             {range?.from && range?.to
@@ -153,7 +153,7 @@ export function CustomerCohortInfo() {
           </button>
 
           {showPicker && (
-            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#e8dcc8" }}>
+            <div className="absolute z-50 mt-2 rounded-xl border bg-slate-900 p-3 shadow-xl" style={{ borderColor: "#1e293b" }}>
               <DayPicker
                 mode="range"
                 selected={range}
@@ -174,7 +174,7 @@ export function CustomerCohortInfo() {
                   onClick={applyRange}
                   disabled={!range?.from || !range?.to}
                   className="rounded px-4 py-1.5 text-sm text-white disabled:opacity-50"
-                  style={{ background: INK }}
+                  style={{ background: "#6366f1" }}
                 >
                   Apply
                 </button>
@@ -189,7 +189,7 @@ export function CustomerCohortInfo() {
               key={p.label}
               onClick={() => applyPreset(p.days)}
               className="rounded-lg border bg-slate-900 px-3 py-2 text-sm transition-colors hover:border-rose-300 hover:bg-red-950/30/50"
-              style={{ borderColor: "#e8dcc8", color: INK }}
+              style={{ borderColor: "#1e293b", color: INK }}
             >
               {p.label}
             </button>
@@ -201,7 +201,7 @@ export function CustomerCohortInfo() {
         <div className="flex items-center justify-center py-20">
           <div
             className="h-8 w-8 animate-spin rounded-full border-2"
-            style={{ borderColor: "#e8dcc8", borderTopColor: INK }}
+            style={{ borderColor: "#1e293b", borderTopColor: INK }}
           />
         </div>
       )}
@@ -209,7 +209,7 @@ export function CustomerCohortInfo() {
       {!loading && !frequency && (
         <div
           className="rounded-2xl border border-dashed p-12 text-center"
-          style={{ borderColor: "#d9c9b0", background: "#0f172a" }}
+          style={{ borderColor: "#334155", background: "#0f172a" }}
         >
           <Sparkles className="mx-auto mb-3" size={22} style={{ color: AMBER }} />
           <p className="text-sm" style={{ color: INK }}>
@@ -221,7 +221,7 @@ export function CustomerCohortInfo() {
       {!loading && frequency && frequency.totalCustomers === 0 && (
         <div
           className="rounded-2xl border p-8 text-center"
-          style={{ borderColor: "#e8dcc8", background: "#0f172a", color: INK }}
+          style={{ borderColor: "#1e293b", background: "#0f172a", color: INK }}
         >
           <p className="text-sm">No customers ordered in this range.</p>
         </div>
@@ -242,7 +242,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
   return (
     <section
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="mb-3 flex items-baseline justify-between">
         <div>
@@ -267,7 +267,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ background: "#f7efdf" }}>
+            <tr style={{ background: "#1e293b" }}>
               <th
                 className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: INK, width: 48 }}
@@ -304,7 +304,7 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
             {rows.map((r, i) => (
               <tr
                 key={r.mobile}
-                style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}
+                style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}
               >
                 <td
                   className="whitespace-nowrap px-4 py-2.5 text-left tabular-nums"
@@ -361,7 +361,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
   return (
     <section
       className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#e8dcc8" }}
+      style={{ borderColor: "#1e293b" }}
     >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
@@ -394,7 +394,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr style={{ background: "#f7efdf" }}>
+            <tr style={{ background: "#1e293b" }}>
               <th
                 className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: INK }}
@@ -429,7 +429,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
           </thead>
           <tbody>
             {data.buckets.map((b, i) => (
-              <tr key={b.label} style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}>
+              <tr key={b.label} style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}>
                 <td
                   className="whitespace-nowrap px-4 py-2.5 text-left font-medium"
                   style={{ color: INK }}
@@ -475,7 +475,7 @@ function FrequencyTable({ data }: { data: FrequencyResponse }) {
                 </td>
               </tr>
             ))}
-            <tr style={{ background: "#f7efdf" }}>
+            <tr style={{ background: "#1e293b" }}>
               <td
                 className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
                 style={{ color: INK }}

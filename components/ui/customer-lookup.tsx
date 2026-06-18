@@ -66,8 +66,8 @@ const ROSE = "#ef4444";
 const SAGE = "#10b981";
 const AMBER = "#f97316";
 const INK = "#ffffff";
-const CARD = "white";
-const BORDER = "#e8dcc8";
+const CARD = "#0f172a";
+const BORDER = "#1e293b";
 
 function formatCurrency(v: number) {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(2)}Cr`;
@@ -170,7 +170,7 @@ export function CustomerLookup() {
           onClick={search}
           disabled={loading}
           className="rounded-xl px-4 py-2 text-sm font-medium text-white shadow-sm disabled:opacity-50"
-          style={{ background: INK }}
+          style={{ background: "#6366f1" }}
         >
           {loading ? "Searching…" : "Look up"}
         </button>
@@ -184,7 +184,7 @@ export function CustomerLookup() {
       {data && data.found === false && (
         <div
           className="mt-5 rounded-xl border border-dashed p-8 text-center text-sm"
-          style={{ borderColor: "#d9c9b0", color: INK }}
+          style={{ borderColor: "#334155", color: INK }}
         >
           No customer found for this number.
         </div>
@@ -218,7 +218,7 @@ function Dossier({
       {/* Hero */}
       <div
         className="flex flex-wrap items-center gap-4 rounded-2xl border p-5"
-        style={{ borderColor: BORDER, background: "#fdf9f1" }}
+        style={{ borderColor: BORDER, background: "#0f172a" }}
       >
         <div
           className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold"
@@ -343,7 +343,7 @@ function Dossier({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr style={{ background: "#f7efdf" }}>
+              <tr style={{ background: "#1e293b" }}>
                 {["Date", "Order ID", "Flavour", "Qty", "Total", "Payment", "Status"].map((h) => (
                   <th
                     key={h}
@@ -357,7 +357,7 @@ function Dossier({
             </thead>
             <tbody>
               {data.orders.map((o, i) => (
-                <tr key={o.id} style={{ background: i % 2 === 0 ? "white" : "#fdf9f1" }}>
+                <tr key={o.id} style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}>
                   <td className="whitespace-nowrap px-3 py-2" style={{ color: INK }}>
                     {formatDateLong(o.date)}
                   </td>

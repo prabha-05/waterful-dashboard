@@ -373,7 +373,7 @@ function MonthGridPicker({
               className="rounded-lg px-2 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-30"
               style={
                 isSelected
-                  ? { background: INK, color: "white" }
+                  ? { background: "#6366f1", color: "white" }
                   : { color: INK, background: isFuture ? "transparent" : "#0f172a" }
               }
               onMouseEnter={(e) => {
@@ -793,7 +793,7 @@ export function DashboardOverview() {
               onClick={() => setUnit(u)}
               className="px-4 py-2.5 text-sm font-medium transition-colors capitalize"
               style={{
-                background: unit === u ? INK : "white",
+                background: unit === u ? "#6366f1" : "#0f172a",
                 color: unit === u ? "white" : INK,
               }}
             >
@@ -914,7 +914,7 @@ export function DashboardOverview() {
                   onClick={() => setChartMode(m)}
                   className="px-4 py-2 text-sm font-medium transition-colors capitalize"
                   style={{
-                    background: chartMode === m ? INK : "white",
+                    background: chartMode === m ? "#6366f1" : "#0f172a",
                     color: chartMode === m ? "white" : INK,
                   }}
                 >

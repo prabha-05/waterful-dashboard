@@ -158,7 +158,7 @@ export function RetentionPivot({
           onClick={run}
           disabled={loading}
           className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors disabled:opacity-50"
-          style={{ background: INK }}
+          style={{ background: "#6366f1" }}
         >
           {loading ? "Loading…" : "Pull customers"}
         </button>
