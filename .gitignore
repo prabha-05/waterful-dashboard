@@ -56,3 +56,12 @@ next-env.d.ts
 .next-dev.log
 
 .vercel
+
+# accidentally committed earlier — keep out
+.tmp-thumbnails/
+*.pptx
+*.xlsx
+test-*.csv
+cohort.csv
+"new project retention dashboard.txt"
+retention_pivot_notes.txt
