@@ -281,7 +281,7 @@ function VerdictCard({
     <div
       className="rounded-2xl border p-4 shadow-sm relative overflow-hidden"
       style={{
-        background: noData ? "white" : `${quality.color}33`,
+        background: noData ? "#0f172a" : `${quality.color}33`,
         borderColor: noData ? BORDER : `${quality.color}88`,
       }}
     >
@@ -772,8 +772,8 @@ export function MetaAds() {
                   onClick={() => setDraftFormat(active ? "ALL" : f)}
                   className="px-3 py-1.5 text-xs font-medium capitalize transition-colors"
                   style={{
-                    background: active ? INK : "white",
-                    color: active ? "white" : INK,
+                    background: active ? "#6366f1" : "#1e293b",
+                    color: active ? "white" : "#cbd5e1",
                   }}
                 >
                   {f}
@@ -866,10 +866,10 @@ export function MetaAds() {
                   <tr
                     key={ad.adId}
                     onClick={() => selectAndScroll(ad.adId)}
-                    className="border-t cursor-pointer transition-colors hover:bg-slate-900"
+                    className="border-t cursor-pointer transition-colors hover:bg-slate-800/60"
                     style={{
-                      borderColor: CREAM,
-                      background: isSelected ? `${AMBER}18` : "white",
+                      borderColor: BORDER,
+                      background: isSelected ? `${AMBER}22` : "#0f172a",
                     }}
                   >
                     {/* Ad — thumbnail + name; Ad Set & Campaign wrap below as Excel-style multi-line text */}
