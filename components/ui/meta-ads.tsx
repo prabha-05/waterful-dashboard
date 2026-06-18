@@ -1159,9 +1159,14 @@ export function MetaAds() {
                       {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
                       <div>
                         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
-                            Conversion funnel — clicks to purchase
-                          </p>
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+                              Conversion funnel — clicks to purchase
+                            </p>
+                            <p className="text-[11px] font-medium" style={{ color: "#cbd5e1" }}>
+                              Top of funnel — attention
+                            </p>
+                          </div>
                           <p className="text-xs" style={{ color: MUTED }}>
                             Starting from{" "}
                             <span className="text-base font-bold tabular-nums" style={{ color: INK }}>
