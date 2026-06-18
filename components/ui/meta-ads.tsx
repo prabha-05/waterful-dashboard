@@ -1286,102 +1286,77 @@ export function MetaAds() {
                                 <span>impressions</span>
                               </div>
 
-                              {/* One mini bar chart per stage — bars are sized by ABSOLUTE COUNTS
-                                  with each chart having its own independent y-scale */}
-                              <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${comparisonStages.length}, minmax(0, 1fr))` }}>
+                              {/* Compact table: Impressions box + one column per stage
+                                  (STD vs US, with % and count). Stage header turns green
+                                  when we're at-or-above the Indian standard, red when below. */}
+                              <div className="flex items-stretch gap-2 overflow-x-auto">
+                                {/* Impressions — starting number */}
+                                <div className="flex-shrink-0 rounded-md border overflow-hidden" style={{ borderColor: BORDER, background: "#0f172a", minWidth: 120 }}>
+                                  <div className="px-3 py-1.5 text-center text-[11px] font-semibold" style={{ color: "#cbd5e1", background: "#1e293b" }}>
+                                    Impressions
+                                  </div>
+                                  <div className="px-3 py-3 text-center text-[13px] font-bold tabular-nums" style={{ color: INK }}>
+                                    {ad.impressions.toLocaleString("en-IN")}
+                                  </div>
+                                </div>
+
                                 {comparisonStages.map((s) => {
-                                  // Clicks is shown without an industry benchmark bar
+                                  // Clicks has no industry comparison — show only US column
                                   const hideIndustry = s.label === "Clicks";
-                                  // Each mini chart has its own scale based on its own counts
-                                  const stageMax = Math.max(
-                                    hideIndustry ? 0 : s.industryExpectedCount,
-                                    s.count,
-                                    1,
-                                  );
-                                  const industryH = (s.industryExpectedCount / stageMax) * MINI_BAR_AREA;
-                                  const oursH = (s.count / stageMax) * MINI_BAR_AREA;
-                                  // Gap-style: industry shown as outlined bar with HATCHED
-                                  // top portion (= the gap), ours shown as solid colored bar.
-                                  const gapH = Math.max(0, industryH - oursH);
+                                  const ahead = s.ours >= s.industry;
+                                  const headerColor = hideIndustry
+                                    ? "#475569"
+                                    : ahead ? SAGE : ROSE;
                                   return (
-                                    <div
-                                      key={s.label}
-                                      className="rounded-xl border p-3 flex flex-col"
-                                      style={{ background: CREAM_BG, borderColor: BORDER }}
-                                    >
-                                      {/* Stage title */}
-                                      <p className="text-[11px] font-semibold text-center mb-2" style={{ color: INK }}>
+                                    <div key={s.label} className="flex-1 min-w-[140px] rounded-md border overflow-hidden" style={{ borderColor: BORDER, background: "#0f172a" }}>
+                                      {/* Colored header */}
+                                      <div className="px-3 py-1.5 text-center text-[11px] font-semibold text-white" style={{ background: headerColor }}>
                                         {s.label}
-                                      </p>
-                                      {/* Bars */}
-                                      <div
-                                        className="flex items-end justify-center gap-3 pt-6"
-                                        style={{ height: MINI_BAR_AREA + 40 }}
-                                      >
-                                        {!hideIndustry && (
-                                          <div className="flex flex-col items-center" style={{ width: 52 }}>
-                                            <span
-                                              className="text-[12px] font-bold tabular-nums leading-tight"
-                                              style={{ color: "#cbd5e1" }}
-                                            >
-                                              {s.industry.toFixed(1)}%
-                                            </span>
-                                            <span
-                                              className="text-[9px] tabular-nums leading-tight mb-1"
-                                              style={{ color: "#64748b" }}
-                                            >
-                                              {s.industryExpectedCount.toLocaleString("en-IN")}
-                                            </span>
-                                            {/* Outlined "target" bar with hatched top portion = gap */}
-                                            <div
-                                              className="w-full rounded-md flex flex-col justify-start overflow-hidden"
-                                              style={{
-                                                height: industryH,
-                                                border: "1px solid rgba(148, 163, 184, 0.45)",
-                                                background: "transparent",
-                                              }}
-                                              title={`Industry: ${s.industryExpectedCount} (${s.industry.toFixed(0)}%) · gap ${(s.industryExpectedCount - s.count).toLocaleString("en-IN")}`}
-                                            >
-                                              {gapH > 0 && (
-                                                <div
-                                                  style={{
-                                                    height: gapH,
-                                                    background:
-                                                      "repeating-linear-gradient(45deg, rgba(148,163,184,0.18) 0 5px, rgba(148,163,184,0.02) 5px 10px)",
-                                                    borderBottom: "1px dashed rgba(148, 163, 184, 0.45)",
-                                                  }}
-                                                />
-                                              )}
+                                      </div>
+                                      {/* STD / US sub-header */}
+                                      <div className="grid grid-cols-2 text-[10px] font-semibold uppercase tracking-wider" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                                        {!hideIndustry ? (
+                                          <>
+                                            <div className="px-2 py-1 text-center" style={{ color: "#94a3b8", borderRight: `1px solid ${BORDER}` }}>STD</div>
+                                            <div className="px-2 py-1 text-center" style={{ color: "#94a3b8" }}>US</div>
+                                          </>
+                                        ) : (
+                                          <div className="col-span-2 px-2 py-1 text-center" style={{ color: "#94a3b8" }}>US</div>
+                                        )}
+                                      </div>
+                                      {/* % row */}
+                                      <div className="grid grid-cols-2 text-[12px] tabular-nums font-semibold">
+                                        {!hideIndustry ? (
+                                          <>
+                                            <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
+                                              {s.industry.toFixed(2)}%
                                             </div>
+                                            <div className="px-2 py-1.5 text-center" style={{ color: ahead ? SAGE : ROSE }}>
+                                              {s.ours.toFixed(2)}%
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className="col-span-2 px-2 py-1.5 text-center" style={{ color: INK }}>
+                                            {s.ours.toFixed(2)}%
                                           </div>
                                         )}
-                                        <div className="flex flex-col items-center" style={{ width: 52 }}>
-                                          <span
-                                            className="text-[12px] font-bold tabular-nums leading-tight"
-                                            style={{ color: s.color }}
-                                          >
-                                            {s.ours.toFixed(1)}%
-                                          </span>
-                                          <span
-                                            className="text-[9px] tabular-nums leading-tight mb-1"
-                                            style={{ color: s.color, opacity: 0.7 }}
-                                          >
-                                            {s.count.toLocaleString("en-IN")}
-                                          </span>
-                                          {/* Solid "actual" bar */}
-                                          <div
-                                            className="w-full rounded-md"
-                                            style={{ height: oursH, background: s.color }}
-                                            title={`Our actual: ${s.count} (${s.ours.toFixed(1)}%)`}
-                                          />
-                                        </div>
                                       </div>
-                                      {/* Sub-line: labels under each bar */}
-                                      <div className="mt-2 pt-2 border-t flex items-center justify-around text-[9px]" style={{ borderColor: BORDER }}>
-                                        {!hideIndustry && (
-                                          <span style={{ color: "#94a3b8" }}>target</span>
+                                      {/* Count row */}
+                                      <div className="grid grid-cols-2 text-[12px] tabular-nums" style={{ borderTop: `1px solid ${BORDER}` }}>
+                                        {!hideIndustry ? (
+                                          <>
+                                            <div className="px-2 py-1.5 text-center" style={{ color: "#cbd5e1", borderRight: `1px solid ${BORDER}` }}>
+                                              {s.industryExpectedCount.toLocaleString("en-IN")}
+                                            </div>
+                                            <div className="px-2 py-1.5 text-center font-semibold" style={{ color: ahead ? SAGE : ROSE }}>
+                                              {s.count.toLocaleString("en-IN")}
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <div className="col-span-2 px-2 py-1.5 text-center font-semibold" style={{ color: INK }}>
+                                            {s.count.toLocaleString("en-IN")}
+                                          </div>
                                         )}
-                                        <span className="font-semibold" style={{ color: s.color }}>us</span>
                                       </div>
                                     </div>
                                   );
@@ -1389,30 +1364,11 @@ export function MetaAds() {
                               </div>
 
                               {/* Legend */}
-                              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[10px]">
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="inline-block h-3 w-4 rounded"
-                                    style={{
-                                      border: "1px solid rgba(148, 163, 184, 0.45)",
-                                      background:
-                                        "repeating-linear-gradient(45deg, rgba(148,163,184,0.18) 0 3px, transparent 3px 6px)",
-                                    }}
-                                  />
-                                  <span style={{ color: MUTED }}>Indian standard (hatched = gap to close)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
-                                  <span style={{ color: MUTED }}>Us — ahead</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="inline-block h-3 w-4 rounded" style={{ background: AMBER }} />
-                                  <span style={{ color: MUTED }}>Us — close</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="inline-block h-3 w-4 rounded" style={{ background: ROSE }} />
-                                  <span style={{ color: MUTED }}>Us — behind</span>
-                                </div>
+                              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px]" style={{ color: MUTED }}>
+                                <span><strong style={{ color: "#cbd5e1" }}>STD</strong> = Indian e-commerce standard</span>
+                                <span><strong style={{ color: INK }}>US</strong> = our actual</span>
+                                <span><span className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: SAGE }} /> at or above standard</span>
+                                <span><span className="inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: ROSE }} /> below standard</span>
                               </div>
 
                               {/* Overall funnel verdict */}
