@@ -1160,10 +1160,10 @@ export function MetaAds() {
                       <div>
                         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                           <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+                            <p className="text-sm font-bold uppercase tracking-wider" style={{ color: INK }}>
                               Conversion funnel — clicks to purchase
                             </p>
-                            <p className="text-[11px] font-medium" style={{ color: "#cbd5e1" }}>
+                            <p className="text-[11px] italic mt-0.5" style={{ color: MUTED }}>
                               Top of funnel — attention
                             </p>
                           </div>
