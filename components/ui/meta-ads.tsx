@@ -1253,8 +1253,9 @@ export function MetaAds() {
                             const prev = idx > 0 ? stages[idx - 1].count : s.prevOverride;
                             const ours = prev != null && prev > 0 ? (s.count / prev) * 100 : 0;
                             const bm = s.benchmark;
-                            // Industry standard = midpoint between decent and good thresholds.
-                            const industry = bm ? (bm.good + bm.decent) / 2 : 0;
+                            // Indian standard = the "good" threshold (i.e. the actual benchmark
+                            // you should hit, not the midpoint of a range).
+                            const industry = bm ? bm.good : 0;
                             const industryExpectedCount = prev != null && prev > 0
                               ? Math.round((industry / 100) * prev)
                               : 0;
