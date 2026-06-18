@@ -1047,126 +1047,12 @@ export function MetaAds() {
                         </div>
                       </div>
 
-                      {/* TOP OF FUNNEL — ATTENTION */}
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
-                          Top of funnel — attention
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                          <VerdictCard
-                            title="CPM"
-                            subtitle="Cost to reach 1,000 people"
-                            value={cpm}
-                            formatted={`₹${Math.round(cpm)}`}
-                            target={{ from: 80, to: 150 }}
-                            caption="Benchmark ₹80–₹150"
-                            lowerIsBetter
-                          />
-                          <VerdictCard
-                            title="CTR"
-                            subtitle="% who clicked after seeing the ad"
-                            value={ad.ctr}
-                            formatted={`${ad.ctr.toFixed(2)}%`}
-                            target={{ from: 1.5, to: 2 }}
-                            caption="Benchmark 1.5–2%+"
-                          />
-                          {isVideo && (
-                            <>
-                              <VerdictCard
-                                title="Hook rate"
-                                subtitle="% who watched the first 3 seconds"
-                                value={hookRate}
-                                formatted={`${hookRate.toFixed(0)}%`}
-                                target={{ from: 25, to: 30 }}
-                                caption="Benchmark 25–30%+"
-                              />
-                              <VerdictCard
-                                title="ThruPlay"
-                                subtitle="% of viewers who watched the full video"
-                                value={holdRate}
-                                formatted={`${holdRate.toFixed(0)}%`}
-                                target={{ from: 5, to: 10 }}
-                                caption="Benchmark 5–10%+"
-                              />
-                            </>
-                          )}
-                          <VerdictCard
-                            title="Frequency"
-                            subtitle="Avg. times one person saw your ad"
-                            value={ad.avgFrequency}
-                            formatted={`${ad.avgFrequency.toFixed(2)}×`}
-                            target={{ from: 3, to: 4 }}
-                            caption="Keep below 3–4×/week"
-                            lowerIsBetter
-                          />
-                        </div>
-                      </div>
-
-                      {/* MID FUNNEL — INTENT */}
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
-                          Mid funnel — intent
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <VerdictCard
-                            title="CPC"
-                            subtitle="Cost per click — reflects CPM and CTR combined"
-                            value={ad.cpc}
-                            formatted={`₹${Math.round(ad.cpc)}`}
-                            target={{ from: 10, to: 30 }}
-                            caption="Benchmark ₹10–₹30"
-                            lowerIsBetter
-                          />
-                          <VerdictCard
-                            title="Landing page CTR"
-                            subtitle="% of ad clicks that actually load the landing page"
-                            value={ad.clicks > 0 ? (ad.landingPageViews / ad.clicks) * 100 : 0}
-                            formatted={ad.clicks > 0 ? `${((ad.landingPageViews / ad.clicks) * 100).toFixed(2)}%` : "—"}
-                            target={{ from: 70, to: 80 }}
-                            caption="Benchmark 70–80%+ of clicks"
-                            noData={ad.clicks === 0}
-                          />
-                        </div>
-                      </div>
-
-                      {/* BOTTOM OF FUNNEL — REVENUE */}
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
-                          Bottom of funnel — revenue
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <VerdictCard
-                            title="Purchase CVR"
-                            subtitle="% of landing-page visitors who bought"
-                            value={purchaseCvr}
-                            formatted={`${purchaseCvr.toFixed(1)}%`}
-                            target={{ from: 1.5, to: 3 }}
-                            caption="Benchmark 1.5–3%"
-                          />
-                          <VerdictCard
-                            title="CPP"
-                            subtitle="Total spend ÷ number of purchases"
-                            value={cpp}
-                            formatted={ad.purchases > 0 ? `₹${Math.round(cpp).toLocaleString("en-IN")}` : "—"}
-                            target={{ from: 600, to: 1500 }}
-                            caption="Target ₹600–₹1,500"
-                            lowerIsBetter
-                            noData={ad.purchases === 0}
-                          />
-                        </div>
-                      </div>
-
                       {/* CONVERSION FUNNEL — Clicks → ATC → Checkout → Purchase */}
                       <div>
                         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                          <div>
-                            <p className="text-sm font-bold uppercase tracking-wider" style={{ color: INK }}>
-                              Conversion funnel — clicks to purchase
-                            </p>
-                            <p className="text-[11px] italic mt-0.5" style={{ color: MUTED }}>
-                              Top of funnel — attention
-                            </p>
-                          </div>
+                          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: INK }}>
+                            Conversion funnel — clicks to purchase
+                          </p>
                           <p className="text-xs" style={{ color: MUTED }}>
                             Starting from{" "}
                             <span className="text-base font-bold tabular-nums" style={{ color: INK }}>
@@ -1376,6 +1262,115 @@ export function MetaAds() {
                             </div>
                           );
                         })()}
+                      </div>
+
+                      {/* TOP OF FUNNEL — ATTENTION */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Top of funnel — attention
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                          <VerdictCard
+                            title="CPM"
+                            subtitle="Cost to reach 1,000 people"
+                            value={cpm}
+                            formatted={`₹${Math.round(cpm)}`}
+                            target={{ from: 80, to: 150 }}
+                            caption="Benchmark ₹80–₹150"
+                            lowerIsBetter
+                          />
+                          <VerdictCard
+                            title="CTR"
+                            subtitle="% who clicked after seeing the ad"
+                            value={ad.ctr}
+                            formatted={`${ad.ctr.toFixed(2)}%`}
+                            target={{ from: 1.5, to: 2 }}
+                            caption="Benchmark 1.5–2%+"
+                          />
+                          {isVideo && (
+                            <>
+                              <VerdictCard
+                                title="Hook rate"
+                                subtitle="% who watched the first 3 seconds"
+                                value={hookRate}
+                                formatted={`${hookRate.toFixed(0)}%`}
+                                target={{ from: 25, to: 30 }}
+                                caption="Benchmark 25–30%+"
+                              />
+                              <VerdictCard
+                                title="ThruPlay"
+                                subtitle="% of viewers who watched the full video"
+                                value={holdRate}
+                                formatted={`${holdRate.toFixed(0)}%`}
+                                target={{ from: 5, to: 10 }}
+                                caption="Benchmark 5–10%+"
+                              />
+                            </>
+                          )}
+                          <VerdictCard
+                            title="Frequency"
+                            subtitle="Avg. times one person saw your ad"
+                            value={ad.avgFrequency}
+                            formatted={`${ad.avgFrequency.toFixed(2)}×`}
+                            target={{ from: 3, to: 4 }}
+                            caption="Keep below 3–4×/week"
+                            lowerIsBetter
+                          />
+                        </div>
+                      </div>
+
+                      {/* MID FUNNEL — INTENT */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Mid funnel — intent
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <VerdictCard
+                            title="CPC"
+                            subtitle="Cost per click — reflects CPM and CTR combined"
+                            value={ad.cpc}
+                            formatted={`₹${Math.round(ad.cpc)}`}
+                            target={{ from: 10, to: 30 }}
+                            caption="Benchmark ₹10–₹30"
+                            lowerIsBetter
+                          />
+                          <VerdictCard
+                            title="Landing page CTR"
+                            subtitle="% of ad clicks that actually load the landing page"
+                            value={ad.clicks > 0 ? (ad.landingPageViews / ad.clicks) * 100 : 0}
+                            formatted={ad.clicks > 0 ? `${((ad.landingPageViews / ad.clicks) * 100).toFixed(2)}%` : "—"}
+                            target={{ from: 70, to: 80 }}
+                            caption="Benchmark 70–80%+ of clicks"
+                            noData={ad.clicks === 0}
+                          />
+                        </div>
+                      </div>
+
+                      {/* BOTTOM OF FUNNEL — REVENUE */}
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: MUTED }}>
+                          Bottom of funnel — revenue
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <VerdictCard
+                            title="Purchase CVR"
+                            subtitle="% of landing-page visitors who bought"
+                            value={purchaseCvr}
+                            formatted={`${purchaseCvr.toFixed(1)}%`}
+                            target={{ from: 1.5, to: 3 }}
+                            caption="Benchmark 1.5–3%"
+                          />
+                          <VerdictCard
+                            title="CPP"
+                            subtitle="Total spend ÷ number of purchases"
+                            value={cpp}
+                            formatted={ad.purchases > 0 ? `₹${Math.round(cpp).toLocaleString("en-IN")}` : "—"}
+                            target={{ from: 600, to: 1500 }}
+                            caption="Target ₹600–₹1,500"
+                            lowerIsBetter
+                            noData={ad.purchases === 0}
+                          />
+                        </div>
                       </div>
 
                       {/* VERDICT NOTES — ROAS / Creative / Hook */}
