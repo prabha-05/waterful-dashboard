@@ -1300,6 +1300,9 @@ export function MetaAds() {
                                   );
                                   const industryH = (s.industryExpectedCount / stageMax) * MINI_BAR_AREA;
                                   const oursH = (s.count / stageMax) * MINI_BAR_AREA;
+                                  // Gap-style: industry shown as outlined bar with HATCHED
+                                  // top portion (= the gap), ours shown as solid colored bar.
+                                  const gapH = Math.max(0, industryH - oursH);
                                   return (
                                     <div
                                       key={s.label}
@@ -1312,49 +1315,73 @@ export function MetaAds() {
                                       </p>
                                       {/* Bars */}
                                       <div
-                                        className="flex items-end justify-center gap-2 pt-6"
+                                        className="flex items-end justify-center gap-3 pt-6"
                                         style={{ height: MINI_BAR_AREA + 40 }}
                                       >
                                         {!hideIndustry && (
-                                          <div className="flex flex-col items-center" style={{ width: 50 }}>
+                                          <div className="flex flex-col items-center" style={{ width: 52 }}>
                                             <span
-                                              className="text-[10px] font-bold tabular-nums leading-tight mb-1"
-                                              style={{ color: "#5b8def" }}
+                                              className="text-[10px] font-bold tabular-nums leading-tight"
+                                              style={{ color: "#94a3b8" }}
                                             >
                                               {s.industryExpectedCount.toLocaleString("en-IN")}
                                             </span>
+                                            <span
+                                              className="text-[9px] tabular-nums leading-tight mb-1"
+                                              style={{ color: "#64748b" }}
+                                            >
+                                              {s.industry.toFixed(0)}%
+                                            </span>
+                                            {/* Outlined "target" bar with hatched top portion = gap */}
                                             <div
-                                              className="w-full rounded-t-md"
+                                              className="w-full rounded-md flex flex-col justify-start overflow-hidden"
                                               style={{
                                                 height: industryH,
-                                                background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)",
+                                                border: "1px solid rgba(148, 163, 184, 0.45)",
+                                                background: "transparent",
                                               }}
-                                              title={`Industry standard would give ~${s.industryExpectedCount} ${s.label.toLowerCase()} (${s.industry.toFixed(0)}%)`}
-                                            />
+                                              title={`Industry: ${s.industryExpectedCount} (${s.industry.toFixed(0)}%) · gap ${(s.industryExpectedCount - s.count).toLocaleString("en-IN")}`}
+                                            >
+                                              {gapH > 0 && (
+                                                <div
+                                                  style={{
+                                                    height: gapH,
+                                                    background:
+                                                      "repeating-linear-gradient(45deg, rgba(148,163,184,0.18) 0 5px, rgba(148,163,184,0.02) 5px 10px)",
+                                                    borderBottom: "1px dashed rgba(148, 163, 184, 0.45)",
+                                                  }}
+                                                />
+                                              )}
+                                            </div>
                                           </div>
                                         )}
-                                        <div className="flex flex-col items-center" style={{ width: 50 }}>
+                                        <div className="flex flex-col items-center" style={{ width: 52 }}>
                                           <span
-                                            className="text-[10px] font-bold tabular-nums leading-tight mb-1"
+                                            className="text-[10px] font-bold tabular-nums leading-tight"
                                             style={{ color: s.color }}
                                           >
                                             {s.count.toLocaleString("en-IN")}
                                           </span>
+                                          <span
+                                            className="text-[9px] tabular-nums leading-tight mb-1"
+                                            style={{ color: s.color, opacity: 0.85 }}
+                                          >
+                                            {s.ours.toFixed(1)}%
+                                          </span>
+                                          {/* Solid "actual" bar */}
                                           <div
-                                            className="w-full rounded-t-md"
+                                            className="w-full rounded-md"
                                             style={{ height: oursH, background: s.color }}
-                                            title={`Our actual: ${s.count} ${s.label.toLowerCase()} (${s.ours.toFixed(1)}%)`}
+                                            title={`Our actual: ${s.count} (${s.ours.toFixed(1)}%)`}
                                           />
                                         </div>
                                       </div>
-                                      {/* Sub-line: rates */}
-                                      <div className="mt-2 pt-2 border-t flex items-center justify-around text-[10px]" style={{ borderColor: BORDER }}>
+                                      {/* Sub-line: labels under each bar */}
+                                      <div className="mt-2 pt-2 border-t flex items-center justify-around text-[9px]" style={{ borderColor: BORDER }}>
                                         {!hideIndustry && (
-                                          <span style={{ color: "#5b8def" }}>std {s.industry.toFixed(0)}%</span>
+                                          <span style={{ color: "#94a3b8" }}>target</span>
                                         )}
-                                        <span className="font-semibold" style={{ color: s.color }}>
-                                          us {s.ours.toFixed(1)}%
-                                        </span>
+                                        <span className="font-semibold" style={{ color: s.color }}>us</span>
                                       </div>
                                     </div>
                                   );
@@ -1366,9 +1393,13 @@ export function MetaAds() {
                                 <div className="flex items-center gap-1.5">
                                   <span
                                     className="inline-block h-3 w-4 rounded"
-                                    style={{ background: "linear-gradient(180deg, #5b8def 0%, #a8c5ff 100%)" }}
+                                    style={{
+                                      border: "1px solid rgba(148, 163, 184, 0.45)",
+                                      background:
+                                        "repeating-linear-gradient(45deg, rgba(148,163,184,0.18) 0 3px, transparent 3px 6px)",
+                                    }}
                                   />
-                                  <span style={{ color: MUTED }}>Industry standard (expected count)</span>
+                                  <span style={{ color: MUTED }}>Industry target (hatched = gap)</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="inline-block h-3 w-4 rounded" style={{ background: SAGE }} />
