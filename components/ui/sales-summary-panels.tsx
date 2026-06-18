@@ -67,17 +67,17 @@ function MetricCard({
   tagline?: string;
 }) {
   const toneMap = {
-    emerald: { accent: "from-emerald-600 to-teal-600", icon: "bg-emerald-50 text-emerald-600" },
-    sky: { accent: "from-sky-600 to-indigo-600", icon: "bg-sky-50 text-sky-600" },
-    rose: { accent: "from-rose-600 to-pink-600", icon: "bg-red-950/30 text-rose-600" },
-    amber: { accent: "from-amber-600 to-orange-600", icon: "bg-orange-950/30 text-amber-600" },
-    indigo: { accent: "from-indigo-600 to-violet-600", icon: "bg-indigo-50 text-indigo-600" },
-    violet: { accent: "from-violet-600 to-fuchsia-600", icon: "bg-violet-50 text-violet-600" },
+    emerald: { accent: "from-emerald-400 to-teal-400", icon: "bg-emerald-500/15 text-emerald-300" },
+    sky: { accent: "from-sky-400 to-indigo-400", icon: "bg-sky-500/15 text-sky-300" },
+    rose: { accent: "from-rose-400 to-pink-400", icon: "bg-rose-500/15 text-rose-300" },
+    amber: { accent: "from-amber-400 to-orange-400", icon: "bg-amber-500/15 text-amber-300" },
+    indigo: { accent: "from-indigo-400 to-violet-400", icon: "bg-indigo-500/15 text-indigo-300" },
+    violet: { accent: "from-violet-400 to-fuchsia-400", icon: "bg-violet-500/15 text-violet-300" },
   }[tone];
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-neutral-50 to-transparent opacity-40 blur-2xl transition-opacity group-hover:opacity-70" />
+    <div className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-700">
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500/10 to-transparent opacity-50 blur-2xl transition-opacity group-hover:opacity-80" />
       <div className="relative">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -88,7 +88,7 @@ function MetricCard({
             {icon}
           </span>
         </div>
-        <div className={`mt-3 rounded-xl border border-slate-800 bg-gradient-to-br from-neutral-50 to-white px-4 py-3 shadow-inner`}>
+        <div className={`mt-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3`}>
           <p
             className={`bg-gradient-to-r ${toneMap.accent} bg-clip-text text-3xl font-bold tabular-nums text-transparent`}
           >
@@ -97,18 +97,18 @@ function MetricCard({
           <div className="mt-2 flex items-start justify-between gap-3">
             {/* New users — left */}
             <div>
-              <p className="text-base font-bold tabular-nums text-violet-700">{format(split.firstTime)}</p>
+              <p className="text-base font-bold tabular-nums text-violet-300">{format(split.firstTime)}</p>
               <p className="text-xs tabular-nums text-slate-400">
-                <span className="font-semibold text-violet-600">{pct(split.firstTime, split.total)}%</span>{" "}
+                <span className="font-semibold text-violet-400">{pct(split.firstTime, split.total)}%</span>{" "}
                 new
               </p>
             </div>
             {/* Repeat — right */}
             <div className="text-right">
-              <p className="text-base font-bold tabular-nums text-emerald-700">{format(split.repeat)}</p>
+              <p className="text-base font-bold tabular-nums text-emerald-300">{format(split.repeat)}</p>
               <p className="text-xs tabular-nums text-slate-400">
                 repeat{" "}
-                <span className="font-semibold text-emerald-600">{pct(split.repeat, split.total)}%</span>
+                <span className="font-semibold text-emerald-400">{pct(split.repeat, split.total)}%</span>
               </p>
             </div>
           </div>
