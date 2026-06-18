@@ -1173,28 +1173,28 @@ export function MetaAds() {
                             {
                               label: "Clicks",
                               count: ad.clicks,
-                              benchmark: { good: 1.5, decent: 0.8, label: "0.8–1.5% of impressions (India)" },
+                              benchmark: { good: 1.5, decent: 1.0, label: "1.5%+ of impressions (India)" },
                               prevOverride: ad.impressions,
                             },
                             {
                               label: "Landing Page",
                               count: ad.landingPageViews,
-                              benchmark: { good: 65, decent: 50, label: "50–65% of clicks (India)" },
+                              benchmark: { good: 80, decent: 65, label: "80%+ of clicks (India)" },
                             },
                             {
                               label: "Add to Cart",
                               count: ad.addToCart,
-                              benchmark: { good: 8, decent: 4, label: "4–8% of LP (India)" },
+                              benchmark: { good: 5, decent: 3, label: "5%+ of LP (India)" },
                             },
                             {
                               label: "Checkout",
                               count: ad.initiateCheckout,
-                              benchmark: { good: 45, decent: 30, label: "30–45% of ATC (India)" },
+                              benchmark: { good: 40, decent: 25, label: "40%+ of ATC (India)" },
                             },
                             {
                               label: "Purchase",
                               count: ad.purchases,
-                              benchmark: { good: 55, decent: 35, label: "35–55% of checkout (India)" },
+                              benchmark: { good: 35, decent: 20, label: "35%+ of checkout (India)" },
                             },
                           ];
 
@@ -1273,7 +1273,6 @@ export function MetaAds() {
                               q,
                             };
                           });
-                          const MINI_BAR_AREA = 130; // px — height for each mini chart
 
                           return (
                             <div className="space-y-3">
