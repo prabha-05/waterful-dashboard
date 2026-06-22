@@ -255,12 +255,17 @@ export function Sidebar({ username }: { username: string }) {
         <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
           {collapsed ? (
             <div className="hidden lg:flex w-full justify-center">
-              <span className="text-xs font-bold text-white tracking-wider">wZ</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/waterful-logo.jpg" alt="Waterful Zero" width={34} height={34} className="rounded-full" />
             </div>
           ) : (
-            <div>
-              <p className="text-sm font-bold text-white tracking-wide leading-none">Waterful ZERO</p>
-              <p className="text-[10px] uppercase tracking-[0.18em] mt-1" style={{ color: "#94a3b8" }}>Analytics</p>
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/waterful-logo.jpg" alt="Waterful Zero" width={42} height={42} className="rounded-full" />
+              <div>
+                <p className="text-sm font-bold text-white tracking-wide leading-none">Waterful ZERO</p>
+                <p className="text-[10px] uppercase tracking-[0.18em] mt-1" style={{ color: "#94a3b8" }}>Analytics</p>
+              </div>
             </div>
           )}
           {/* Close button (mobile only) */}
