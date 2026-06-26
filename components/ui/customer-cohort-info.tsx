@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
-import { Calendar, Sparkles, Crown, Users } from "lucide-react";
+import { Calendar, Sparkles, Crown } from "lucide-react";
 
 type FrequencyBucket = {
   label: string;
@@ -47,7 +47,6 @@ function formatCurrency(value: number) {
 
 const PAPER = "#080d1a";
 const ROSE = "#ef4444";
-const SAGE = "#10b981";
 const AMBER = "#f97316";
 const INK = "#ffffff";
 
@@ -227,10 +226,6 @@ export function CustomerCohortInfo() {
         </div>
       )}
 
-      {!loading && frequency && frequency.totalCustomers > 0 && (
-        <FrequencyTable data={frequency} />
-      )}
-
       {!loading && topCustomers && topCustomers.rows.length > 0 && (
         <TopCustomersTable rows={topCustomers.rows} />
       )}
@@ -346,172 +341,6 @@ function TopCustomersTable({ rows }: { rows: TopCustomer[] }) {
           </tbody>
         </table>
       </div>
-    </section>
-  );
-}
-
-function barColor(label: string): string {
-  if (label === "1") return ROSE;
-  if (label === "2") return AMBER;
-  return SAGE;
-}
-
-function FrequencyTable({ data }: { data: FrequencyResponse }) {
-  const maxPct = Math.max(...data.buckets.map((b) => b.pct), 1);
-  return (
-    <section
-      className="rounded-2xl border bg-slate-900 p-5 shadow-sm"
-      style={{ borderColor: "#1e293b" }}
-    >
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <p
-            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.3em]"
-            style={{ color: AMBER, fontFamily: "Georgia, serif" }}
-          >
-            <Users size={12} /> Purchase Frequency
-          </p>
-          <h3
-            className="mt-1 text-lg font-semibold"
-            style={{ fontFamily: "Georgia, serif", color: INK }}
-          >
-            How many times did they visit?
-          </h3>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider" style={{ color: "#94a3b8" }}>
-            Total unique customers
-          </p>
-          <p
-            className="text-3xl font-bold tabular-nums"
-            style={{ fontFamily: "Georgia, serif", color: INK }}
-          >
-            {data.totalCustomers.toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr style={{ background: "#1e293b" }}>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK }}
-              >
-                Orders placed
-              </th>
-              <th
-                className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK }}
-              >
-                Customers
-              </th>
-              <th
-                className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK, width: "28%" }}
-              >
-                % of total
-              </th>
-              <th
-                className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK }}
-              >
-                Revenue
-              </th>
-              <th
-                className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK }}
-              >
-                AOV
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.buckets.map((b, i) => (
-              <tr key={b.label} style={{ background: i % 2 === 0 ? "#0f172a" : "#131c33" }}>
-                <td
-                  className="whitespace-nowrap px-4 py-2.5 text-left font-medium"
-                  style={{ color: INK }}
-                >
-                  {b.label === "1" ? "1 order" : `${b.label} orders`}
-                </td>
-                <td
-                  className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums"
-                  style={{ color: INK }}
-                >
-                  {b.customers.toLocaleString()}
-                </td>
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="h-2 flex-1 overflow-hidden rounded-full"
-                      style={{ background: "#1e293b" }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(b.pct / maxPct) * 100}%`,
-                          background: barColor(b.label),
-                        }}
-                      />
-                    </div>
-                    <span className="w-14 text-right tabular-nums" style={{ color: INK }}>
-                      {b.pct.toFixed(1)}%
-                    </span>
-                  </div>
-                </td>
-                <td
-                  className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums"
-                  style={{ color: INK }}
-                >
-                  {formatCurrency(b.revenue)}
-                </td>
-                <td
-                  className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums"
-                  style={{ color: INK }}
-                >
-                  {b.aov > 0 ? formatCurrency(b.aov) : "—"}
-                </td>
-              </tr>
-            ))}
-            <tr style={{ background: "#1e293b" }}>
-              <td
-                className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: INK }}
-              >
-                Total
-              </td>
-              <td
-                className="px-4 py-3 text-right font-semibold tabular-nums"
-                style={{ color: INK }}
-              >
-                {data.totalCustomers.toLocaleString()}
-              </td>
-              <td className="px-4 py-3 text-left text-[11px]" style={{ color: "#94a3b8" }}>
-                {data.totalOrders.toLocaleString()} orders
-              </td>
-              <td
-                className="px-4 py-3 text-right font-semibold tabular-nums"
-                style={{ color: INK }}
-              >
-                {formatCurrency(data.totalRevenue)}
-              </td>
-              <td
-                className="px-4 py-3 text-right font-semibold tabular-nums"
-                style={{ color: INK }}
-              >
-                {data.totalOrders > 0
-                  ? formatCurrency(Math.round(data.totalRevenue / data.totalOrders))
-                  : "—"}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-3 text-xs italic" style={{ color: "#94a3b8" }}>
-        One-and-done vs. the repeat. 4+ means 4 or more orders in this range.
-      </p>
     </section>
   );
 }
