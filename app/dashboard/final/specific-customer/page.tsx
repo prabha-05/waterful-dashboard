@@ -1,4 +1,4 @@
-import { CustomerCohortInfo, PAPER } from "@/components/ui/customer-cohort-info";
+import { PAPER } from "@/components/ui/customer-cohort-info";
 import { CustomerLookup } from "@/components/ui/customer-lookup";
 
 export default function FinalSpecificCustomerPage() {
@@ -31,7 +31,6 @@ export default function FinalSpecificCustomerPage() {
         </div>
         <div className="space-y-6">
           <CustomerLookup />
-          <CustomerCohortInfo />
         </div>
       </div>
     </div>
