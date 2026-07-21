@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchAllOrders, ShopifyOrderRaw } from "@/lib/shopify";
+import { auth } from "@/lib/auth";
 
 // Allow this serverless function up to 60s on Vercel (Hobby max).
 // Default 10s isn't enough when Neon is sleeping + cold-start + actual sync work.
@@ -83,9 +84,36 @@ async function syncOrders(force: boolean = false, sinceOverride?: Date, lookback
       });
 
   const lookbackCutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
-  const sinceDate = lastSync?.completedAt && lastSync.completedAt > lookbackCutoff
-    ? lastSync.completedAt
-    : lookbackCutoff;
+
+  // Self-healing incremental window.
+  //
+  // The old logic started from whichever was MORE RECENT of (last successful
+  // sync, lookbackCutoff), i.e. the shorter lookback. So if the sync ever
+  // stopped running for longer than `lookbackHours` (a failed daily cron, a
+  // Neon outage), the orders in that gap were skipped permanently: the next
+  // run only looked back `lookbackHours` and never reached back to them.
+  //
+  // Instead, anchor to the last SUCCESSFUL sync so a stalled or failed run
+  // self-heals — the next run re-pulls everything updated since we were last
+  // known-good, closing the hole. We still look back at least `lookbackHours`
+  // (to catch late edits to recent orders), and clamp how far back we reach so
+  // an ancient anchor can't trigger a giant re-pull that blows the 60s function
+  // timeout. Gaps larger than the clamp are covered by the manual `?since=`
+  // backfill.
+  const MAX_CATCHUP_DAYS = 4;
+  const catchupFloor = new Date(Date.now() - MAX_CATCHUP_DAYS * 24 * 60 * 60 * 1000);
+  const lastCovered = lastSync?.completedAt ?? lookbackCutoff;
+  // Earlier of (last successful sync, standard lookback) → covers the gap AND
+  // the recent-edit window.
+  let sinceDate = lastCovered < lookbackCutoff ? lastCovered : lookbackCutoff;
+  if (sinceDate < catchupFloor) {
+    console.warn(
+      `[shopify/sync] Gap since last successful sync (${lastCovered.toISOString()}) ` +
+        `exceeds ${MAX_CATCHUP_DAYS}d cap — clamping to ${catchupFloor.toISOString()}. ` +
+        `Run ?since=YYYY-MM-DD to backfill older orders.`,
+    );
+    sinceDate = catchupFloor;
+  }
 
   const log = await prisma.syncLog.create({
     data: { status: "running" },
@@ -442,7 +470,13 @@ export async function GET(request: Request) {
 
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && token !== cronSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Not a valid cron token — allow if the caller is a logged-in dashboard
+    // user (NextAuth session cookie). This lets the dashboard's "Refresh from
+    // Shopify" button trigger a sync without shipping CRON_SECRET to the browser.
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   if (wait) {

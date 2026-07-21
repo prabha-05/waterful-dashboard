@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar } from "lucide-react";
+import { Calendar, RefreshCw } from "lucide-react";
 import { SalesSummaryPanels } from "./sales-summary-panels";
 import type { SalesMetrics } from "@/lib/sales-aggregations";
 
@@ -18,22 +18,21 @@ function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function yesterday(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d;
+function today(): Date {
+  return new Date();
 }
 
 export function SalesSummary() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Default: yesterday (single day). User can extend the range with the picker.
-  const defaultDay = formatDate(yesterday());
+  // Default: today (single day). User can extend the range with the picker.
+  const defaultDay = formatDate(today());
   const [from, setFrom] = useState<string>(defaultDay);
   const [to, setTo] = useState<string>(defaultDay);
   const [data, setData] = useState<RangeData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const pushUrl = (f: string, t: string) => {
     const qs = new URLSearchParams({ from: f, to: t }).toString();
@@ -50,6 +49,22 @@ export function SalesSummary() {
       setData(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Pull the latest orders from Shopify on demand, then reload the numbers.
+  // Auth rides on the login session cookie (no CRON_SECRET in the browser);
+  // `wait=true` blocks until the sync finishes so the refetch shows fresh data.
+  const refreshFromShopify = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/shopify/sync?wait=true");
+      if (!res.ok) throw new Error(String(res.status));
+      await fetchRange(from, to);
+    } catch {
+      // Best-effort — leave the currently shown numbers in place on failure.
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -111,6 +126,21 @@ export function SalesSummary() {
             style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
           />
         </div>
+        <button
+          type="button"
+          onClick={refreshFromShopify}
+          disabled={syncing}
+          title="Pull the latest orders from Shopify, then refresh these numbers"
+          className="ml-auto flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition disabled:opacity-60"
+          style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
+        >
+          <RefreshCw
+            size={14}
+            className={syncing ? "animate-spin" : ""}
+            style={{ color: AMBER }}
+          />
+          {syncing ? "Syncing…" : "Refresh from Shopify"}
+        </button>
       </div>
 
       {loading && (
@@ -126,7 +156,7 @@ export function SalesSummary() {
       )}
 
       {!loading && data && data.totalOrders > 0 && (
-        <SalesSummaryPanels metrics={data} />
+        <SalesSummaryPanels metrics={data} from={from} to={to} />
       )}
     </div>
   );
