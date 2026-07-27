@@ -10,10 +10,24 @@ export const maxDuration = 60;
 // than STALE_HOURS. Override with ?force=1 to re-sync everything.
 const STALE_HOURS = 4;
 
-// How many AWBs to process per invocation. Vercel Hobby tier gives us 60s;
-// DTDC ~1-2s per call × 4 concurrent = ~150 fit safely. Daily cron triggers
-// at 04:00 IST so even a thousand-order backlog catches up in a week.
-const BATCH_SIZE = 150;
+// How many AWBs to process per invocation. DTDC answers in ~0.5s, so 6
+// concurrent gets through ~250 well inside the 60s budget. TIME_BUDGET_MS is
+// the real guard — we stop and return a summary rather than getting killed
+// mid-batch by the platform.
+const BATCH_SIZE = 250;
+const CONCURRENCY = 6;
+const TIME_BUDGET_MS = 50_000;
+
+// Statuses that never change again — no point spending API calls re-checking
+// them every night. Everything else (in transit, OFD, not delivered, any RTO
+// stage) can still move, so it stays in rotation.
+const TERMINAL_STATUSES = new Set(["delivered", "rto delivered"]);
+
+// DTDC's tracking API only serves recent consignments — older AWBs come back
+// with statusFlag=false forever. Without this window the queue is dominated by
+// dead 2025 AWBs that can never succeed, which is exactly what stalled this
+// job between June and July 2026. Override with ?days=.
+const UNTRACKED_WINDOW_DAYS = 75;
 
 type SyncOutcome = {
   awb: string;
@@ -114,14 +128,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const force = req.nextUrl.searchParams.get("force") === "1";
-  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") || "", 10);
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : BATCH_SIZE;
+  const startedAt = Date.now();
+  const params = req.nextUrl.searchParams;
+  const force = params.get("force") === "1";
+  // ?includeOld=1 ignores the age window — for a deliberate one-off sweep of
+  // the historical backlog, not for the nightly cron.
+  const includeOld = params.get("includeOld") === "1" || force;
+  const limitParam = parseInt(params.get("limit") || "", 10);
+  const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 1000) : BATCH_SIZE;
+  const daysParam = parseInt(params.get("days") || "", 10);
+  const windowDays = Number.isFinite(daysParam) && daysParam > 0 ? daysParam : UNTRACKED_WINDOW_DAYS;
 
-  // 1. Find all Shopify orders that have a DTDC AWB.
+  // 1. Find all Shopify orders that have a DTDC AWB. Dedupe by AWB, keeping
+  //    the most recent order — the same AWB can appear on a re-created order.
   const candidates = await prisma.shopifyOrder.findMany({
     where: { dtdcAwb: { not: null } },
-    select: { orderNumber: true, dtdcAwb: true },
+    select: { orderNumber: true, dtdcAwb: true, createdAt: true },
   });
 
   if (candidates.length === 0) {
@@ -131,30 +153,81 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 2. Optionally filter to stale ones only.
-  const allAwbs = candidates
-    .map((c) => ({ awb: c.dtdcAwb!.trim(), orderNumber: c.orderNumber }))
-    .filter((c) => c.awb.length > 0);
+  const byAwb = new Map<string, { awb: string; orderNumber: number; orderedAt: Date }>();
+  for (const c of candidates) {
+    const awb = c.dtdcAwb!.trim();
+    if (!awb) continue;
+    const prev = byAwb.get(awb);
+    if (!prev || c.createdAt > prev.orderedAt) {
+      byAwb.set(awb, { awb, orderNumber: c.orderNumber, orderedAt: c.createdAt });
+    }
+  }
+  const allAwbs = Array.from(byAwb.values());
 
-  let toSync = allAwbs;
-  if (!force) {
-    const cutoff = new Date(Date.now() - STALE_HOURS * 60 * 60 * 1000);
-    const fresh = await prisma.dtdcShipment.findMany({
-      where: { awb: { in: allAwbs.map((c) => c.awb) }, lastSyncedAt: { gte: cutoff } },
-      select: { awb: true },
-    });
-    const freshSet = new Set(fresh.map((r) => r.awb));
-    toSync = allAwbs.filter((c) => !freshSet.has(c.awb));
+  // 2. Build the work queue by priority instead of taking an arbitrary slice.
+  //    The old version passed the un-ordered findMany straight to .slice(0,150),
+  //    so every run chewed through the same head of the table — mostly aged-out
+  //    2025 AWBs and already-Delivered ones — and never reached new shipments.
+  const shipments = await prisma.dtdcShipment.findMany({
+    select: { awb: true, status: true, lastSyncedAt: true },
+  });
+  const shipmentByAwb = new Map(shipments.map((s) => [s.awb, s]));
+
+  const windowCutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+  const staleCutoff = new Date(Date.now() - STALE_HOURS * 60 * 60 * 1000);
+
+  const untracked: typeof allAwbs = []; // never successfully tracked
+  const active: typeof allAwbs = []; // tracked, still moving
+  let skippedTerminal = 0;
+  let skippedTooOld = 0;
+  let skippedFresh = 0;
+
+  for (const c of allAwbs) {
+    const s = shipmentByAwb.get(c.awb);
+
+    if (!s) {
+      if (!includeOld && c.orderedAt < windowCutoff) {
+        skippedTooOld++;
+        continue;
+      }
+      untracked.push(c);
+      continue;
+    }
+
+    if (!force && TERMINAL_STATUSES.has((s.status || "").toLowerCase().trim())) {
+      skippedTerminal++;
+      continue;
+    }
+    if (!force && s.lastSyncedAt >= staleCutoff) {
+      skippedFresh++;
+      continue;
+    }
+    active.push(c);
   }
 
-  // 3. Take only the first `limit` so we don't blow the 60s budget.
+  // Newest orders first — those are the ones DTDC still has data for, and the
+  // ones the dashboard is missing.
+  untracked.sort((a, b) => b.orderedAt.getTime() - a.orderedAt.getTime());
+  // Longest-unrefreshed first, so nothing in flight goes stale indefinitely.
+  active.sort((a, b) => {
+    const sa = shipmentByAwb.get(a.awb)!.lastSyncedAt.getTime();
+    const sb = shipmentByAwb.get(b.awb)!.lastSyncedAt.getTime();
+    return sa - sb;
+  });
+
+  const toSync = [...untracked, ...active];
   const batch = toSync.slice(0, limit);
 
-  // 4. Run with small concurrency. DTDC's API isn't documented to rate-limit
-  //    but we keep it polite.
-  const CONCURRENCY = 4;
+  // 3. Run with small concurrency. DTDC's API isn't documented to rate-limit
+  //    but we keep it polite. Bail out before the platform kills us so the
+  //    caller always gets a usable summary.
   const results: SyncOutcome[] = [];
+  let stoppedEarly = false;
   for (let i = 0; i < batch.length; i += CONCURRENCY) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      stoppedEarly = true;
+      break;
+    }
     const chunk = batch.slice(i, i + CONCURRENCY);
     const out = await Promise.all(chunk.map((c) => syncOne(c.awb, c.orderNumber)));
     results.push(...out);
@@ -165,10 +238,20 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     totalCandidates: allAwbs.length,
-    pendingBeforeBatch: toSync.length,
+    queue: {
+      untracked: untracked.length,
+      active: active.length,
+      skippedTerminal,
+      skippedFresh,
+      skippedTooOld,
+    },
+    attempted: results.length,
     synced: okCount,
     failed: errCount,
-    leftToProcess: Math.max(0, toSync.length - batch.length),
-    results,
+    leftToProcess: Math.max(0, toSync.length - results.length),
+    stoppedEarly,
+    elapsedMs: Date.now() - startedAt,
+    // Full result list is noisy at batch=250; the failures are what you debug.
+    errors: results.filter((r) => !r.ok).slice(0, 25),
   });
 }
