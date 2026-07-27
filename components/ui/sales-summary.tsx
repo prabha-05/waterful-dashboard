@@ -155,8 +155,11 @@ export function SalesSummary() {
         </div>
       )}
 
+      {/* from/to get passed here once the Excel customer-download work in
+          sales-summary-panels.tsx lands — the committed component doesn't
+          accept those props yet, and passing them broke the production build. */}
       {!loading && data && data.totalOrders > 0 && (
-        <SalesSummaryPanels metrics={data} from={from} to={to} />
+        <SalesSummaryPanels metrics={data} />
       )}
     </div>
   );
