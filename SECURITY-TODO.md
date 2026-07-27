@@ -24,4 +24,14 @@ Known issues to revisit. Not blockers for internal 10-user deploy.
   - Severity: very low
   - Fix: check `file.type` and first-line shape before parsing
 
+- [ ] **`CRON_SECRET` is still the placeholder value in production**
+  - The cron endpoints (`/api/shopify/sync`, `/api/shopify/mirror`,
+    `/api/meta/sync-ads-daily`, `/api/dtdc/sync`) accept
+    `change-me-to-a-random-secret` as a valid token on the live deployment
+  - Risk: anyone who guesses it can trigger sync jobs
+  - Severity: low — the jobs only pull from DTDC/Shopify/Meta and write to our
+    own DB, so nothing leaks outward; worst case is wasted API quota
+  - Fix: generate a random value, set it in Vercel env vars, and update the
+    cron-job.org schedules that call these endpoints
+
 ## Done
