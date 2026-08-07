@@ -107,7 +107,11 @@ export async function fetchAllOrders(
   limit = 250,
   // When set, filter by created_at instead of updated_at. Used for backfills
   // that need a specific historical cohort (e.g. "all orders since May 1").
-  useCreatedAt = false
+  useCreatedAt = false,
+  // Stop paginating once this many orders have been collected. Bulk
+  // fulfilment batches bump updated_at on hundreds of old orders at once, so
+  // an unbounded walk can spend the caller's whole time budget just fetching.
+  maxOrders = Infinity
 ): Promise<ShopifyOrderRaw[]> {
   const allOrders: ShopifyOrderRaw[] = [];
 
@@ -129,6 +133,8 @@ export async function fetchAllOrders(
 
     const data: ShopifyOrdersResponse = await res.json();
     allOrders.push(...data.orders);
+
+    if (allOrders.length >= maxOrders) break;
 
     // Handle pagination via Link header
     const linkHeader = res.headers.get("link");
