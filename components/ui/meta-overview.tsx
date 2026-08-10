@@ -603,7 +603,7 @@ export function MetaOverview() {
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: "#fafaf7" }}>
+              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: CREAM }}>
                 <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Meta-reported revenue</p>
                 <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(metaRev)}</p>
                 <p className="text-[11px] mt-1" style={{ color: MUTED }}>from {data.totals.purchases} Pixel-attributed purchases</p>
@@ -613,7 +613,7 @@ export function MetaOverview() {
                 <p className="text-2xl font-bold tabular-nums" style={{ color: INK }}>{formatInr(realRev)}</p>
                 <p className="text-[11px] mt-1" style={{ color: MUTED }}>from {data.shopifyReality.orders} net orders</p>
               </div>
-              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: "#fafaf7" }}>
+              <div className="rounded-xl border p-4" style={{ borderColor: BORDER, background: CREAM }}>
                 <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: MUTED }}>Meta ROAS (reported)</p>
                 <p
                   className="text-2xl font-bold tabular-nums"
