@@ -168,23 +168,27 @@ function thumbColor(name: string): string {
   return palette[Math.abs(hash) % palette.length];
 }
 
-// Derives the rich status label for an ad. Combines what the user set
-// (status: ACTIVE/PAUSED) with what Meta's actually doing
-// (effectiveStatus: ACTIVE / ADSET_PAUSED / CAMPAIGN_PAUSED /
-// WITH_ISSUES / …), so the dashboard surfaces ads that look ON but
-// are silently blocked by a paused parent or flagged by Meta.
-function deriveAdStatus(ad: Pick<Ad, "status" | "effectiveStatus" | "roas" | "spend">): {
+// Whether Meta is actually delivering this ad. Meta exposes both what the
+// user set (status: ACTIVE/PAUSED) and what it is really doing
+// (effectiveStatus: ACTIVE / ADSET_PAUSED / CAMPAIGN_PAUSED / WITH_ISSUES / …).
+// An ad only counts as running when both agree — one silently blocked by a
+// paused parent or flagged by Meta is not delivering, whatever its own flag says.
+function isAdDelivering(ad: Pick<Ad, "status" | "effectiveStatus">): boolean {
+  if (ad.status !== "ACTIVE") return false;
+  const eff = ad.effectiveStatus || "";
+  return eff !== "ADSET_PAUSED" && eff !== "CAMPAIGN_PAUSED" && eff !== "WITH_ISSUES";
+}
+
+// The Status column is deliberately binary: running or not. The reasons an ad
+// is not delivering (parent paused, Meta flagged) and the ROAS warning that
+// used to show as "Pause?" are all still visible elsewhere in the row.
+function deriveAdStatus(ad: Pick<Ad, "status" | "effectiveStatus">): {
   label: string;
   color: string;
 } {
-  if (ad.status !== "ACTIVE") return { label: "Paused", color: MUTED };
-  const eff = ad.effectiveStatus || "";
-  if (eff === "ADSET_PAUSED") return { label: "Ad set off", color: MUTED };
-  if (eff === "CAMPAIGN_PAUSED") return { label: "Campaign off", color: MUTED };
-  if (eff === "WITH_ISSUES") return { label: "Meta flagged", color: ROSE };
-  // Effective status is ACTIVE (or unknown — treat as running).
-  if (ad.roas < 1 && ad.spend > 1000) return { label: "Pause?", color: ROSE };
-  return { label: "Running", color: SAGE };
+  return isAdDelivering(ad)
+    ? { label: "Running", color: SAGE }
+    : { label: "Paused", color: MUTED };
 }
 
 // Renders an ad thumbnail with a graceful fallback. If the URL is null
@@ -508,16 +512,20 @@ export function MetaAds() {
   // Applied filters — what the table actually uses.
   const [formatFilter, setFormatFilter] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
   const [minSpend, setMinSpend] = useState<number>(5000);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "running" | "paused">("ALL");
 
   // Draft filters — what the user is typing/clicking before pressing Apply.
   // Keeps the table from re-filtering on every keystroke (and gives the
   // user explicit control over when changes take effect).
   const [draftFormat, setDraftFormat] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
   const [draftMinSpend, setDraftMinSpend] = useState<number>(5000);
-  const filtersDirty = draftFormat !== formatFilter || draftMinSpend !== minSpend;
+  const [draftStatus, setDraftStatus] = useState<"ALL" | "running" | "paused">("ALL");
+  const filtersDirty =
+    draftFormat !== formatFilter || draftMinSpend !== minSpend || draftStatus !== statusFilter;
   const applyFilters = () => {
     setFormatFilter(draftFormat);
     setMinSpend(draftMinSpend);
+    setStatusFilter(draftStatus);
   };
   const drillRef = useRef<HTMLElement | null>(null);
 
@@ -618,6 +626,8 @@ export function MetaAds() {
     const filtered = data.ads.filter((a) => {
       if (formatFilter !== "ALL" && normalizeFormat(a.creativeType) !== formatFilter) return false;
       if (minSpend > 0 && a.spend < minSpend) return false;
+      if (statusFilter !== "ALL" && isAdDelivering(a) !== (statusFilter === "running"))
+        return false;
       return true;
     });
     const valueOf = (a: typeof filtered[number]): number => {
@@ -637,7 +647,7 @@ export function MetaAds() {
       return sortDir === "desc" ? -diff : diff;
     });
     return sorted;
-  }, [data, formatFilter, minSpend, sortBy, sortDir]);
+  }, [data, formatFilter, minSpend, statusFilter, sortBy, sortDir]);
 
   // If the currently-selected ad gets filtered out, fall back to the top of
   // the filtered list (or clear selection if the list is empty).
@@ -689,7 +699,7 @@ export function MetaAds() {
         {data ? (
           <>
             <span className="font-bold" style={{ color: INK }}>{filteredAds.length}</span>
-            {formatFilter !== "ALL" && (
+            {(formatFilter !== "ALL" || statusFilter !== "ALL" || minSpend > 0) && (
               <>
                 {" of "}
                 <span className="font-semibold" style={{ color: INK }}>{data.totals.adsCount}</span>
@@ -777,6 +787,30 @@ export function MetaAds() {
                   }}
                 >
                   {f}
+                </button>
+              );
+            })}
+          </div>
+          <div className="inline-flex rounded-lg border overflow-hidden" style={{ borderColor: BORDER }}>
+            {([["running", "Running"], ["paused", "Paused"]] as const).map(([value, label]) => {
+              const active = draftStatus === value;
+              return (
+                <button
+                  key={value}
+                  // Click the active pill again to clear — same idiom as the format pills.
+                  onClick={() => setDraftStatus(active ? "ALL" : value)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    background: active ? (value === "running" ? SAGE : "#475569") : "#1e293b",
+                    color: active ? "white" : "#cbd5e1",
+                  }}
+                  title={
+                    value === "running"
+                      ? "Only ads Meta is currently delivering"
+                      : "Only ads not delivering — paused, parent paused, or flagged"
+                  }
+                >
+                  {label}
                 </button>
               );
             })}
@@ -1016,6 +1050,10 @@ export function MetaAds() {
                         </a>
                       </>
                     )}
+                  </p>
+                  <p className="text-xs mt-1 font-mono" style={{ color: MUTED }}>
+                    Ad ID:{" "}
+                    <span className="select-all" style={{ color: INK }}>{selected.metaAdId}</span>
                   </p>
                 </div>
 
