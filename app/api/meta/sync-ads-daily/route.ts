@@ -11,6 +11,38 @@ import {
 
 export const maxDuration = 60;
 
+// Read directly rather than through lib/meta.ts: this route only needs the
+// id + status of active ads, not the creative payload fetchAllAds() carries.
+const META_GRAPH = `https://graph.facebook.com/${process.env.META_API_VERSION ?? "v22.0"}`;
+const META_TOKEN = process.env.META_ACCESS_TOKEN ?? "";
+const META_ACCOUNT = (process.env.META_AD_ACCOUNT_ID ?? "").replace(/^act_/, "");
+
+// An ad delivers only when its own status and Meta's effective status agree.
+// One blocked by a paused ad set or campaign still reports status=ACTIVE.
+function isDelivering(status: string, effectiveStatus: string | null): boolean {
+  return (
+    status === "ACTIVE" &&
+    !["ADSET_PAUSED", "CAMPAIGN_PAUSED", "WITH_ISSUES"].includes(effectiveStatus ?? "")
+  );
+}
+
+// Ad ids Meta currently reports as effectively ACTIVE, paged.
+async function fetchEffectivelyActiveAdIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  let url: string | null =
+    `${META_GRAPH}/act_${META_ACCOUNT}/ads` +
+    `?effective_status=${encodeURIComponent(JSON.stringify(["ACTIVE"]))}` +
+    `&fields=id&limit=500&access_token=${META_TOKEN}`;
+  while (url) {
+    const res: Response = await fetch(url);
+    if (!res.ok) throw new Error(`Meta active-ads list failed: ${res.status}`);
+    const page = (await res.json()) as { data?: { id: string }[]; paging?: { next?: string } };
+    for (const a of page.data ?? []) ids.add(a.id);
+    url = page.paging?.next ?? null;
+  }
+  return ids;
+}
+
 interface MetaActionEntry {
   action_type: string;
   value: string;
@@ -179,6 +211,59 @@ export async function GET(request: Request) {
       }
     }
   }
+
+  // 2b. Refresh delivery status for ads we already hold.
+  //
+  //     The createMany(skipDuplicates) above only ever INSERTS ads we have
+  //     never seen. Without this step an ad's status stays frozen at whatever
+  //     it was the day it was first inserted, so ads paused weeks ago kept
+  //     rendering as Running. A paused ad also stops spending, so it drops out
+  //     of the insights window and never gets a second chance to be corrected.
+  //
+  //     Cheap path: ask Meta which ads are effectively ACTIVE (normally a short
+  //     list), then only look up the exact status of the ads we disagree about,
+  //     rather than guessing which flavour of paused they are.
+  let statusRefreshed = 0;
+  if (META_TOKEN && META_ACCOUNT) {
+    const activeIds = await fetchEffectivelyActiveAdIds();
+    const stored = await prisma.metaAd.findMany({
+      select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
+    });
+
+    const wronglyPaused = stored.filter(
+      (a) => activeIds.has(a.metaAdId) && !isDelivering(a.status, a.effectiveStatus),
+    );
+    for (const a of wronglyPaused) {
+      await prisma.metaAd.update({
+        where: { id: a.id },
+        data: { status: "ACTIVE", effectiveStatus: "ACTIVE", syncedAt: now },
+      });
+      statusRefreshed++;
+    }
+
+    const wronglyRunning = stored.filter(
+      (a) => !activeIds.has(a.metaAdId) && isDelivering(a.status, a.effectiveStatus),
+    );
+    for (let i = 0; i < wronglyRunning.length; i += 45) {
+      const chunk = wronglyRunning.slice(i, i + 45);
+      const url =
+        `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
+        `&fields=status,effective_status&access_token=${META_TOKEN}`;
+      const res = await fetch(url);
+      if (!res.ok) break;
+      const payload = (await res.json()) as Record<string, { status?: string; effective_status?: string }>;
+      for (const a of chunk) {
+        const live = payload[a.metaAdId];
+        if (!live?.status) continue;
+        await prisma.metaAd.update({
+          where: { id: a.id },
+          data: { status: live.status, effectiveStatus: live.effective_status ?? null, syncedAt: now },
+        });
+        statusRefreshed++;
+      }
+    }
+  }
+
   const tBackfilled = Date.now();
 
   // 3. Load full ad map (now includes any backfilled ones)
@@ -424,6 +509,7 @@ export async function GET(request: Request) {
       backfilledCampaigns,
       backfilledAdSets,
       backfilledAds,
+      statusRefreshed,
       rowsToWrite: rows.length,
       skippedUnknownAds: skipped,
       written,
