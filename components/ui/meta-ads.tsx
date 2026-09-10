@@ -194,6 +194,11 @@ function deriveAdStatus(ad: Pick<Ad, "status" | "effectiveStatus">): {
 // Renders an ad thumbnail with a graceful fallback. If the URL is null
 // OR the image fails to load (stale Meta CDN token), we drop back to a
 // coloured initial-letter tile instead of showing a broken-image icon.
+//
+// Thumbnail URLs stored in our DB are signed by Meta and expire within hours,
+// so the first paint usually 403s and falls back. A background refresh then
+// supplies a live URL -- reset the failed flag when that arrives, otherwise
+// the tile stays a letter until the page is reloaded.
 function AdThumbnail({
   url,
   name,
@@ -206,6 +211,9 @@ function AdThumbnail({
   big?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
   const showImage = url && !failed;
   if (showImage) {
     return (
