@@ -43,6 +43,25 @@ async function fetchAdNames(): Promise<Map<string, string>> {
   return names;
 }
 
+// Name + status for every ad set / campaign on the account, paged. Same
+// freeze applies to these tables: an ad set renamed or paused in Meta kept
+// its original values here.
+type MetaMeta = { id: string; name: string; status: string; effective_status?: string };
+async function fetchAccountEdge(edge: "adsets" | "campaigns"): Promise<Map<string, MetaMeta>> {
+  const out = new Map<string, MetaMeta>();
+  let url: string | null =
+    `${META_GRAPH}/act_${META_ACCOUNT}/${edge}` +
+    `?fields=id,name,status,effective_status&limit=500&access_token=${META_TOKEN}`;
+  while (url) {
+    const res: Response = await fetch(url);
+    if (!res.ok) throw new Error(`Meta ${edge} list failed: ${res.status}`);
+    const p2 = (await res.json()) as { data?: MetaMeta[]; paging?: { next?: string } };
+    for (const x of p2.data ?? []) out.set(x.id, x);
+    url = p2.paging?.next ?? null;
+  }
+  return out;
+}
+
 // Ad ids Meta currently reports as effectively ACTIVE, paged.
 async function fetchEffectivelyActiveAdIds(): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -242,6 +261,8 @@ export async function GET(request: Request) {
   //     rather than guessing which flavour of paused they are.
   let statusRefreshed = 0;
   let namesRefreshed = 0;
+  let adSetsRefreshed = 0;
+  let campaignsRefreshed = 0;
   if (META_TOKEN && META_ACCOUNT) {
     const liveNames = await fetchAdNames();
     const namesToFix = (
@@ -294,6 +315,38 @@ export async function GET(request: Request) {
         });
         statusRefreshed++;
       }
+    }
+  }
+
+  // 2c. Same refresh for ad sets and campaigns.
+  if (META_TOKEN && META_ACCOUNT) {
+    const liveSets = await fetchAccountEdge("adsets");
+    for (const st of await prisma.metaAdSet.findMany({
+      select: { id: true, metaAdSetId: true, name: true, status: true, effectiveStatus: true },
+    })) {
+      const live = liveSets.get(st.metaAdSetId);
+      if (!live) continue;
+      const eff = live.effective_status ?? null;
+      if (live.name === st.name && live.status === st.status && eff === st.effectiveStatus) continue;
+      await prisma.metaAdSet.update({
+        where: { id: st.id },
+        data: { name: live.name, status: live.status, effectiveStatus: eff, syncedAt: now },
+      });
+      adSetsRefreshed++;
+    }
+
+    const liveCampaigns = await fetchAccountEdge("campaigns");
+    for (const c of await prisma.metaCampaign.findMany({
+      select: { id: true, metaCampaignId: true, name: true, status: true },
+    })) {
+      const live = liveCampaigns.get(c.metaCampaignId);
+      if (!live) continue;
+      if (live.name === c.name && live.status === c.status) continue;
+      await prisma.metaCampaign.update({
+        where: { id: c.id },
+        data: { name: live.name, status: live.status, syncedAt: now },
+      });
+      campaignsRefreshed++;
     }
   }
 
@@ -544,6 +597,8 @@ export async function GET(request: Request) {
       backfilledAds,
       statusRefreshed,
       namesRefreshed,
+      adSetsRefreshed,
+      campaignsRefreshed,
       rowsToWrite: rows.length,
       skippedUnknownAds: skipped,
       written,
