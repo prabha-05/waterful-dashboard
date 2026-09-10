@@ -62,6 +62,19 @@ async function fetchAccountEdge(edge: "adsets" | "campaigns"): Promise<Map<strin
   return out;
 }
 
+// Public, non-expiring URL for an ad's creative: the Instagram post if there
+// is one, otherwise the Facebook page post.
+function publicPostUrl(creative?: { instagram_permalink_url?: string; effective_object_story_id?: string }): string | null {
+  if (!creative) return null;
+  if (creative.instagram_permalink_url) return creative.instagram_permalink_url;
+  const story = creative.effective_object_story_id;
+  if (story && story.includes("_")) {
+    const [pageId, postId] = story.split("_");
+    return `https://www.facebook.com/${pageId}/posts/${postId}`;
+  }
+  return null;
+}
+
 // Ad ids Meta currently reports as effectively ACTIVE, paged.
 async function fetchEffectivelyActiveAdIds(): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -262,6 +275,7 @@ export async function GET(request: Request) {
   let statusRefreshed = 0;
   let namesRefreshed = 0;
   let adSetsRefreshed = 0;
+  let linksRefreshed = 0;
   let campaignsRefreshed = 0;
   if (META_TOKEN && META_ACCOUNT) {
     const liveNames = await fetchAdNames();
@@ -314,6 +328,37 @@ export async function GET(request: Request) {
           data: { status: live.status, effectiveStatus: live.effective_status ?? null, syncedAt: now },
         });
         statusRefreshed++;
+      }
+    }
+  }
+
+  // 2b-ii. Fill in the public post permalink for ads that lack one.
+  //
+  //        previewLink used to hold Meta's preview_shareable_link, an fb.me
+  //        short URL that expires after a few weeks and then redirects to the
+  //        Facebook home page. We store the live Instagram/Facebook post URL
+  //        instead: it never expires and opens for anyone, no Ads Manager
+  //        access needed. Only ads missing a usable link are looked up, so
+  //        this is a couple of requests for the day's new ads.
+  if (META_TOKEN) {
+    const needLink = await prisma.metaAd.findMany({
+      where: { OR: [{ previewLink: null }, { previewLink: { contains: "fb.me" } }] },
+      select: { id: true, metaAdId: true },
+    });
+    for (let i = 0; i < needLink.length; i += 25) {
+      const chunk = needLink.slice(i, i + 25);
+      const url =
+        `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
+        `&fields=creative{instagram_permalink_url,effective_object_story_id}` +
+        `&access_token=${META_TOKEN}`;
+      const res = await fetch(url);
+      if (!res.ok) break;
+      const payload = (await res.json()) as Record<string, { creative?: { instagram_permalink_url?: string; effective_object_story_id?: string } }>;
+      for (const a of chunk) {
+        const link = publicPostUrl(payload[a.metaAdId]?.creative);
+        if (!link) continue;
+        await prisma.metaAd.update({ where: { id: a.id }, data: { previewLink: link } });
+        linksRefreshed++;
       }
     }
   }
@@ -598,6 +643,7 @@ export async function GET(request: Request) {
       statusRefreshed,
       namesRefreshed,
       adSetsRefreshed,
+      linksRefreshed,
       campaignsRefreshed,
       rowsToWrite: rows.length,
       skippedUnknownAds: skipped,
