@@ -26,6 +26,23 @@ function isDelivering(status: string, effectiveStatus: string | null): boolean {
   );
 }
 
+// id -> name for every ad on the account, paged. Names are mutable in Meta
+// and createMany(skipDuplicates) never rewrote them, so a renamed ad kept its
+// original name here — two ads could end up displaying the same heading.
+async function fetchAdNames(): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  let url: string | null =
+    `${META_GRAPH}/act_${META_ACCOUNT}/ads?fields=id,name&limit=500&access_token=${META_TOKEN}`;
+  while (url) {
+    const res: Response = await fetch(url);
+    if (!res.ok) throw new Error(`Meta ad-name list failed: ${res.status}`);
+    const page = (await res.json()) as { data?: { id: string; name: string }[]; paging?: { next?: string } };
+    for (const a of page.data ?? []) names.set(a.id, a.name);
+    url = page.paging?.next ?? null;
+  }
+  return names;
+}
+
 // Ad ids Meta currently reports as effectively ACTIVE, paged.
 async function fetchEffectivelyActiveAdIds(): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -224,7 +241,23 @@ export async function GET(request: Request) {
   //     list), then only look up the exact status of the ads we disagree about,
   //     rather than guessing which flavour of paused they are.
   let statusRefreshed = 0;
+  let namesRefreshed = 0;
   if (META_TOKEN && META_ACCOUNT) {
+    const liveNames = await fetchAdNames();
+    const namesToFix = (
+      await prisma.metaAd.findMany({ select: { id: true, metaAdId: true, name: true } })
+    ).filter((a) => {
+      const live = liveNames.get(a.metaAdId);
+      return live !== undefined && live !== a.name;
+    });
+    for (const a of namesToFix) {
+      await prisma.metaAd.update({
+        where: { id: a.id },
+        data: { name: liveNames.get(a.metaAdId) as string, syncedAt: now },
+      });
+      namesRefreshed++;
+    }
+
     const activeIds = await fetchEffectivelyActiveAdIds();
     const stored = await prisma.metaAd.findMany({
       select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
@@ -510,6 +543,7 @@ export async function GET(request: Request) {
       backfilledAdSets,
       backfilledAds,
       statusRefreshed,
+      namesRefreshed,
       rowsToWrite: rows.length,
       skippedUnknownAds: skipped,
       written,
