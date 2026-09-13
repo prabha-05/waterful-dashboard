@@ -129,6 +129,7 @@ type Overview = {
   };
   meta: {
     lastSyncedAt: string | null;
+    latestDataDate: string | null;
     totalCampaigns: number;
     activeCampaigns: number;
   };
@@ -338,7 +339,7 @@ export function MetaOverview() {
         <input
           type="date"
           value={from}
-          max={to}
+          max={data?.meta.latestDataDate ?? to}
           onChange={(e) => setFrom(e.target.value)}
           className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
           style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
@@ -350,6 +351,7 @@ export function MetaOverview() {
           type="date"
           value={to}
           min={from}
+          max={data?.meta.latestDataDate ?? undefined}
           onChange={(e) => setTo(e.target.value)}
           className="rounded-lg border px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-400"
           style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
@@ -447,7 +449,12 @@ export function MetaOverview() {
   const roas = t.spend > 0 ? t.purchaseValue / t.spend : 0;
   const prevRoas = p.spend > 0 ? p.purchaseValue / p.spend : 0;
   // Always show deltas — API returns per-campaign previous totals too.
-  const showDelta = true;
+  // The range ends after the newest day we have (typically: user picked today).
+  // Nothing is wrong -- the nightly sync just has not run yet -- so say that
+  // instead of rendering -100% deltas and "burning money" on an empty range.
+  const latest = data.meta.latestDataDate;
+  const noDataYet = !!latest && to > latest && t.spend === 0;
+  const showDelta = !noDataYet;
 
   // Funnel rates
   const clickRate = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
@@ -468,6 +475,17 @@ export function MetaOverview() {
           {data.meta.activeCampaigns} active / {data.meta.totalCampaigns} total campaigns
         </div>
       </div>
+
+      {noDataYet && (
+        <div
+          className="rounded-xl border px-4 py-3 text-sm"
+          style={{ background: `${AMBER}12`, borderColor: `${AMBER}55`, color: INK }}
+        >
+          <span className="font-semibold" style={{ color: AMBER }}>No Meta data for this range yet.</span>{" "}
+          Meta reports each day after it ends and the sync runs every morning. The latest day available is{" "}
+          <span className="font-semibold">{latest}</span> — pick that or earlier.
+        </div>
+      )}
 
       {/* KPI Strip — ordered: Spend → Purchases → Purchase Value → ROAS → CPA → CTR */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
@@ -502,7 +520,7 @@ export function MetaOverview() {
           delta={showDelta ? deltaPct(roas, prevRoas) : null}
           icon={Target}
           tint={SAGE}
-          hint={roas < 1 ? "burning money" : roas < 2 ? "marginal" : "healthy"}
+          hint={noDataYet ? "no data yet" : roas < 1 ? "burning money" : roas < 2 ? "marginal" : "healthy"}
         />
         <KpiCard
           title="CPA"

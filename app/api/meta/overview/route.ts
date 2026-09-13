@@ -408,6 +408,13 @@ export async function GET(req: NextRequest) {
     orderBy: { syncedAt: "desc" },
     select: { syncedAt: true },
   });
+  // Latest day we actually hold data for. Meta reports per completed day and
+  // the sync runs nightly, so "today" is always empty until tomorrow morning;
+  // the page uses this to cap the picker and explain an empty range.
+  const latestRow = await prisma.metaAdSpendDaily.findFirst({
+    orderBy: { date: "desc" },
+    select: { date: true },
+  });
   const totalCampaigns = await prisma.metaCampaign.count();
   const activeCampaigns = await prisma.metaCampaign.count({
     where: { status: "ACTIVE" },
@@ -446,6 +453,7 @@ export async function GET(req: NextRequest) {
     shopifyReality,
     meta: {
       lastSyncedAt: lastRow?.syncedAt ?? null,
+      latestDataDate: latestRow ? formatIstYmd(latestRow.date) : null,
       totalCampaigns,
       activeCampaigns,
     },
