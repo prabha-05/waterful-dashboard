@@ -800,22 +800,25 @@ export function MetaAds() {
             })}
           </div>
           <div className="inline-flex rounded-lg border overflow-hidden" style={{ borderColor: BORDER }}>
-            {([["running", "Running"], ["paused", "Paused"]] as const).map(([value, label]) => {
+            {([["ALL", "All"], ["running", "Running"], ["paused", "Paused"]] as const).map(([value, label]) => {
               const active = draftStatus === value;
               return (
                 <button
                   key={value}
-                  // Click the active pill again to clear — same idiom as the format pills.
-                  onClick={() => setDraftStatus(active ? "ALL" : value)}
+                  // "All" is an explicit pill here; clicking an active Running/Paused
+                  // pill also clears back to All, matching the format pills.
+                  onClick={() => setDraftStatus(active && value !== "ALL" ? "ALL" : value)}
                   className="px-3 py-1.5 text-xs font-medium transition-colors"
                   style={{
-                    background: active ? (value === "running" ? SAGE : "#475569") : "#1e293b",
+                    background: active ? (value === "ALL" ? "#6366f1" : value === "running" ? SAGE : "#475569") : "#1e293b",
                     color: active ? "white" : "#cbd5e1",
                   }}
                   title={
-                    value === "running"
-                      ? "Only ads Meta is currently delivering"
-                      : "Only ads not delivering — paused, parent paused, or flagged"
+                    value === "ALL"
+                      ? "Running and paused ads together"
+                      : value === "running"
+                        ? "Only ads Meta is currently delivering"
+                        : "Only ads not delivering — paused, parent paused, or flagged"
                   }
                 >
                   {label}
