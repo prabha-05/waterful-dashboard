@@ -519,14 +519,14 @@ export function MetaAds() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // Applied filters — what the table actually uses.
   const [formatFilter, setFormatFilter] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
-  const [minSpend, setMinSpend] = useState<number>(5000);
+  const [minSpend, setMinSpend] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "running" | "paused">("ALL");
 
   // Draft filters — what the user is typing/clicking before pressing Apply.
   // Keeps the table from re-filtering on every keystroke (and gives the
   // user explicit control over when changes take effect).
   const [draftFormat, setDraftFormat] = useState<"ALL" | "video" | "image" | "carousel">("ALL");
-  const [draftMinSpend, setDraftMinSpend] = useState<number>(5000);
+  const [draftMinSpend, setDraftMinSpend] = useState<number>(0);
   const [draftStatus, setDraftStatus] = useState<"ALL" | "running" | "paused">("ALL");
   const filtersDirty =
     draftFormat !== formatFilter || draftMinSpend !== minSpend || draftStatus !== statusFilter;
