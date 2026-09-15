@@ -722,11 +722,11 @@ export function MetaAds() {
       {/* Full export of the current date range: every ad, every metric, with the
           live Instagram link and an Ads Manager link. Served by /api/meta/ads/export. */}
       <a
-        href={`/api/meta/ads/export?from=${from}&to=${to}`}
+        href={`/api/meta/ads/export?from=${from}&to=${to}&minSpend=${minSpend}&format=${formatFilter}&status=${statusFilter}`}
         download
         className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-90"
         style={{ background: "#6366f1", color: "white" }}
-        title="Download every ad in this date range as an Excel file, with Instagram links"
+        title="Download the ads currently shown — same dates and filters — as an Excel file, with Instagram links"
       >
         Download report
       </a>

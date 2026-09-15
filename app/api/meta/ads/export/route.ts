@@ -24,6 +24,14 @@ function parseYmdToIstDay(s: string): Date | null {
 const isDelivering = (status: string, eff: string | null) =>
   status === "ACTIVE" && !["ADSET_PAUSED", "CAMPAIGN_PAUSED", "WITH_ISSUES"].includes(eff ?? "");
 
+// Same bucketing the page uses for its Video / Image / Carousel pills.
+const normalizeFormat = (t: string | null): "video" | "carousel" | "image" => {
+  const raw = (t ?? "").toLowerCase();
+  if (raw === "video") return "video";
+  if (raw === "carousel") return "carousel";
+  return "image";
+};
+
 const pct = (num: number, den: number, dp = 2) => (den > 0 ? +((num / den) * 100).toFixed(dp) : "");
 const per = (num: number, den: number) => (den > 0 ? Math.round(num / den) : "");
 
@@ -44,6 +52,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "from/to must be YYYY-MM-DD and from <= to" }, { status: 400 });
   }
   const toExclusive = addDays(to, 1);
+
+  // Optional filters, mirroring the page so the download matches the table.
+  const minSpend = Math.max(0, Number(req.nextUrl.searchParams.get("minSpend") ?? 0) || 0);
+  const formatParam = req.nextUrl.searchParams.get("format") ?? "ALL";
+  const statusParam = req.nextUrl.searchParams.get("status") ?? "ALL";
 
   const rows = await prisma.metaAdDaily.findMany({
     where: { date: { gte: from, lt: toExclusive } },
@@ -99,7 +112,16 @@ export async function GET(req: NextRequest) {
     if (r.date > a.last) a.last = r.date;
   }
 
-  const ads = Array.from(byAd.values()).filter((a) => a.sp > 0).sort((a, b) => b.sp - a.sp);
+  const ads = Array.from(byAd.values())
+    .filter((a) => a.sp > 0)
+    .filter((a) => a.sp >= minSpend)
+    .filter((a) => formatParam === "ALL" || normalizeFormat(a.ct) === formatParam)
+    .filter((a) => {
+      if (statusParam === "ALL") return true;
+      const live = isDelivering(a.status, a.eff);
+      return statusParam === "running" ? live : !live;
+    })
+    .sort((a, b) => b.sp - a.sp);
   const fromYmd = formatIstYmd(from);
   const toYmd = formatIstYmd(to);
 
@@ -153,6 +175,11 @@ export async function GET(req: NextRequest) {
     ["Waterful Zero — Meta ads report"],
     ["Period", `${fromYmd} to ${toYmd}`],
     ["Generated", new Date().toISOString()],
+    ["Filters", [
+      minSpend > 0 ? `spend > ${minSpend}` : "any spend",
+      formatParam === "ALL" ? "all formats" : formatParam,
+      statusParam === "ALL" ? "running and paused" : statusParam,
+    ].join(" · ")],
     [],
     ["Ads with spend", ads.length],
     ["Total spend (INR)", Math.round(T.sp)],
