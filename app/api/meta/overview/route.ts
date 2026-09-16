@@ -60,11 +60,15 @@ type Period = {
 };
 
 export async function GET(req: NextRequest) {
+  const unit = req.nextUrl.searchParams.get("unit") || "day";
+  // Cap by unit. A flat 52 silently truncated any day-level range longer than
+  // 52 days -- "1 May to today" came back as 1 May to 21 June, labelled as the
+  // full range, with the September campaign missing.
+  const maxCount = unit === "day" ? 400 : unit === "week" ? 104 : 36;
   const count = Math.min(
     Math.max(parseInt(req.nextUrl.searchParams.get("count") || "7"), 1),
-    52
+    maxCount
   );
-  const unit = req.nextUrl.searchParams.get("unit") || "day";
 
   if (!["day", "week", "month"].includes(unit)) {
     return NextResponse.json(
