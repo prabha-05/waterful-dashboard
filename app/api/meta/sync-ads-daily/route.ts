@@ -76,17 +76,18 @@ function publicPostUrl(creative?: { instagram_permalink_url?: string; effective_
 }
 
 // Ad ids Meta currently reports as effectively ACTIVE, paged.
-async function fetchEffectivelyActiveAdIds(): Promise<Set<string>> {
-  const ids = new Set<string>();
+type ActiveAd = { adsetId: string; campaignId: string };
+async function fetchEffectivelyActiveAds(): Promise<Map<string, ActiveAd>> {
+  const ids = new Map<string, ActiveAd>();
   let url: string | null =
     `${META_GRAPH}/act_${META_ACCOUNT}/ads` +
     `?effective_status=${encodeURIComponent(JSON.stringify(["ACTIVE"]))}` +
-    `&fields=id&limit=500&access_token=${META_TOKEN}`;
+    `&fields=id,adset_id,campaign_id&limit=500&access_token=${META_TOKEN}`;
   while (url) {
     const res: Response = await fetch(url);
     if (!res.ok) throw new Error(`Meta active-ads list failed: ${res.status}`);
-    const page = (await res.json()) as { data?: { id: string }[]; paging?: { next?: string } };
-    for (const a of page.data ?? []) ids.add(a.id);
+    const page = (await res.json()) as { data?: { id: string; adset_id: string; campaign_id: string }[]; paging?: { next?: string } };
+    for (const a of page.data ?? []) ids.set(a.id, { adsetId: a.adset_id, campaignId: a.campaign_id });
     url = page.paging?.next ?? null;
   }
   return ids;
@@ -131,6 +132,13 @@ export async function GET(request: Request) {
 
   // 1. Fetch ad-level daily insights from Meta
   const insights = await fetchAdDailyInsights(sinceDate, untilDate);
+
+  // Ads Meta currently reports as delivering. Merged into the backfill below
+  // so an ad launched overnight -- which has no insight rows yet -- is still
+  // inserted (with its ad set and campaign) and shows as Running by morning
+  // instead of the morning after. Also drives the status refresh at the end.
+  const activeAds: Map<string, ActiveAd> =
+    META_TOKEN && META_ACCOUNT ? await fetchEffectivelyActiveAds().catch(() => new Map()) : new Map();
   const tInsightsFetched = Date.now();
 
   // 2. Self-heal: ensure metadata exists for every ad/adset/campaign in insights.
@@ -142,7 +150,7 @@ export async function GET(request: Request) {
 
   // Campaigns first — adsets reference campaign_id as a string, not FK,
   // but we still want campaign rows so the dashboard can show names.
-  const insightCampaignIds = Array.from(new Set(insights.map((i) => i.campaign_id).filter(Boolean)));
+  const insightCampaignIds = Array.from(new Set([...insights.map((i) => i.campaign_id), ...Array.from(activeAds.values()).map((a) => a.campaignId)].filter(Boolean)));
   if (insightCampaignIds.length > 0) {
     const known = await prisma.metaCampaign.findMany({
       where: { metaCampaignId: { in: insightCampaignIds } },
@@ -175,7 +183,7 @@ export async function GET(request: Request) {
   }
 
   // Ad sets — needed because MetaAd.adSetId FKs MetaAdSet.id
-  const insightAdSetIds = Array.from(new Set(insights.map((i) => i.adset_id).filter(Boolean)));
+  const insightAdSetIds = Array.from(new Set([...insights.map((i) => i.adset_id), ...Array.from(activeAds.values()).map((a) => a.adsetId)].filter(Boolean)));
   if (insightAdSetIds.length > 0) {
     const known = await prisma.metaAdSet.findMany({
       where: { metaAdSetId: { in: insightAdSetIds } },
@@ -218,7 +226,7 @@ export async function GET(request: Request) {
   const adSetIdMap = new Map(adSetRows.map((a) => [a.metaAdSetId, a.id]));
 
   // Ads
-  const insightAdIds = Array.from(new Set(insights.map((i) => i.ad_id).filter(Boolean)));
+  const insightAdIds = Array.from(new Set([...insights.map((i) => i.ad_id), ...activeAds.keys()].filter(Boolean)));
   if (insightAdIds.length > 0) {
     const known = await prisma.metaAd.findMany({
       where: { metaAdId: { in: insightAdIds } },
@@ -537,7 +545,7 @@ export async function GET(request: Request) {
       namesRefreshed++;
     }
 
-    const activeIds = await fetchEffectivelyActiveAdIds();
+    const activeIds = activeAds;
     const stored = await prisma.metaAd.findMany({
       select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
     });
