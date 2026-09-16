@@ -419,6 +419,27 @@ export async function GET(req: NextRequest) {
     orderBy: { date: "desc" },
     select: { date: true },
   });
+  // Every campaign worth offering in the picker: anything that has ever had
+  // spend rows, plus anything currently active. The 260-odd archived campaigns
+  // with no data are left out -- selecting one would only ever show zeros.
+  const spentCampaignIds = await prisma.metaAdSpendDaily.groupBy({
+    by: ["campaignId"],
+    _max: { date: true },
+  });
+  const spentById = new Map(spentCampaignIds.map((r) => [r.campaignId, r._max.date]));
+  const pickerRows = await prisma.metaCampaign.findMany({
+    where: { OR: [{ id: { in: Array.from(spentById.keys()) } }, { status: "ACTIVE" }] },
+    select: { id: true, metaCampaignId: true, name: true, status: true },
+  });
+  const campaignPicker = pickerRows
+    .map((c) => ({
+      metaCampaignId: c.metaCampaignId,
+      name: c.name,
+      active: c.status === "ACTIVE",
+      lastSpendDate: spentById.get(c.id) ? formatIstYmd(spentById.get(c.id) as Date) : null,
+    }))
+    .sort((x, y) => Number(y.active) - Number(x.active) || (y.lastSpendDate ?? "").localeCompare(x.lastSpendDate ?? ""));
+
   const totalCampaigns = await prisma.metaCampaign.count();
   const activeCampaigns = await prisma.metaCampaign.count({
     where: { status: "ACTIVE" },
@@ -458,6 +479,7 @@ export async function GET(req: NextRequest) {
     meta: {
       lastSyncedAt: lastRow?.syncedAt ?? null,
       latestDataDate: latestRow ? formatIstYmd(latestRow.date) : null,
+      campaignPicker,
       totalCampaigns,
       activeCampaigns,
     },

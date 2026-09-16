@@ -130,6 +130,7 @@ type Overview = {
   meta: {
     lastSyncedAt: string | null;
     latestDataDate: string | null;
+    campaignPicker: { metaCampaignId: string; name: string; active: boolean; lastSpendDate: string | null }[];
     totalCampaigns: number;
     activeCampaigns: number;
   };
@@ -323,9 +324,23 @@ export function MetaOverview() {
   }, [data, selectedCampaign]);
 
   // Sorted campaign names for the dropdown (alpha)
+  // Offer every campaign that has ever spent (plus active ones), not only
+  // those with spend in the current window -- so a paused campaign can still
+  // be picked to look at its history. Active first, then by last spend.
   const campaignOptions = useMemo(() => {
-    if (!data) return [] as string[];
-    return [...data.campaigns.map((c) => c.name)].sort((a, b) => a.localeCompare(b));
+    if (!data) return [] as { name: string; label: string }[];
+    const inWindow = new Set(data.campaigns.map((c) => c.name));
+    const list = data.meta.campaignPicker ?? [];
+    const fromPicker = list.map((c) => ({
+      name: c.name,
+      label:
+        (c.name.length > 52 ? c.name.slice(0, 52) + "…" : c.name) +
+        (c.active ? "" : "  (paused" + (c.lastSpendDate ? ", last spend " + c.lastSpendDate : "") + ")"),
+    }));
+    // Anything in the window but somehow not in the picker list still shows.
+    const known = new Set(fromPicker.map((c) => c.name));
+    const extra = [...inWindow].filter((n) => !known.has(n)).map((n) => ({ name: n, label: n }));
+    return [...fromPicker, ...extra];
   }, [data]);
 
   const picker = (
@@ -366,9 +381,9 @@ export function MetaOverview() {
           style={{ borderColor: BORDER, color: INK, background: CREAM_BG }}
         >
           <option value="ALL">All campaigns</option>
-          {campaignOptions.map((name) => (
-            <option key={name} value={name}>
-              {name.length > 60 ? name.slice(0, 60) + "…" : name}
+          {campaignOptions.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.label}
             </option>
           ))}
         </select>
@@ -441,7 +456,11 @@ export function MetaOverview() {
         purchases: oneCampaign.purchases,
         purchaseValue: oneCampaign.purchaseValue,
       }
-    : data.totals;
+    : selectedCampaign !== "ALL"
+      ? // A campaign from the picker with no rows in this window: show zeros
+        // for it, not the whole account's totals under its name.
+        { spend: 0, impressions: 0, reach: 0, clicks: 0, addToCart: 0, initiateCheckout: 0, purchases: 0, purchaseValue: 0 }
+      : data.totals;
   const ctr = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
   const prevCtr = p.impressions > 0 ? (p.clicks / p.impressions) * 100 : 0;
   const cpa = t.purchases > 0 ? t.spend / t.purchases : 0;
@@ -453,7 +472,8 @@ export function MetaOverview() {
   // Nothing is wrong -- the nightly sync just has not run yet -- so say that
   // instead of rendering -100% deltas and "burning money" on an empty range.
   const latest = data.meta.latestDataDate;
-  const noDataYet = !!latest && to > latest && t.spend === 0;
+  const campaignEmpty = selectedCampaign !== "ALL" && !oneCampaign;
+  const noDataYet = (!!latest && to > latest && t.spend === 0) || campaignEmpty;
   const showDelta = !noDataYet;
 
   // Funnel rates
@@ -481,9 +501,18 @@ export function MetaOverview() {
           className="rounded-xl border px-4 py-3 text-sm"
           style={{ background: `${AMBER}12`, borderColor: `${AMBER}55`, color: INK }}
         >
+          {campaignEmpty ? (
+            <>
+              <span className="font-semibold" style={{ color: AMBER }}>No spend for this campaign in the selected dates.</span>{" "}
+              It is paused or was not running then — widen the range to see its history.
+            </>
+          ) : (
+            <>
           <span className="font-semibold" style={{ color: AMBER }}>No Meta data for this range yet.</span>{" "}
           Meta reports each day after it ends and the sync runs every morning. The latest day available is{" "}
           <span className="font-semibold">{latest}</span> — pick that or earlier.
+            </>
+          )}
         </div>
       )}
 
