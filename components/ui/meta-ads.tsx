@@ -508,12 +508,14 @@ function ChartCard({
 // Main component
 // ─────────────────────────────────────────────────────────────────
 export function MetaAds() {
-  // Default: last 7 days ending yesterday (IST)
-  const yesterday = shiftYmd(todayIstYmd(), -1);
-  const sevenAgo = shiftYmd(yesterday, -6);
+  // Default window runs up to TODAY, not yesterday. Meta data normally lands
+  // overnight, but the sync can also run intraday -- and an ad launched at
+  // midnight has rows only for today, so a range ending yesterday hid it.
+  const today = todayIstYmd();
+  const sevenAgo = shiftYmd(today, -6);
 
   const [from, setFrom] = useState(sevenAgo);
-  const [to, setTo] = useState(yesterday);
+  const [to, setTo] = useState(today);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
