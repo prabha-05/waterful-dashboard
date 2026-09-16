@@ -43,19 +43,15 @@ export function LoginForm() {
     >
       {/* Logo */}
       <div className="flex flex-col items-center mb-8">
-        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-700 shadow-lg shadow-violet-500/20">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="text-white"
-          >
-            <rect x="4" y="6" width="16" height="4" rx="1.5" fill="currentColor" fillOpacity="0.9" />
-            <rect x="4" y="12" width="16" height="6" rx="1.5" fill="currentColor" fillOpacity="0.6" />
-            <rect x="7" y="14" width="7" height="2" rx="1" fill="currentColor" fillOpacity="0.9" />
-          </svg>
-        </div>
+        {/* Same asset the sidebar uses, so the brand mark matches across the app. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/waterful-logo.jpg"
+          alt="Waterful Zero"
+          width={72}
+          height={72}
+          className="mb-5 h-[72px] w-[72px] rounded-full object-cover shadow-lg shadow-black/40 ring-1 ring-white/10"
+        />
         <h1 className="text-2xl font-semibold tracking-tight text-white">
           Welcome back
         </h1>
