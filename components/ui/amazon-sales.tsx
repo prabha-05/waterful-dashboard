@@ -392,11 +392,22 @@ function DailyTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: { name?: string; value?: number; color?: string; dataKey?: string }[];
+  payload?: {
+    name?: string;
+    value?: number;
+    color?: string;
+    dataKey?: string;
+    payload?: { revenue?: number; aov?: number; units?: number };
+  }[];
   label?: string;
 }) {
   if (!active || !payload || payload.length === 0) return null;
-  const get = (key: string) => payload.find((p) => p.dataKey === key)?.value ?? 0;
+  // Each chart draws a single series, so the payload carries only that one
+  // dataKey. Read the whole row off the hovered point instead, so the tooltip
+  // can still show revenue, AOV and units together.
+  const row = payload[0]?.payload ?? {};
+  const get = (key: "revenue" | "aov" | "units") =>
+    payload.find((p) => p.dataKey === key)?.value ?? row[key] ?? 0;
   return (
     <div
       className="rounded-lg border px-3 py-2 text-[11px] shadow-sm"
