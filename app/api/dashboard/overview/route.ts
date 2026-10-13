@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   startOfIstDay,
@@ -109,23 +110,51 @@ export async function GET(req: NextRequest) {
   // a single Shopify order with N flavours produces N SalesOrder rows.
   const orders = await prisma.salesOrder.findMany({
     where: { duplicate: 1, mobile: { not: "" }, date: { gte: prevFrom, lt: globalTo } },
-    select: { mobile: true, total: true, date: true, status: true, orderId: true },
+    select: { mobile: true, total: true, date: true, status: true, orderId: true, shopifyCustomerId: true },
   });
 
-  // Get first order dates for all mobiles in range
-  const mobilesInRange = [...new Set(orders.map((o) => o.mobile))];
+  // Identifying a repeat buyer by the raw mobile string is not safe: the same
+  // person appears as "9375017035" on one order and "+919375017035" on another
+  // (both formats are in the table, and 1,176 customers carry more than one),
+  // which made their second order look like a first-ever order and understated
+  // every repeat figure on this page. Shopify's customer.id is stable but is
+  // null on ~37k older imported rows, so neither key alone is enough.
+  //
+  // So: look the customer up under BOTH keys — customer.id, and the mobile
+  // normalised to its last 10 digits — and treat the EARLIER of the two as
+  // their first order. An order is first-time only if neither key has seen
+  // them before this bucket.
+  const normalizeMobile = (m: string) => m.replace(/\D/g, "").slice(-10);
+  const mobilesInRange = [...new Set(orders.map((o) => normalizeMobile(o.mobile)).filter(Boolean))];
+  const cidsInRange = [...new Set(orders.map((o) => o.shopifyCustomerId).filter((c): c is bigint => c !== null))];
 
-  let firstOrderDate = new Map<string, Date>();
+  const firstByMobile = new Map<string, Date>();
+  const firstByCid = new Map<string, Date>();
   if (mobilesInRange.length > 0) {
-    const earliestRows = await prisma.salesOrder.groupBy({
-      by: ["mobile"],
-      where: { mobile: { in: mobilesInRange }, duplicate: 1 },
+    const rows = await prisma.$queryRaw<{ key: string; first: Date }[]>`
+      SELECT RIGHT(REGEXP_REPLACE(mobile, '\\D', '', 'g'), 10) AS key, MIN(date) AS first
+      FROM "SalesOrder"
+      WHERE duplicate = 1
+        AND RIGHT(REGEXP_REPLACE(mobile, '\\D', '', 'g'), 10) IN (${Prisma.join(mobilesInRange)})
+      GROUP BY 1`;
+    for (const r of rows) if (r.key && r.first) firstByMobile.set(r.key, r.first);
+  }
+  if (cidsInRange.length > 0) {
+    const rows = await prisma.salesOrder.groupBy({
+      by: ["shopifyCustomerId"],
+      where: { shopifyCustomerId: { in: cidsInRange }, duplicate: 1 },
       _min: { date: true },
     });
-    for (const row of earliestRows) {
-      if (row.mobile && row._min.date) firstOrderDate.set(row.mobile, row._min.date);
+    for (const r of rows) {
+      if (r.shopifyCustomerId && r._min.date) firstByCid.set(String(r.shopifyCustomerId), r._min.date);
     }
   }
+  const firstOrderOf = (o: { mobile: string; shopifyCustomerId: bigint | null }): Date | undefined => {
+    const byMobile = firstByMobile.get(normalizeMobile(o.mobile));
+    const byCid = o.shopifyCustomerId ? firstByCid.get(String(o.shopifyCustomerId)) : undefined;
+    if (byMobile && byCid) return byMobile < byCid ? byMobile : byCid;
+    return byMobile ?? byCid;
+  };
 
   // Build period results
   const periods: PeriodBucket[] = buckets.map((bucket) => {
@@ -164,7 +193,7 @@ export async function GET(req: NextRequest) {
       // Revenue excludes cancelled to match Shopify's "Total sales" view.
       if (!isCancelled) revenue += o.total;
 
-      const firstDate = firstOrderDate.get(o.mobile);
+      const firstDate = firstOrderOf(o);
       const isFt = firstDate && firstDate >= bucket.from && firstDate < bucket.to;
       if (isFt) {
         ftMobiles.add(o.mobile);
@@ -247,7 +276,7 @@ export async function GET(req: NextRequest) {
     if (isCancelled) prevCancelledIds.add(o.orderId);
     if (isRto) prevRtoIds.add(o.orderId);
     if (!isCancelled) prevRevenue += o.total;
-    const firstDate = firstOrderDate.get(o.mobile);
+    const firstDate = firstOrderOf(o);
     const isFt = firstDate && firstDate >= prevFrom && firstDate < prevTo;
     if (isFt) {
       prevFtOrderIds.add(o.orderId);

@@ -288,8 +288,10 @@ function KpiTile({
 }
 
 function DailyBars({ rows }: { rows: Daily[] }) {
-  // Three series on one chart with two y-axes — revenue & AOV share the
-  // left ₹ axis, units use a right count axis.
+  // One chart per measure. Revenue runs to ~₹16k while AOV sits near ₹1k, so
+  // sharing a rupee axis flattened AOV into a straight line at the bottom and
+  // units had to borrow a second axis — three scales on one chart read as
+  // noise. Separate panels let each series use its own full height.
   const series = rows.map((r) => ({
     date: r.date,
     label: new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
@@ -298,76 +300,84 @@ function DailyBars({ rows }: { rows: Daily[] }) {
     aov: r.units > 0 ? Math.round(r.revenue / r.units) : 0,
   }));
 
+  const charts: {
+    key: "revenue" | "aov" | "units";
+    title: string;
+    note: string;
+    color: string;
+    currency: boolean;
+  }[] = [
+    { key: "revenue", title: "Revenue", note: "what Amazon paid out, per day", color: AMBER, currency: true },
+    { key: "units", title: "Units sold", note: "packs shipped, per day", color: BLUE, currency: false },
+    { key: "aov", title: "Average order value", note: "revenue ÷ units", color: SAGE, currency: true },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {charts.map((c) => (
+        <DailyChart key={c.key} series={series} cfg={c} />
+      ))}
+    </div>
+  );
+}
+
+function DailyChart({
+  series,
+  cfg,
+}: {
+  series: { label: string; revenue: number; units: number; aov: number }[];
+  cfg: { key: "revenue" | "aov" | "units"; title: string; note: string; color: string; currency: boolean };
+}) {
+  const values = series.map((p) => p[cfg.key]);
+  const peak = values.length ? Math.max(...values) : 0;
+  const total = values.reduce((a, b) => a + b, 0);
+  const avg = values.length ? total / values.length : 0;
+
   return (
     <div className="rounded-2xl border p-5 shadow-sm" style={{ background: "#0f172a", borderColor: BORDER }}>
-      <div className="flex items-baseline justify-between mb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
-          Daily Amazon performance
-        </p>
-        <div className="flex gap-3 text-[10px]" style={{ color: MUTED }}>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2 w-3" style={{ background: AMBER }} />
-            Revenue (₹)
+      <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: MUTED }}>
+            Daily Amazon — {cfg.title}
+          </p>
+          <p className="text-[10px]" style={{ color: MUTED }}>{cfg.note}</p>
+        </div>
+        <div className="flex gap-4 text-[10px]" style={{ color: MUTED }}>
+          <span>
+            avg{" "}
+            <span className="font-semibold tabular-nums" style={{ color: cfg.color }}>
+              {cfg.currency ? fmtInr(Math.round(avg)) : Math.round(avg)}
+            </span>
           </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2 w-3" style={{ background: SAGE }} />
-            AOV (₹)
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-2 w-3" style={{ background: BLUE }} />
-            Units sold
+          <span>
+            peak{" "}
+            <span className="font-semibold tabular-nums" style={{ color: cfg.color }}>
+              {cfg.currency ? fmtInr(peak) : peak}
+            </span>
           </span>
         </div>
       </div>
-      <div style={{ width: "100%", height: 280 }}>
+      <div style={{ width: "100%", height: 200 }}>
         <ResponsiveContainer>
-          <LineChart data={series} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+          <LineChart data={series} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
-            <XAxis dataKey="label" tick={{ fill: MUTED, fontSize: 11 }} stroke={BORDER} />
+            <XAxis dataKey="label" tick={{ fill: MUTED, fontSize: 11 }} stroke={BORDER} minTickGap={24} />
             <YAxis
-              yAxisId="rupees"
-              orientation="left"
-              tick={{ fill: MUTED, fontSize: 11 }}
-              stroke={BORDER}
-              tickFormatter={(v: number) => fmtInr(v)}
-            />
-            <YAxis
-              yAxisId="units"
-              orientation="right"
               tick={{ fill: MUTED, fontSize: 11 }}
               stroke={BORDER}
               allowDecimals={false}
+              width={cfg.currency ? 60 : 40}
+              tickFormatter={(v: number) => (cfg.currency ? fmtInr(v) : String(v))}
             />
             <Tooltip content={<DailyTooltip />} />
             <Line
-              yAxisId="rupees"
               type="monotone"
-              dataKey="revenue"
-              stroke={AMBER}
+              dataKey={cfg.key}
+              stroke={cfg.color}
               strokeWidth={2.5}
-              dot={{ fill: AMBER, r: 3 }}
+              dot={{ fill: cfg.color, r: 3 }}
               activeDot={{ r: 5 }}
-              name="Revenue"
-            />
-            <Line
-              yAxisId="rupees"
-              type="monotone"
-              dataKey="aov"
-              stroke={SAGE}
-              strokeWidth={2}
-              dot={{ fill: SAGE, r: 3 }}
-              activeDot={{ r: 5 }}
-              name="AOV"
-            />
-            <Line
-              yAxisId="units"
-              type="monotone"
-              dataKey="units"
-              stroke={BLUE}
-              strokeWidth={2}
-              dot={{ fill: BLUE, r: 3 }}
-              activeDot={{ r: 5 }}
-              name="Units"
+              name={cfg.title}
             />
           </LineChart>
         </ResponsiveContainer>
