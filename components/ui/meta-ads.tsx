@@ -170,13 +170,15 @@ function thumbColor(name: string): string {
 
 // Whether Meta is actually delivering this ad. Meta exposes both what the
 // user set (status: ACTIVE/PAUSED) and what it is really doing
-// (effectiveStatus: ACTIVE / ADSET_PAUSED / CAMPAIGN_PAUSED / WITH_ISSUES / …).
-// An ad only counts as running when both agree — one silently blocked by a
-// paused parent or flagged by Meta is not delivering, whatever its own flag says.
+// (effectiveStatus). Only effectiveStatus ACTIVE means the ad is being shown.
+//
+// This used to list the statuses that block delivery and treat everything else
+// as running, which let DISAPPROVED through — a rejected ad showed as Running
+// on the page. PENDING_REVIEW, PENDING_BILLING_INFO, IN_PROCESS and ARCHIVED
+// would have done the same. Naming the one status that counts closes the whole
+// class of bug instead of chasing each new value Meta adds.
 function isAdDelivering(ad: Pick<Ad, "status" | "effectiveStatus">): boolean {
-  if (ad.status !== "ACTIVE") return false;
-  const eff = ad.effectiveStatus || "";
-  return eff !== "ADSET_PAUSED" && eff !== "CAMPAIGN_PAUSED" && eff !== "WITH_ISSUES";
+  return ad.status === "ACTIVE" && ad.effectiveStatus === "ACTIVE";
 }
 
 // The Status column is deliberately binary: running or not. The reasons an ad

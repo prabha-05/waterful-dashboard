@@ -21,8 +21,9 @@ function parseYmdToIstDay(s: string): Date | null {
   return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - IST_OFFSET_MS);
 }
 
+// Only effectiveStatus ACTIVE counts as delivering, matching the page.
 const isDelivering = (status: string, eff: string | null) =>
-  status === "ACTIVE" && !["ADSET_PAUSED", "CAMPAIGN_PAUSED", "WITH_ISSUES"].includes(eff ?? "");
+  status === "ACTIVE" && eff === "ACTIVE";
 
 // Same bucketing the page uses for its Video / Image / Carousel pills.
 const normalizeFormat = (t: string | null): "video" | "carousel" | "image" => {

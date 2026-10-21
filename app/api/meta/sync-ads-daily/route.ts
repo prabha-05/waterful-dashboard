@@ -18,12 +18,11 @@ const META_TOKEN = process.env.META_ACCESS_TOKEN ?? "";
 const META_ACCOUNT = (process.env.META_AD_ACCOUNT_ID ?? "").replace(/^act_/, "");
 
 // An ad delivers only when its own status and Meta's effective status agree.
-// One blocked by a paused ad set or campaign still reports status=ACTIVE.
+// Only effectiveStatus ACTIVE counts: listing the blocking statuses instead let
+// DISAPPROVED (and PENDING_REVIEW, PENDING_BILLING_INFO, IN_PROCESS, ARCHIVED)
+// read as delivering.
 function isDelivering(status: string, effectiveStatus: string | null): boolean {
-  return (
-    status === "ACTIVE" &&
-    !["ADSET_PAUSED", "CAMPAIGN_PAUSED", "WITH_ISSUES"].includes(effectiveStatus ?? "")
-  );
+  return status === "ACTIVE" && effectiveStatus === "ACTIVE";
 }
 
 // id -> name for every ad on the account, paged. Names are mutable in Meta
@@ -549,6 +548,32 @@ export async function GET(request: Request) {
     const stored = await prisma.metaAd.findMany({
       select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
     });
+
+    // Correct the ads we currently show as Running FIRST. This step used to sit
+    // behind the time budget, so on a slow night it never ran and an ad paused
+    // days ago kept reading ACTIVE forever — the page showed 13 running when
+    // Meta was delivering 9. There are only ever a handful, so this is one API
+    // call and cannot blow the budget.
+    const believedRunning = stored.filter((a) => isDelivering(a.status, a.effectiveStatus));
+    for (let i = 0; i < believedRunning.length; i += 45) {
+      const chunk = believedRunning.slice(i, i + 45);
+      const res = await fetch(
+        `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
+          `&fields=status,effective_status&access_token=${META_TOKEN}`,
+      );
+      if (!res.ok) break;
+      const payload = (await res.json()) as Record<string, { status?: string; effective_status?: string }>;
+      for (const a of chunk) {
+        const live = payload[a.metaAdId];
+        if (!live?.status) continue;
+        if (live.status === a.status && (live.effective_status ?? null) === a.effectiveStatus) continue;
+        await prisma.metaAd.update({
+          where: { id: a.id },
+          data: { status: live.status, effectiveStatus: live.effective_status ?? null, syncedAt: now },
+        });
+        statusRefreshed++;
+      }
+    }
 
     const wronglyPaused = stored.filter(
       (a) => activeIds.has(a.metaAdId) && !isDelivering(a.status, a.effectiveStatus),
