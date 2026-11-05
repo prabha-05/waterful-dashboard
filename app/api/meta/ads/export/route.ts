@@ -113,8 +113,40 @@ export async function GET(req: NextRequest) {
     if (r.date > a.last) a.last = r.date;
   }
 
+  // Keep the export in step with the page: an ad delivering right now belongs
+  // in the report whether or not it spent inside the window, so a download and
+  // the screen never disagree about how many ads are running.
+  const liveAds = await prisma.metaAd.findMany({
+    where: { status: "ACTIVE", effectiveStatus: "ACTIVE" },
+    select: {
+      metaAdId: true, name: true, creativeType: true, status: true, effectiveStatus: true,
+      previewLink: true, createdTime: true,
+      adSet: { select: { name: true, metaCampaignId: true } },
+    },
+  });
+  const extraCampaignIds = liveAds
+    .map((a) => a.adSet.metaCampaignId)
+    .filter((id) => !campaignName.has(id));
+  if (extraCampaignIds.length > 0) {
+    for (const c of await prisma.metaCampaign.findMany({
+      where: { metaCampaignId: { in: extraCampaignIds } },
+      select: { metaCampaignId: true, name: true },
+    })) {
+      campaignName.set(c.metaCampaignId, c.name);
+    }
+  }
+  for (const a of liveAds) {
+    if (byAd.has(a.metaAdId)) continue;
+    byAd.set(a.metaAdId, {
+      id: a.metaAdId, name: a.name, ct: a.creativeType, status: a.status, eff: a.effectiveStatus,
+      link: a.previewLink, adset: a.adSet.name, campaign: campaignName.get(a.adSet.metaCampaignId) ?? "",
+      sp: 0, im: 0, rch: 0, ck: 0, lpv: 0, atc: 0, ic: 0, pu: 0, rv: 0, v3: 0, v25: 0, v50: 0, v75: 0, v100: 0, freqW: 0,
+      days: new Set(), first: a.createdTime, last: a.createdTime,
+    });
+  }
+
   const ads = Array.from(byAd.values())
-    .filter((a) => a.sp > 0)
+    .filter((a) => a.sp > 0 || isDelivering(a.status, a.eff))
     .filter((a) => a.sp >= minSpend)
     .filter((a) => formatParam === "ALL" || normalizeFormat(a.ct) === formatParam)
     .filter((a) => {

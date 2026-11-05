@@ -57,8 +57,34 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // Ads that are delivering right now belong on the page whether or not they
+  // spent inside the window. A newly switched-on ad has no rows yet, and one
+  // that spent a few paise rounds to zero and used to vanish -- so "Running"
+  // showed 32 while Meta was delivering 39. They come through with zero
+  // metrics; the spend filter below keeps everything else honest.
+  const liveAds = await prisma.metaAd.findMany({
+    where: { status: "ACTIVE", effectiveStatus: "ACTIVE" },
+    select: {
+      id: true,
+      metaAdId: true,
+      name: true,
+      status: true,
+      effectiveStatus: true,
+      creativeType: true,
+      thumbnailUrl: true,
+      previewLink: true,
+      createdTime: true,
+      adSet: { select: { name: true, metaCampaignId: true } },
+    },
+  });
+
   // Resolve campaign names
-  const campaignIds = [...new Set(spendRows.map((r) => r.ad.adSet.metaCampaignId))];
+  const campaignIds = [
+    ...new Set([
+      ...spendRows.map((r) => r.ad.adSet.metaCampaignId),
+      ...liveAds.map((a) => a.adSet.metaCampaignId),
+    ]),
+  ];
   const campaigns = await prisma.metaCampaign.findMany({
     where: { metaCampaignId: { in: campaignIds } },
     select: { metaCampaignId: true, name: true },
@@ -143,6 +169,29 @@ export async function GET(req: NextRequest) {
     if (r.conversionRateRanking) agg.conversionRateRanking = r.conversionRateRanking;
   }
 
+  // Seed any live ad the window missed. Empty `daily` is padded with zero-rows
+  // below, exactly like an ad that ran on only one day of the window.
+  for (const a of liveAds) {
+    if (map.has(a.id)) continue;
+    map.set(a.id, {
+      adId: a.id,
+      metaAdId: a.metaAdId,
+      name: a.name,
+      status: a.status,
+      effectiveStatus: a.effectiveStatus,
+      adSetName: a.adSet.name,
+      campaignName: campaignNameLookup.get(a.adSet.metaCampaignId) ?? "—",
+      creativeType: a.creativeType,
+      thumbnailUrl: a.thumbnailUrl,
+      previewLink: a.previewLink,
+      createdTime: a.createdTime,
+      qualityRanking: null,
+      engagementRateRanking: null,
+      conversionRateRanking: null,
+      daily: [],
+    });
+  }
+
   // Generate full list of date strings in window so we can pad each ad's
   // daily series with zeros for days it had no spend. Without padding,
   // an ad that only ran on 1 day shows a single-dot sparkline instead
@@ -223,11 +272,15 @@ export async function GET(req: NextRequest) {
         daily: a.daily,
       };
     })
-    .filter((a) => a.spend > 0)
+    .filter((a) => a.spend > 0 || (a.status === "ACTIVE" && a.effectiveStatus === "ACTIVE"))
     .sort((a, b) => b.spend - a.spend);
 
-  // Window totals
-  const totals = ads.reduce(
+  // Window totals, over the ads that actually spent. A live ad with no spend
+  // is listed, but it must not count towards the window's ad count or drag
+  // the averages towards zero.
+  const totals = ads
+    .filter((a) => a.spend > 0)
+    .reduce(
     (acc, a) => ({
       spend: acc.spend + a.spend,
       impressions: acc.impressions + a.impressions,
