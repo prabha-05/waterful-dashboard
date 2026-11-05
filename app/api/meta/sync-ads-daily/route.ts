@@ -505,11 +505,86 @@ export async function GET(request: Request) {
   }
   const tCampaignWritten = Date.now();
 
-  // 8. Metadata refresh -- runs LAST, after every daily table is written, and
-  //    only while there is comfortably time left. It is best-effort: the daily
-  //    spend rows are the data the dashboard cannot do without; a stale name or
-  //    status can wait for tomorrow's run.
+  // 8. Delivery status, corrected on EVERY run.
+  //
+  //    This correction used to sit inside the best-effort block below, behind a
+  //    40-second budget. With thousands of ads on the account the sync reaches
+  //    this point well past 40 seconds, so it was skipped almost every night and
+  //    ads paused weeks ago kept reading ACTIVE: the page showed 76 under
+  //    Running while Meta was delivering 56. Status is the one field the Running
+  //    filter cannot be wrong about, so it now runs unconditionally, and reuses
+  //    the active-ads list already fetched above rather than paging again.
   let statusRefreshed = 0;
+  let statusBatchesFailed = 0;
+  if (META_TOKEN && META_ACCOUNT) {
+    const storedForStatus = await prisma.metaAd.findMany({
+      select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
+    });
+
+    // Delivering on Meta but not here. One write covers the whole group.
+    const wronglyPaused = storedForStatus.filter(
+      (a) => activeAds.has(a.metaAdId) && !isDelivering(a.status, a.effectiveStatus),
+    );
+    if (wronglyPaused.length > 0) {
+      await prisma.metaAd.updateMany({
+        where: { id: { in: wronglyPaused.map((a) => a.id) } },
+        data: { status: "ACTIVE", effectiveStatus: "ACTIVE", syncedAt: now },
+      });
+      statusRefreshed += wronglyPaused.length;
+    }
+
+    // Shown as Running here but absent from Meta's active list. Ask Meta which
+    // flavour of stopped each one is, 45 per call. A failed batch used to
+    // `break` and abandon every later batch, so one hiccup left most of the
+    // table stale; a bad batch is now counted and skipped, and the rest run.
+    const wronglyRunning = storedForStatus.filter(
+      (a) => !activeAds.has(a.metaAdId) && isDelivering(a.status, a.effectiveStatus),
+    );
+    for (let i = 0; i < wronglyRunning.length; i += 45) {
+      const chunk = wronglyRunning.slice(i, i + 45);
+      let payload: Record<string, { status?: string; effective_status?: string }> = {};
+      try {
+        const res = await fetch(
+          `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
+            `&fields=status,effective_status&access_token=${META_TOKEN}`,
+        );
+        if (!res.ok) {
+          statusBatchesFailed++;
+          continue;
+        }
+        payload = (await res.json()) as Record<string, { status?: string; effective_status?: string }>;
+      } catch {
+        statusBatchesFailed++;
+        continue;
+      }
+      // Group ads that land on the same status, so a batch of 45 costs a
+      // handful of writes rather than 45 round trips.
+      const groups = new Map<string, number[]>();
+      for (const a of chunk) {
+        const live = payload[a.metaAdId];
+        if (!live?.status) continue;
+        const eff = live.effective_status ?? null;
+        if (live.status === a.status && eff === a.effectiveStatus) continue;
+        const key = `${live.status}|${eff ?? ""}`;
+        const group = groups.get(key);
+        if (group) group.push(a.id);
+        else groups.set(key, [a.id]);
+      }
+      for (const [key, ids] of groups) {
+        const [status, eff] = key.split("|");
+        await prisma.metaAd.updateMany({
+          where: { id: { in: ids } },
+          data: { status, effectiveStatus: eff || null, syncedAt: now },
+        });
+        statusRefreshed += ids.length;
+      }
+    }
+  }
+
+  // 9. Metadata refresh -- runs LAST, after every daily table is written, and
+  //    only while there is comfortably time left. It is best-effort: the daily
+  //    spend rows are the data the dashboard cannot do without, and a stale
+  //    name or thumbnail can wait for tomorrow's run. Status no longer can.
   let namesRefreshed = 0;
   let adSetsRefreshed = 0;
   let linksRefreshed = 0;
@@ -517,17 +592,10 @@ export async function GET(request: Request) {
   const REFRESH_BUDGET_MS = 40_000;
   const refreshSkipped = Date.now() - t0 > REFRESH_BUDGET_MS;
   if (!refreshSkipped) {
-  // 8a. Refresh delivery status for ads we already hold.
-  //
-  //     The createMany(skipDuplicates) above only ever INSERTS ads we have
-  //     never seen. Without this step an ad's status stays frozen at whatever
-  //     it was the day it was first inserted, so ads paused weeks ago kept
-  //     rendering as Running. A paused ad also stops spending, so it drops out
-  //     of the insights window and never gets a second chance to be corrected.
-  //
-  //     Cheap path: ask Meta which ads are effectively ACTIVE (normally a short
-  //     list), then only look up the exact status of the ads we disagree about,
-  //     rather than guessing which flavour of paused they are.
+  // 9a. Refresh ad names. Status is handled above, on every run; this is only
+  //     the cosmetic half. createMany(skipDuplicates) never rewrites an
+  //     existing row, so a renamed ad would otherwise keep its original name
+  //     and two ads could render under the same heading.
   if (META_TOKEN && META_ACCOUNT) {
     const liveNames = await fetchAdNames();
     const namesToFix = (
@@ -543,73 +611,9 @@ export async function GET(request: Request) {
       });
       namesRefreshed++;
     }
-
-    const activeIds = activeAds;
-    const stored = await prisma.metaAd.findMany({
-      select: { id: true, metaAdId: true, status: true, effectiveStatus: true },
-    });
-
-    // Correct the ads we currently show as Running FIRST. This step used to sit
-    // behind the time budget, so on a slow night it never ran and an ad paused
-    // days ago kept reading ACTIVE forever — the page showed 13 running when
-    // Meta was delivering 9. There are only ever a handful, so this is one API
-    // call and cannot blow the budget.
-    const believedRunning = stored.filter((a) => isDelivering(a.status, a.effectiveStatus));
-    for (let i = 0; i < believedRunning.length; i += 45) {
-      const chunk = believedRunning.slice(i, i + 45);
-      const res = await fetch(
-        `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
-          `&fields=status,effective_status&access_token=${META_TOKEN}`,
-      );
-      if (!res.ok) break;
-      const payload = (await res.json()) as Record<string, { status?: string; effective_status?: string }>;
-      for (const a of chunk) {
-        const live = payload[a.metaAdId];
-        if (!live?.status) continue;
-        if (live.status === a.status && (live.effective_status ?? null) === a.effectiveStatus) continue;
-        await prisma.metaAd.update({
-          where: { id: a.id },
-          data: { status: live.status, effectiveStatus: live.effective_status ?? null, syncedAt: now },
-        });
-        statusRefreshed++;
-      }
-    }
-
-    const wronglyPaused = stored.filter(
-      (a) => activeIds.has(a.metaAdId) && !isDelivering(a.status, a.effectiveStatus),
-    );
-    for (const a of wronglyPaused) {
-      await prisma.metaAd.update({
-        where: { id: a.id },
-        data: { status: "ACTIVE", effectiveStatus: "ACTIVE", syncedAt: now },
-      });
-      statusRefreshed++;
-    }
-
-    const wronglyRunning = stored.filter(
-      (a) => !activeIds.has(a.metaAdId) && isDelivering(a.status, a.effectiveStatus),
-    );
-    for (let i = 0; i < wronglyRunning.length; i += 45) {
-      const chunk = wronglyRunning.slice(i, i + 45);
-      const url =
-        `${META_GRAPH}/?ids=${chunk.map((a) => a.metaAdId).join(",")}` +
-        `&fields=status,effective_status&access_token=${META_TOKEN}`;
-      const res = await fetch(url);
-      if (!res.ok) break;
-      const payload = (await res.json()) as Record<string, { status?: string; effective_status?: string }>;
-      for (const a of chunk) {
-        const live = payload[a.metaAdId];
-        if (!live?.status) continue;
-        await prisma.metaAd.update({
-          where: { id: a.id },
-          data: { status: live.status, effectiveStatus: live.effective_status ?? null, syncedAt: now },
-        });
-        statusRefreshed++;
-      }
-    }
   }
 
-  // 8b. Fill in the public post permalink for ads that lack one.
+  // 9b. Fill in the public post permalink for ads that lack one.
   //
   //        previewLink used to hold Meta's preview_shareable_link, an fb.me
   //        short URL that expires after a few weeks and then redirects to the
@@ -629,7 +633,8 @@ export async function GET(request: Request) {
         `&fields=creative{instagram_permalink_url,effective_object_story_id}` +
         `&access_token=${META_TOKEN}`;
       const res = await fetch(url);
-      if (!res.ok) break;
+      // Skip a failed batch; do not abandon the batches after it.
+      if (!res.ok) continue;
       const payload = (await res.json()) as Record<string, { creative?: { instagram_permalink_url?: string; effective_object_story_id?: string } }>;
       for (const a of chunk) {
         const link = publicPostUrl(payload[a.metaAdId]?.creative);
@@ -640,7 +645,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // 8c. Same refresh for ad sets and campaigns.
+  // 9c. Same refresh for ad sets and campaigns.
   if (META_TOKEN && META_ACCOUNT) {
     const liveSets = await fetchAccountEdge("adsets");
     for (const st of await prisma.metaAdSet.findMany({
@@ -684,6 +689,7 @@ export async function GET(request: Request) {
       backfilledAdSets,
       backfilledAds,
       statusRefreshed,
+      statusBatchesFailed,
       namesRefreshed,
       adSetsRefreshed,
       linksRefreshed,
