@@ -9,7 +9,7 @@
       "schedule": "35 21 * * *"
     },
     {
-      "path": "/api/meta/sync-ads-daily?days=7",
+      "path": "/api/meta/sync-ads-daily?days=5",
       "schedule": "0 22 * * *"
     },
     {
